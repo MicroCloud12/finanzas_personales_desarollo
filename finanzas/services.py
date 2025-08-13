@@ -140,7 +140,7 @@ class GeminiService:
 
             ### REGLAS DE EXTRACCIÓN:
             1.  **fecha_compra**: Extrae la fecha principal de la operación en formato AÑO-MES-DÍA.
-            2.  **emisora_ticker**: El símbolo de la acción o criptomoneda (ej. NVDA, AAPL, BTC, ETH).
+            2.  **emisora_ticker**: El símbolo de la acción o criptomoneda (ej. NVDA, AAPL, BTC/USD, ETH/USD).
             3.  **nombre_activo**: El nombre completo. Si la imagen solo muestra el ticker (ej. "NVDA"), infiere el nombre de la empresa (ej. "NVIDIA").
             4.  **cantidad_titulos**: El número de acciones o unidades de cripto. Debe ser un número decimal (float).
             5.  **precio_por_titulo**: El costo de cada título o unidad. Debe ser un número.
