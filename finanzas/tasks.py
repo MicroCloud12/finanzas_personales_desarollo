@@ -142,26 +142,48 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 
 @shared_task
-def process_drive_investments(user_id: int):
-    """Obtiene las imágenes de inversiones y lanza tareas paralelas para procesarlas."""
+def process_drive_investments(user_id):
+    """
+    Tarea para procesar TODOS los archivos de la carpeta 'Inversiones'.
+    """
+    print(f"--- INICIANDO TAREA DE INVERSIONES PARA USUARIO: {user_id} ---")
     try:
         user = User.objects.get(id=user_id)
-        gdrive_service = GoogleDriveService(user)
-        files_to_process = gdrive_service.list_files_in_folder(
-            folder_name="Inversiones",
-            mimetypes=['image/jpeg', 'image/png', 'application/pdf'],
-        )
+        drive_service = GoogleDriveService(user)
+        # USA EL SERVICIO DE GEMINI, que tiene ambos prompts
+        gemini_service = GeminiService() 
 
-        if not files_to_process:
-            return {'status': 'NO_FILES', 'message': 'No se encontraron nuevas inversiones.'}
+        folder_name = 'Inversiones' # <-- Ingrediente 1: Busca en la carpeta correcta.
+        files = drive_service.get_file_content(folder_name)
 
-        job = group(
-            process_single_inversion.s(user.id, item['id'], item['name'], item['mimeType'])
-            for item in files_to_process
-        )
+        if not files:
+            print("No se encontraron archivos en la carpeta de Inversiones.")
+            return {'status': 'NO_FILES'}
 
-        result_group = job.apply_async()
-        result_group.save()
-        return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
+        for file_item in files:
+            file_name = file_item['name']
+            print(f"Procesando archivo de inversión: {file_name}")
+            
+            image_content = drive_service.get_file_content(file_item['id'])
+            
+            if image_content:
+                # Ingrediente 2: Llama al método que usa el PROMPT DE INVERSIONES.
+                extracted_data = gemini_service.extract_data_from_inversion(image_content)
+                
+                if extracted_data and "error" not in extracted_data:
+                    # Ingrediente 3: Guarda los datos en el modelo PENDING INVESTMENT.
+                    InvestmentService.create_pending_investment(user, extracted_data)
+                    print(f"Inversión PENDIENTE creada para: {file_name}")
+                    # Opcional: Mover el archivo a 'Procesados'
+                    # drive_service.move_file_to_processed(file_item['id'], folder_name)
+                else:
+                    print(f"Error al extraer datos de {file_name}: {extracted_data}")
+
+        print("--- TAREA DE INVERSIONES COMPLETADA ---")
+        return {'status': 'SUCCESS'}
+
+    except User.DoesNotExist:
+        return {'status': 'ERROR', 'message': f"Usuario {user_id} no encontrado."}
     except Exception as e:
+        print(f"ERROR CRÍTICO en process_drive_investments: {str(e)}")
         return {'status': 'ERROR', 'message': str(e)}
