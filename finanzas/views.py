@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.http import JsonResponse
 from django.contrib.auth import login
+from .utils import parse_date_safely
 from .tasks import process_drive_tickets, process_drive_investments
 from datetime import datetime, timedelta
 from django.db.models import Sum
