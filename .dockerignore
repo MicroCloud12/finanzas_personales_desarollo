@@ -1,7 +1,0 @@
-# .dockerignore
-__pycache__/
-*.pyc
-.git
-.gitignore
-.env
-db.sqlite3
