@@ -153,3 +153,4 @@ class GananciaMensual(models.Model):
 
     def __str__(self):
         return f"{self.propietario.username} - {self.mes} - ${self.total}"
+    

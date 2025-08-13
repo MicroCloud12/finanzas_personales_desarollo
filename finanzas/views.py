@@ -20,9 +20,9 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService
 from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm
-from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual
+from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService
+from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual, PendingInvestment
 
 logger = logging.getLogger(__name__)
 
@@ -522,26 +522,57 @@ def vista_procesamiento_inversiones(request):
 
 @login_required
 def revisar_inversiones(request):
-    pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-    inversiones_pendientes = [p for p in pendientes if 'nombre_activo' in p.datos_json]
-    return render(request, 'revisar_inversiones.html', {'inversiones': inversiones_pendientes})
+    """
+    Muestra todas las inversiones pendientes para que el usuario las revise.
+    """
+    pending_investments = PendingInvestment.objects.filter(propietario=request.user, estado='pendiente')
+    context = {'pending_investments': pending_investments}
+    return render(request, 'revisar_inversiones.html', context)
 
 @login_required
-def aprobar_inversion(request, inversion_id):
+def aprobar_inversion(request, pending_id):
+    """
+    Aprueba una inversión pendiente, la convierte en una inversión real y la elimina de la lista de pendientes.
+    """
+    pending = get_object_or_404(PendingInvestment, id=pending_id, propietario=request.user)
+    
     if request.method == 'POST':
-        pendiente = get_object_or_404(TransaccionPendiente, id=inversion_id, propietario=request.user)
-        investment_service = InvestmentService()
-        investment_service.create_investment(request.user, pendiente.datos_json)
-        pendiente.estado = 'aprobada'
-        pendiente.save()
-        messages.success(request, "Inversión aprobada correctamente.")
+        datos = pending.datos_json
+        
+        # Creamos la inversión final usando los datos del JSON
+        inversiones.objects.create(
+            propietario=request.user,
+            fecha_compra=parse_date_safely(datos.get("fecha_compra")),
+            emisora_ticker=datos.get("emisora_ticker"),
+            nombre_activo=datos.get("nombre_activo"),
+            cantidad_titulos=Decimal(str(datos.get("cantidad_titulos", 0.0))),
+            precio_compra_titulo=Decimal(str(datos.get("precio_por_titulo", 0.0))),
+            costo_total_adquisicion=Decimal(str(datos.get("costo_total", 0.0))),
+            precio_actual_titulo=Decimal(str(datos.get("precio_por_titulo", 0.0))), # Inicialmente es el mismo
+            tipo_cambio_compra=Decimal(str(datos.get("tipo_cambio_usd"))) if datos.get("tipo_cambio_usd") else None,
+        )
+        
+        # Marcamos la pendiente como aprobada y la eliminamos (o la guardamos como 'aprobada')
+        pending.estado = 'aprobada'
+        pending.save()
+        
+        messages.success(request, f"Inversión en {datos.get('nombre_activo')} aprobada correctamente.")
+        return redirect('revisar_inversiones')
+
+    # Si no es POST, simplemente redirigimos a la página de revisión.
     return redirect('revisar_inversiones')
 
 @login_required
-def rechazar_inversion(request, inversion_id):
-    pendiente = get_object_or_404(TransaccionPendiente, id=inversion_id, propietario=request.user)
-    pendiente.estado = 'rechazada'
-    pendiente.save()
+def rechazar_inversion(request, pending_id):
+    """
+    Rechaza (elimina) una inversión pendiente.
+    """
+    pending = get_object_or_404(PendingInvestment, id=pending_id, propietario=request.user)
+    if request.method == 'POST':
+        nombre_activo = pending.datos_json.get('nombre_activo', 'Desconocido')
+        pending.delete()
+        messages.warning(request, f"La inversión pendiente en {nombre_activo} ha sido rechazada.")
+    
     return redirect('revisar_inversiones')
 
 @login_required
@@ -582,6 +613,7 @@ def lista_inversiones(request):
     es_usuario_premium = suscripcion.is_active()
     context = {'inversiones': lista, 'es_usuario_premium': es_usuario_premium}
     return render(request, 'lista_inversiones.html', context)
+
 
 @login_required
 def editar_inversion(request, inversion_id):

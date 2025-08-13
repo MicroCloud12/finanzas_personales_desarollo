@@ -17,7 +17,7 @@ from googleapiclient.errors import HttpError
 #from alpha_vantage.timeseries import TimeSeries
 from google.oauth2.credentials import Credentials
 from allauth.socialaccount.models import SocialApp, SocialToken
-from .models import registro_transacciones, TransaccionPendiente, User, inversiones
+from .models import registro_transacciones, TransaccionPendiente, User, inversiones, TransaccionPendiente
 
 class GoogleDriveService:
     # ... (esta clase no cambia)
@@ -435,4 +435,20 @@ class InvestmentService:
             precio_compra_titulo=precio_compra,
             precio_actual_titulo=precio_actual,
             tipo_cambio_compra=tipo_cambio,
+        )
+    
+    @staticmethod
+    def create_pending_investment(user: User, data: dict):
+        """
+        Crea un registro de inversión pendiente a partir de los datos extraídos por la IA.
+        """
+        if "error" in data:
+            print(f"No se creará inversión pendiente debido a un error previo: {data['error']}")
+            return None
+        
+        # Simplemente guardamos los datos crudos para revisarlos después.
+        return TransaccionPendiente.objects.create(
+            propietario=user,
+            datos_json=data,
+            estado='pendiente'
         )

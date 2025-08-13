@@ -131,7 +131,7 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         else:
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
-        investment_service.create_investment(user, extracted_data)
+        investment_service.create_pending_investment(user, extracted_data)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
     except ConnectionError as e:
