@@ -21,7 +21,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm
+from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm 
 from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService
 from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual, PendingInvestment
 

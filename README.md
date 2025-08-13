@@ -29,6 +29,15 @@ Active su entorno virtual e inicie el servidor de desarrollo:
 python manage.py migrate
 python manage.py runserver
 ```
+En caso de querer correr el boton de añadir automaticamente es necesario activar el ambiente virtual y correr 2 terminales:
+ - Primer Terminal correr con:
+```bash
+Redis-Server
+```
+ - Segundo Servidor correr con:
+ ```bash
+ celery -A config worker -l info -P gevent -c 4
+```
 
 ## Cálculo de ganancias mensuales
 

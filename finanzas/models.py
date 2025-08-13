@@ -154,3 +154,18 @@ class GananciaMensual(models.Model):
     def __str__(self):
         return f"{self.propietario.username} - {self.mes} - ${self.total}"
     
+class PendingInvestment(models.Model):
+    ESTADOS = (
+        ('pendiente', 'Pendiente'),
+        ('aprobada', 'Aprobada'),
+        ('rechazada', 'Rechazada'),
+    )
+    
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE)
+    datos_json = models.JSONField()
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='pendiente')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        nombre_activo = self.datos_json.get('nombre_activo', 'N/A')
+        return f"Inversión Pendiente de {self.propietario.username} en {nombre_activo}"
