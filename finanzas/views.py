@@ -224,7 +224,8 @@ def iniciar_procesamiento_drive(request):
 
 '''
 vista para los Dashboards y gráficas de transacciones 
-y ganancias mensuales, e inversiones.'''
+y ganancias mensuales, e inversiones.
+'''
 @login_required
 def vista_dashboard(request):
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
@@ -611,7 +612,6 @@ def lista_inversiones(request):
     es_usuario_premium = suscripcion.is_active()
     context = {'inversiones': lista, 'es_usuario_premium': es_usuario_premium}
     return render(request, 'lista_inversiones.html', context)
-
 
 @login_required
 def editar_inversion(request, inversion_id):
