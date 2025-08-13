@@ -198,6 +198,12 @@ def revisar_tickets(request):
     tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
     return render(request, 'revisar_tickets.html', {'tickets': tickets_pendientes})
 
+@login_required
+def rechazar_ticket(request, ticket_id):
+    ticket = TransaccionPendiente.objects.get(id=ticket_id, propietario=request.user)
+    ticket.estado = 'rechazada'
+    ticket.save()
+    return redirect('revisar_tickets')
 '''
 Vista para procesar automáticamente los tickets de Drive.
 '''
@@ -350,6 +356,21 @@ def datos_flujo_dinero(request):
     return JsonResponse(data)
 
 @login_required
+def datos_ganancias_mensuales(request):
+    """Retorna las ganancias mensuales acumuladas de las inversiones del usuario.
+    profits = calculate_monthly_profit(request.user)
+    labels = list(profits.keys())
+    data = [profits[month] for month in labels]
+    return JsonResponse({'labels': labels, 'data': data})
+    """
+    ganancias = GananciaMensual.objects.filter(
+        propietario=request.user
+    ).order_by('mes')
+    labels = [g.mes for g in ganancias]
+    data = [g.total for g in ganancias]
+    return JsonResponse({'labels': labels, 'data': data})
+
+@login_required
 def vista_procesamiento_automatico(request):
     return render(request, 'procesamiento_automatico.html')
 
@@ -394,94 +415,9 @@ def get_group_status(request, group_id):
         logger.error(f"Error en get_group_status: {e}")
         return JsonResponse({"status": "FAILURE", "info": str(e)}, status=500)
      
-@login_required
-def rechazar_ticket(request, ticket_id):
-    ticket = TransaccionPendiente.objects.get(id=ticket_id, propietario=request.user)
-    ticket.estado = 'rechazada'
-    ticket.save()
-    return redirect('revisar_tickets')
-
-@login_required
-def lista_inversiones(request):
-    """
-    Muestra todas las inversiones del usuario logueado.
-    """
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    lista = inversiones.objects.filter(propietario=request.user).order_by('-fecha_compra')
-    es_usuario_premium = suscripcion.is_active()
-    context = {'inversiones': lista, 'es_usuario_premium': es_usuario_premium}
-    return render(request, 'lista_inversiones.html', context)
-
-@login_required
-def editar_inversion(request, inversion_id):
-    inversion = get_object_or_404(inversiones, id=inversion_id, propietario=request.user)
-    if request.method == 'POST':
-        form = InversionForm(request.POST, instance=inversion)
-        if form.is_valid():
-            form.save()
-            return redirect('lista_inversiones')
-    else:
-        form = InversionForm(instance=inversion)
-    return render(request, 'editar_inversion.html', {'form': form})
-
-@login_required
-def eliminar_inversion(request, inversion_id):
-    inversion = get_object_or_404(inversiones, id=inversion_id, propietario=request.user)
-    if request.method == 'POST':
-        inversion.delete()
-        return redirect('lista_inversiones')
-    return render(request, 'confirmar_eliminar_inversion.html', {'inversion': inversion})
-
-@login_required
-def crear_inversion(request):
-    """
-    Maneja la creación de una nueva inversión, obteniendo el precio actual de una API.
-    """
-    if request.method == 'POST':
-        form = InversionForm(request.POST)
-        if form.is_valid():
-            nueva_inversion = form.save(commit=False)
-            nueva_inversion.propietario = request.user
-            price_service = StockPriceService()
-            ticker = form.cleaned_data.get('emisora_ticker').upper()
-
-            # Obtenemos el precio como float desde el servicio
-            precio_actual_float = price_service.get_current_price(ticker)
-            
-            # --- PASO 2: AQUÍ ESTÁ LA CORRECCIÓN ---
-            if precio_actual_float is not None:
-                # Convertimos el float a un Decimal antes de asignarlo al modelo
-                # Usamos str() en el medio, es la forma más segura de evitar errores de precisión.
-                nueva_inversion.precio_actual_titulo = Decimal(str(precio_actual_float))
-            else:
-                # Si la API falla, usamos el precio de compra como respaldo
-                nueva_inversion.precio_actual_titulo = nueva_inversion.precio_compra_titulo
-            
-            nueva_inversion.save() # Ahora la multiplicación será entre dos Decimales
-            messages.success(request, f"Inversión en {ticker} guardada con éxito.")
-            return redirect('lista_inversiones')
-    else:
-        form = InversionForm()
-    
-    context = {'form': form}
-    # Asegúrate de que el path a tu template es correcto
-    return render(request, 'crear_inversion.html', context)
-
-@login_required
-def datos_inversiones(request):
-    
-    qs = (
-        inversiones.objects
-        .filter(propietario=request.user)
-        .annotate(month=TruncMonth('fecha_compra'))
-        .values('month')
-        .annotate(total=Sum('ganancia_perdida_no_realizada'))
-        .order_by('month')
-    )
-    labels = [DateFormat(item['month']).format('Y-m') for item in qs]
-    values = [item['total'] for item in qs]
-    return JsonResponse({'labels': labels, 'data': values})
-
+'''
+Mercado Pago y suscripciones
+'''
 @login_required
 def gestionar_suscripcion(request):
     """
@@ -567,21 +503,10 @@ def mercadopago_webhook(request):
     # Devolvemos un 200 OK para que Mercado Pago sepa que recibimos la notificación
     return HttpResponse(status=200)
 
-@login_required
-def datos_ganancias_mensuales(request):
-    """Retorna las ganancias mensuales acumuladas de las inversiones del usuario.
-    profits = calculate_monthly_profit(request.user)
-    labels = list(profits.keys())
-    data = [profits[month] for month in labels]
-    return JsonResponse({'labels': labels, 'data': data})
-    """
-    ganancias = GananciaMensual.objects.filter(
-        propietario=request.user
-    ).order_by('mes')
-    labels = [g.mes for g in ganancias]
-    data = [g.total for g in ganancias]
-    return JsonResponse({'labels': labels, 'data': data})
 
+'''
+Inversiones
+'''
 @login_required
 def iniciar_procesamiento_inversiones(request):
     """Inicia el procesamiento automático de inversiones."""
@@ -646,3 +571,84 @@ def rechazar_todas_inversiones(request):
                 inv.estado = 'rechazada'
                 inv.save()
     return redirect('revisar_inversiones')
+
+@login_required
+def lista_inversiones(request):
+    """
+    Muestra todas las inversiones del usuario logueado.
+    """
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    lista = inversiones.objects.filter(propietario=request.user).order_by('-fecha_compra')
+    es_usuario_premium = suscripcion.is_active()
+    context = {'inversiones': lista, 'es_usuario_premium': es_usuario_premium}
+    return render(request, 'lista_inversiones.html', context)
+
+@login_required
+def editar_inversion(request, inversion_id):
+    inversion = get_object_or_404(inversiones, id=inversion_id, propietario=request.user)
+    if request.method == 'POST':
+        form = InversionForm(request.POST, instance=inversion)
+        if form.is_valid():
+            form.save()
+            return redirect('lista_inversiones')
+    else:
+        form = InversionForm(instance=inversion)
+    return render(request, 'editar_inversion.html', {'form': form})
+
+@login_required
+def eliminar_inversion(request, inversion_id):
+    inversion = get_object_or_404(inversiones, id=inversion_id, propietario=request.user)
+    if request.method == 'POST':
+        inversion.delete()
+        return redirect('lista_inversiones')
+    return render(request, 'confirmar_eliminar_inversion.html', {'inversion': inversion})
+
+@login_required
+def crear_inversion(request):
+    """
+    Maneja la creación de una nueva inversión, obteniendo el precio actual de una API.
+    """
+    if request.method == 'POST':
+        form = InversionForm(request.POST)
+        if form.is_valid():
+            nueva_inversion = form.save(commit=False)
+            nueva_inversion.propietario = request.user
+            price_service = StockPriceService()
+            ticker = form.cleaned_data.get('emisora_ticker').upper()
+
+            # Obtenemos el precio como float desde el servicio
+            precio_actual_float = price_service.get_current_price(ticker)
+            
+            # --- PASO 2: AQUÍ ESTÁ LA CORRECCIÓN ---
+            if precio_actual_float is not None:
+                # Convertimos el float a un Decimal antes de asignarlo al modelo
+                # Usamos str() en el medio, es la forma más segura de evitar errores de precisión.
+                nueva_inversion.precio_actual_titulo = Decimal(str(precio_actual_float))
+            else:
+                # Si la API falla, usamos el precio de compra como respaldo
+                nueva_inversion.precio_actual_titulo = nueva_inversion.precio_compra_titulo
+            
+            nueva_inversion.save() # Ahora la multiplicación será entre dos Decimales
+            messages.success(request, f"Inversión en {ticker} guardada con éxito.")
+            return redirect('lista_inversiones')
+    else:
+        form = InversionForm()
+    
+    context = {'form': form}
+    # Asegúrate de que el path a tu template es correcto
+    return render(request, 'crear_inversion.html', context)
+
+@login_required
+def datos_inversiones(request):
+    
+    qs = (
+        inversiones.objects
+        .filter(propietario=request.user)
+        .annotate(month=TruncMonth('fecha_compra'))
+        .values('month')
+        .annotate(total=Sum('ganancia_perdida_no_realizada'))
+        .order_by('month')
+    )
+    labels = [DateFormat(item['month']).format('Y-m') for item in qs]
+    values = [item['total'] for item in qs]
+    return JsonResponse({'labels': labels, 'data': values})
