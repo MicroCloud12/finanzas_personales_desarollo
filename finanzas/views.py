@@ -26,10 +26,33 @@ from .models import registro_transacciones, Suscripcion, TransaccionPendiente, i
 
 logger = logging.getLogger(__name__)
 
-
+'''
+Vista de inicio, redirige a la página de inicio,
+inicio de sesión y registro.
+'''
 def home(request):
     return render(request, 'index.html')
 
+def iniciosesion(request):
+    return render(request, 'dashboard.html')
+
+def registro(request):
+    if request.method == 'POST':
+        form = FormularioRegistroPersonalizado(request.POST)
+
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('dashboard')
+    else:
+        form = FormularioRegistroPersonalizado()
+    
+    context = {'form': form}
+    return render(request, 'registro.html', context)
+
+'''
+Views relacionadas a las trabsacciones
+'''
 @login_required
 def aprobar_todos_tickets(request):
     """
@@ -81,20 +104,6 @@ def rechazar_todos_tickets(request):
     return redirect('revisar_tickets')
 
 @login_required
-def iniciar_procesamiento_drive(request):
-    """
-    Inicia el proceso de descubrimiento y procesamiento paralelo de tickets.
-    """
-    try:
-        # La lógica de token ahora está dentro del servicio, pero la vista
-        # debe asegurarse de que la tarea se inicie.
-        task = process_drive_tickets.delay(request.user.id)
-        return JsonResponse({"task_id": task.id}, status=202)
-    except Exception as e:
-        # Captura errores generales durante el inicio de la tarea
-        return JsonResponse({"error": f"No se pudo iniciar la tarea: {str(e)}"}, status=400)
-
-@login_required
 def aprobar_ticket(request, ticket_id):
     """
     Aprueba un SOLO ticket. Esta vista ahora es más inteligente y sabe
@@ -126,23 +135,89 @@ def aprobar_ticket(request, ticket_id):
         
     return redirect('revisar_tickets')
 
-def iniciosesion(request):
-    return render(request, 'dashboard.html')
-
-def registro(request):
+@login_required
+def crear_transacciones(request):
     if request.method == 'POST':
-        form = FormularioRegistroPersonalizado(request.POST)
-
+        form = TransaccionesForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
+            nueva_transaccion = form.save(commit=False)
+            nueva_transaccion.propietario = request.user
+            nueva_transaccion.save()
             return redirect('dashboard')
-    else:
-        form = FormularioRegistroPersonalizado()
-    
+    else: 
+        form = TransaccionesForm()
     context = {'form': form}
-    return render(request, 'registro.html', context)
+    return render(request, 'transacciones.html', context)
 
+@login_required
+def lista_transacciones(request):
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    es_usuario_premium = suscripcion.is_active()
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    year = int(request.GET.get('year', current_year))
+    month = int(request.GET.get('month', current_month))
+    transacciones_del_mes = registro_transacciones.objects.filter(
+        propietario=request.user,
+        fecha__year=year,
+        fecha__month=month
+    ).order_by('-fecha')
+    
+    context = {
+        'transacciones': transacciones_del_mes,
+        'es_usuario_premium': es_usuario_premium, # <-- Añadir la variable al contexto
+        'selected_year': year,
+        'selected_month': month,
+        'years': range(current_year, current_year - 5, -1),
+        'months': range(1, 13),
+    }
+    return render(request, 'lista_transacciones.html', context)
+
+@login_required
+def editar_transaccion(request, transaccion_id):
+    transaccion = get_object_or_404(registro_transacciones, id=transaccion_id, propietario=request.user)
+    if request.method == 'POST':
+        form = TransaccionesForm(request.POST, instance=transaccion)
+        if form.is_valid():
+            form.save()
+            return redirect('lista_transacciones')
+    else:
+        form = TransaccionesForm(instance=transaccion)
+    return render(request, 'editar_transaccion.html', {'form': form})
+
+@login_required
+def eliminar_transaccion(request, transaccion_id):
+    transaccion = get_object_or_404(registro_transacciones, id=transaccion_id, propietario=request.user)
+    if request.method == 'POST':
+        transaccion.delete()
+        return redirect('lista_transacciones')
+    return render(request, 'confirmar_eliminar_transaccion.html', {'transaccion': transaccion})
+
+@login_required
+def revisar_tickets(request):
+    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    return render(request, 'revisar_tickets.html', {'tickets': tickets_pendientes})
+
+'''
+Vista para procesar automáticamente los tickets de Drive.
+'''
+@login_required
+def iniciar_procesamiento_drive(request):
+    """
+    Inicia el proceso de descubrimiento y procesamiento paralelo de tickets.
+    """
+    try:
+        # La lógica de token ahora está dentro del servicio, pero la vista
+        # debe asegurarse de que la tarea se inicie.
+        task = process_drive_tickets.delay(request.user.id)
+        return JsonResponse({"task_id": task.id}, status=202)
+    except Exception as e:
+        # Captura errores generales durante el inicio de la tarea
+        return JsonResponse({"error": f"No se pudo iniciar la tarea: {str(e)}"}, status=400)
+
+'''
+vista para los Dashboards y gráficas de transacciones 
+y ganancias mensuales, e inversiones.'''
 @login_required
 def vista_dashboard(request):
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
@@ -242,64 +317,6 @@ def vista_dashboard(request):
     return render(request, 'dashboard.html', context)
 
 @login_required
-def crear_transacciones(request):
-    if request.method == 'POST':
-        form = TransaccionesForm(request.POST)
-        if form.is_valid():
-            nueva_transaccion = form.save(commit=False)
-            nueva_transaccion.propietario = request.user
-            nueva_transaccion.save()
-            return redirect('dashboard')
-    else: 
-        form = TransaccionesForm()
-    context = {'form': form}
-    return render(request, 'transacciones.html', context)
-
-@login_required
-def lista_transacciones(request):
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    es_usuario_premium = suscripcion.is_active()
-    current_year = datetime.now().year
-    current_month = datetime.now().month
-    year = int(request.GET.get('year', current_year))
-    month = int(request.GET.get('month', current_month))
-    transacciones_del_mes = registro_transacciones.objects.filter(
-        propietario=request.user,
-        fecha__year=year,
-        fecha__month=month
-    ).order_by('-fecha')
-    
-    context = {
-        'transacciones': transacciones_del_mes,
-        'es_usuario_premium': es_usuario_premium, # <-- Añadir la variable al contexto
-        'selected_year': year,
-        'selected_month': month,
-        'years': range(current_year, current_year - 5, -1),
-        'months': range(1, 13),
-    }
-    return render(request, 'lista_transacciones.html', context)
-
-@login_required
-def editar_transaccion(request, transaccion_id):
-    transaccion = get_object_or_404(registro_transacciones, id=transaccion_id, propietario=request.user)
-    if request.method == 'POST':
-        form = TransaccionesForm(request.POST, instance=transaccion)
-        if form.is_valid():
-            form.save()
-            return redirect('lista_transacciones')
-    else:
-        form = TransaccionesForm(instance=transaccion)
-    return render(request, 'editar_transaccion.html', {'form': form})
-
-@login_required
-def eliminar_transaccion(request, transaccion_id):
-    transaccion = get_object_or_404(registro_transacciones, id=transaccion_id, propietario=request.user)
-    if request.method == 'POST':
-        transaccion.delete()
-        return redirect('lista_transacciones')
-    return render(request, 'confirmar_eliminar_transaccion.html', {'transaccion': transaccion})
-
-@login_required
 def datos_gastos_categoria(request):
     year = int(request.GET.get('year', datetime.now().year))
     month = int(request.GET.get('month', datetime.now().month))
@@ -335,11 +352,6 @@ def datos_flujo_dinero(request):
 @login_required
 def vista_procesamiento_automatico(request):
     return render(request, 'procesamiento_automatico.html')
-
-@login_required
-def revisar_tickets(request):
-    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-    return render(request, 'revisar_tickets.html', {'tickets': tickets_pendientes})
 
 @login_required
 def get_initial_task_result(request, task_id):
