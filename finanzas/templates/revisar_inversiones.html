@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block content %}
+
+
+<div class="container mx-auto mt-10 p-5">
+    <h1 class="text-3xl font-bold leading-7 text-gray-900 mb-6">Revisar Inversiones Pendientes</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% else %}bg-red-100 text-red-700{% endif %}" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden">  
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th class="px-6 py-3">Fecha</th>
+                    <th class="px-6 py-3">Activo (Ticker)</th>
+                    <th class="px-6 py-3">Cantidad</th>
+                    <th class="px-6 py-3">Costo Total</th>
+                    <th class="px-6 py-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+            {% for investment in pending_investments %}
+            <tr>
+                <td class="px-6 py-4 text-sm">{{ investment.datos_json.fecha_compra }}</td>
+                <td class="px-6 py-4 text-sm font-bold">
+                    {{ investment.datos_json.nombre_activo }}
+                    <span class="text-gray-500 font-normal">({{ investment.datos_json.emisora_ticker }})</span>
+                </td>
+                <td class="px-6 py-4 text-sm">{{ investment.datos_json.cantidad_titulos }}</td>
+                <td class="px-6 py-4 text-sm font-semibold text-blue-600">
+                    ${{ investment.datos_json.costo_total|floatformat:2|intcomma }}
+                    <span class="text-gray-500 font-normal">{{ investment.datos_json.moneda }}</span>
+                </td>
+                <td class="px-6 py-4 flex items-center space-x-4">
+                    <form action="{% url 'aprobar_inversion' investment.id %}" method="POST" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-green-600 hover:text-green-900 font-semibold">Aprobar</button>
+                    </form>
+                    <form action="{% url 'rechazar_inversion' investment.id %}" method="POST" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-red-600 hover:text-red-900 font-semibold">Rechazar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-10 text-center text-gray-500">No hay inversiones pendientes por revisar.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
