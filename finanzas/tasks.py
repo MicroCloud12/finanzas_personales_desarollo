@@ -117,7 +117,7 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
     try:
         user = User.objects.get(id=user_id)
         gdrive_service = GoogleDriveService(user)
-        gemini_service = GeminiService()
+        gemini_service = get_gemini_service()
         investment_service = InvestmentService()
 
         file_content = gdrive_service.get_file_content(file_id)

@@ -20,7 +20,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from .services import TransactionService, MercadoPagoService, StockPriceService
+from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService
 from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm
 from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual
 
@@ -269,9 +269,9 @@ def vista_dashboard(request):
         # Suma de transferencias que no son ahorro y vienen de la quincena
         transferencias_efectivo = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
         #
-        gastos_ahorro = Sum('monto', filter=Q(tipo='GASTO') & Q(categoria='Ahorro') & Q(cuenta_origen='Cuenta Ahorro')),
+        gastos_ahorro = Sum('monto', filter=Q(tipo='GASTO')  & Q(cuenta_origen='Cuenta Ahorro')),
         # Suma de ingresos que son ahorro y vienen de la quincena
-        ingresos_ahorro = Sum('monto', filter=Q(tipo='INGRESO') & Q(categoria='Ahorro') & Q(cuenta_origen='Cuenta Ahorro')),
+        ingresos_ahorro = Sum('monto', filter=Q(tipo='INGRESO') & Q(cuenta_origen='Cuenta Ahorro')),
     )
 
     # Asignamos los valores, usando .get() para manejar resultados nulos de forma segura
@@ -597,7 +597,52 @@ def vista_procesamiento_inversiones(request):
 
 @login_required
 def revisar_inversiones(request):
-    """
-    Muestra las inversiones pendientes de revisión.
-    """
-    return render('revisar_inversiones.html')
+    pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    inversiones_pendientes = [p for p in pendientes if 'nombre_activo' in p.datos_json]
+    return render(request, 'revisar_inversiones.html', {'inversiones': inversiones_pendientes})
+
+@login_required
+def aprobar_inversion(request, inversion_id):
+    if request.method == 'POST':
+        pendiente = get_object_or_404(TransaccionPendiente, id=inversion_id, propietario=request.user)
+        investment_service = InvestmentService()
+        investment_service.create_investment(request.user, pendiente.datos_json)
+        pendiente.estado = 'aprobada'
+        pendiente.save()
+        messages.success(request, "Inversión aprobada correctamente.")
+    return redirect('revisar_inversiones')
+
+@login_required
+def rechazar_inversion(request, inversion_id):
+    pendiente = get_object_or_404(TransaccionPendiente, id=inversion_id, propietario=request.user)
+    pendiente.estado = 'rechazada'
+    pendiente.save()
+    return redirect('revisar_inversiones')
+
+@login_required
+def aprobar_todas_inversiones(request):
+    if request.method == 'POST':
+        pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+        inversiones_pendientes = [p for p in pendientes if 'nombre_activo' in p.datos_json]
+        investment_service = InvestmentService()
+        aprobadas = 0
+        for inv in inversiones_pendientes:
+            investment_service.create_investment(request.user, inv.datos_json)
+            inv.estado = 'aprobada'
+            inv.save()
+            aprobadas += 1
+        if aprobadas > 0:
+            messages.success(request, f"{aprobadas} inversiones han sido aprobadas correctamente.")
+        else:
+            messages.warning(request, "No se aprobaron inversiones.")
+    return redirect('revisar_inversiones')
+
+@login_required
+def rechazar_todas_inversiones(request):
+    if request.method == 'POST':
+        pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+        for inv in pendientes:
+            if 'nombre_activo' in inv.datos_json:
+                inv.estado = 'rechazada'
+                inv.save()
+    return redirect('revisar_inversiones')

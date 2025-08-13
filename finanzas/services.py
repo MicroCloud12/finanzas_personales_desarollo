@@ -409,12 +409,14 @@ class InvestmentService:
             print(f"No se creará inversión debido a un error previo: {data['error']}")
             return None
 
-        ticker = (data.get("ticker") or "").upper()
+        ticker = (data.get("emisora_ticker") or data.get("ticker") or "").upper()
         nombre = data.get("nombre_activo") or ticker
         tipo_inversion = data.get("tipo_inversion", "ACCION")
-        cantidad = Decimal(str(data.get("cantidad", 0)))
-        precio_compra = Decimal(str(data.get("precio", 0)))
-        fecha = parse_date_safely(data.get("fecha"))
+        cantidad = Decimal(str(data.get("cantidad_titulos") or data.get("cantidad") or 0))
+        precio_compra = Decimal(str(data.get("precio_por_titulo") or data.get("precio") or 0))
+        fecha = parse_date_safely(data.get("fecha_compra") or data.get("fecha"))
+        tipo_cambio = data.get("tipo_cambio_usd")
+        tipo_cambio = Decimal(str(tipo_cambio)) if tipo_cambio is not None else None
 
         price_service = StockPriceService()
         try:
@@ -432,5 +434,5 @@ class InvestmentService:
             fecha_compra=fecha,
             precio_compra_titulo=precio_compra,
             precio_actual_titulo=precio_actual,
-            tipo_cambio_compra=None,
+            tipo_cambio_compra=tipo_cambio,
         )
