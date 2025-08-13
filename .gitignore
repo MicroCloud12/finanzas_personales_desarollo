@@ -1,1 +1,9 @@
+# Ignorar archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Ignorar respaldos de Redis
+dump.rdb
+
+# Ignorar archivos de entorno (ya debería estar, pero por si acaso)
 .env
