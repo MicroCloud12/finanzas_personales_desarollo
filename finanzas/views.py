@@ -531,11 +531,11 @@ def revisar_inversiones(request):
     return render(request, 'revisar_inversiones.html', context)
 
 @login_required
-def aprobar_inversion(request, pending_id):
+def aprobar_inversion(request, inversion_id):
     """
     Aprueba una inversión pendiente, la convierte en una inversión real y la elimina de la lista de pendientes.
     """
-    pending = get_object_or_404(PendingInvestment, id=pending_id, propietario=request.user)
+    pending = get_object_or_404(PendingInvestment, id=inversion_id, propietario=request.user)
     
     if request.method == 'POST':
         datos = pending.datos_json
