@@ -564,16 +564,13 @@ def aprobar_inversion(request, pending_id):
     return redirect('revisar_inversiones')
 
 @login_required
-def rechazar_inversion(request, pending_id):
+def rechazar_inversion(request, inversion_id):
     """
     Rechaza (elimina) una inversión pendiente.
     """
-    pending = get_object_or_404(PendingInvestment, id=pending_id, propietario=request.user)
-    if request.method == 'POST':
-        nombre_activo = pending.datos_json.get('nombre_activo', 'Desconocido')
-        pending.delete()
-        messages.warning(request, f"La inversión pendiente en {nombre_activo} ha sido rechazada.")
-    
+    inversion = PendingInvestment.objects.get(id=inversion_id, propietario=request.user)
+    inversion.estado = 'rechazada'
+    inversion.save()
     return redirect('revisar_inversiones')
 
 @login_required

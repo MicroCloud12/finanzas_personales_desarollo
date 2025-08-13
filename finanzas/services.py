@@ -17,7 +17,7 @@ from googleapiclient.errors import HttpError
 #from alpha_vantage.timeseries import TimeSeries
 from google.oauth2.credentials import Credentials
 from allauth.socialaccount.models import SocialApp, SocialToken
-from .models import registro_transacciones, TransaccionPendiente, User, inversiones, TransaccionPendiente
+from .models import registro_transacciones, TransaccionPendiente, User, inversiones, PendingInvestment
 
 class GoogleDriveService:
     # ... (esta clase no cambia)
@@ -447,7 +447,7 @@ class InvestmentService:
             return None
         
         # Simplemente guardamos los datos crudos para revisarlos después.
-        return TransaccionPendiente.objects.create(
+        return PendingInvestment.objects.create(
             propietario=user,
             datos_json=data,
             estado='pendiente'
