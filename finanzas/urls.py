@@ -31,6 +31,7 @@ urlpatterns = [
     path('inversiones/<int:inversion_id>/eliminar/', views.eliminar_inversion, name='eliminar_inversion'),
     path('procesamiento-inversiones/', views.vista_procesamiento_inversiones, name='procesamiento_inversiones'),
     path('procesar-inversiones/', views.iniciar_procesamiento_inversiones, name='procesar_drive_inversiones'),
+    path('revisar-inversiones/', views.revisar_inversiones, name='revisar_inversiones'),
     path('suscripcion/', views.gestionar_suscripcion, name='gestionar_suscripcion'),
     path('suscripcion/exitosa/', views.suscripcion_exitosa, name='suscripcion_exitosa'),
     path('suscripcion/fallida/', views.suscripcion_fallida, name='suscripcion_fallida'),

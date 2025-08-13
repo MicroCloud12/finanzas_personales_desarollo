@@ -582,3 +582,10 @@ def iniciar_procesamiento_inversiones(request):
 @login_required
 def vista_procesamiento_inversiones(request):
     return render(request, 'procesamiento_inversiones.html')
+
+@login_required
+def revisar_inversiones(request):
+    """
+    Muestra las inversiones pendientes de revisión.
+    """
+    return render('revisar_inversiones.html')

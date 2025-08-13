@@ -26,20 +26,10 @@ NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-# Redirige todas las peticiones HTTP a HTTPS.
-SECURE_SSL_REDIRECT = True
-
-# Asegura que las cookies de sesión solo se envíen por HTTPS.
-SESSION_COOKIE_SECURE = True
-
-# Asegura que la cookie CSRF solo se envíe por HTTPS.
-CSRF_COOKIE_SECURE = True
 
 # Application definition
 
@@ -182,8 +172,8 @@ LOGOUT_REDIRECT_URL = 'home'
 # config/settings.py
 
 # --- CELERY SETTINGS ---
-CELERY_BROKER_URL = 'redis://redis:6379/0'
-CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
