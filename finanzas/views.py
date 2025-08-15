@@ -34,9 +34,9 @@ def enviar_pregunta(request):
         message = request.POST.get("message")
         subject = "Nueva pregunta desde el sitio"
         body = f"Correo: {email}\n\nMensaje:\n{message}"
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [settings.CONTACT_EMAIL])
+        send_mail(subject, body, settings.EMAIL_BACKEND, [settings.EMAIL_HOST_USER])
         messages.success(request, "Tu mensaje ha sido enviado correctamente.")
-    return redirect('index')
+    return redirect('home')
 '''
 Vista de inicio, redirige a la página de inicio,
 inicio de sesión y registro.
