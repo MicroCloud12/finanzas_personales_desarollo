@@ -114,3 +114,5 @@ INFO 2025-08-12 18:29:12,053 tasks Download time for Comparto 'Ticket_142_6_5410
 INFO 2025-08-12 18:29:17,375 tasks Gemini processing time for Comparto 'Ticket_142_6_54106' contigo: 5.32s
 INFO 2025-08-12 18:30:45,353 tasks Download time for Comparto 'Ticket_142_6_54106' contigo: 2.54s
 INFO 2025-08-12 18:30:51,025 tasks Gemini processing time for Comparto 'Ticket_142_6_54106' contigo: 5.67s
+INFO 2025-08-15 11:17:09,779 tasks Download time for Comparto 'comprobante_transferencia_15-Ago-2025_08_21_23 h' contigo: 1.35s
+INFO 2025-08-15 11:17:16,224 tasks Gemini processing time for Comparto 'comprobante_transferencia_15-Ago-2025_08_21_23 h' contigo: 6.44s
