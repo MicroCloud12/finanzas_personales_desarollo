@@ -37,6 +37,7 @@ def enviar_pregunta(request):
         send_mail(subject, body, settings.EMAIL_BACKEND, [settings.EMAIL_HOST_USER])
         messages.success(request, "Tu mensaje ha sido enviado correctamente.")
     return redirect('home')
+
 '''
 Vista de inicio, redirige a la página de inicio,
 inicio de sesión y registro.
