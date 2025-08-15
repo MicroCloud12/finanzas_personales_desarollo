@@ -25,7 +25,13 @@
                 Rechazar Todos
             </button>
         </div>
-
+        {% if messages %}
+            {% for message in messages %}
+                <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% else %}bg-red-100 text-red-700{% endif %}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
         <div class="bg-white shadow-lg rounded-lg overflow-hidden">
             <table class="min-w-full leading-normal">
                 <thead>

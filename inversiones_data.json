@@ -1,0 +1,135 @@
+[
+{
+  "model": "finanzas.inversiones",
+  "pk": 4,
+  "fields": {
+    "tipo_inversion": "ACCION",
+    "propietario": 2,
+    "emisora_ticker": "BX",
+    "nombre_activo": "BlackStone INC",
+    "cantidad_titulos": "0.1564800000",
+    "fecha_compra": "2025-07-17",
+    "precio_compra_titulo": "167.3000000000",
+    "tipo_cambio_compra": "18.7600",
+    "costo_total_adquisicion": "26.1791040000",
+    "precio_actual_titulo": "170.3600000000",
+    "valor_actual_mercado": "26.6579328000",
+    "ganancia_perdida_no_realizada": "0.4788288000",
+    "ganancia_perdida": null
+  }
+},
+{
+  "model": "finanzas.inversiones",
+  "pk": 5,
+  "fields": {
+    "tipo_inversion": "ACCION",
+    "propietario": 2,
+    "emisora_ticker": "BX",
+    "nombre_activo": "BlackStone INC",
+    "cantidad_titulos": "0.1460100000",
+    "fecha_compra": "2025-06-20",
+    "precio_compra_titulo": "138.8200000000",
+    "tipo_cambio_compra": "19.1700",
+    "costo_total_adquisicion": "20.2691082000",
+    "precio_actual_titulo": "170.3600000000",
+    "valor_actual_mercado": "24.8742636000",
+    "ganancia_perdida_no_realizada": "4.6051554000",
+    "ganancia_perdida": null
+  }
+},
+{
+  "model": "finanzas.inversiones",
+  "pk": 6,
+  "fields": {
+    "tipo_inversion": "ACCION",
+    "propietario": 2,
+    "emisora_ticker": "NVDA",
+    "nombre_activo": "NVIDIA Corp",
+    "cantidad_titulos": "0.0943800000",
+    "fecha_compra": "2025-07-11",
+    "precio_compra_titulo": "166.2400000000",
+    "tipo_cambio_compra": "18.6400",
+    "costo_total_adquisicion": "15.6897312000",
+    "precio_actual_titulo": "182.8500000000",
+    "valor_actual_mercado": "17.2573830000",
+    "ganancia_perdida_no_realizada": "1.5676518000",
+    "ganancia_perdida": null
+  }
+},
+{
+  "model": "finanzas.inversiones",
+  "pk": 7,
+  "fields": {
+    "tipo_inversion": "ACCION",
+    "propietario": 2,
+    "emisora_ticker": "NVDA",
+    "nombre_activo": "NVIDIA Corp",
+    "cantidad_titulos": "0.1638200000",
+    "fecha_compra": "2025-08-08",
+    "precio_compra_titulo": "182.6300000000",
+    "tipo_cambio_compra": "18.5800",
+    "costo_total_adquisicion": "29.9184466000",
+    "precio_actual_titulo": "182.8500000000",
+    "valor_actual_mercado": "29.9544870000",
+    "ganancia_perdida_no_realizada": "0.0360404000",
+    "ganancia_perdida": null
+  }
+},
+{
+  "model": "finanzas.inversiones",
+  "pk": 8,
+  "fields": {
+    "tipo_inversion": "ACCION",
+    "propietario": 2,
+    "emisora_ticker": "EXEL",
+    "nombre_activo": "Exelixis, Inc.",
+    "cantidad_titulos": "0.7485200000",
+    "fecha_compra": "2025-06-20",
+    "precio_compra_titulo": "40.6400000000",
+    "tipo_cambio_compra": "19.1700",
+    "costo_total_adquisicion": "30.4198528000",
+    "precio_actual_titulo": "37.5000000000",
+    "valor_actual_mercado": "28.0695000000",
+    "ganancia_perdida_no_realizada": "-2.3503528000",
+    "ganancia_perdida": null
+  }
+},
+{
+  "model": "finanzas.inversiones",
+  "pk": 9,
+  "fields": {
+    "tipo_inversion": "ACCION",
+    "propietario": 2,
+    "emisora_ticker": "ITOT",
+    "nombre_activo": "Core S&P Total US Stock Mkt Ishares",
+    "cantidad_titulos": "0.1988000000",
+    "fecha_compra": "2025-07-01",
+    "precio_compra_titulo": "135.2100000000",
+    "tipo_cambio_compra": "18.7400",
+    "costo_total_adquisicion": "26.8797480000",
+    "precio_actual_titulo": "138.8500000000",
+    "valor_actual_mercado": "27.6033800000",
+    "ganancia_perdida_no_realizada": "0.7236320000",
+    "ganancia_perdida": null
+  }
+},
+{
+  "model": "finanzas.inversiones",
+  "pk": 10,
+  "fields": {
+    "tipo_inversion": "ACCION",
+    "propietario": 2,
+    "emisora_ticker": "MSFT",
+    "nombre_activo": "Microsoft Corporation",
+    "cantidad_titulos": "0.0517200000",
+    "fecha_compra": "2025-07-16",
+    "precio_compra_titulo": "505.9100000000",
+    "tipo_cambio_compra": "18.7200",
+    "costo_total_adquisicion": "26.1656652000",
+    "precio_actual_titulo": "522.4600000000",
+    "valor_actual_mercado": "27.0216312000",
+    "ganancia_perdida_no_realizada": "0.8559660000",
+    "ganancia_perdida": null
+  }
+}
+]
