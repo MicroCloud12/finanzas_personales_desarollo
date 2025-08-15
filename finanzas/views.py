@@ -7,12 +7,10 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.contrib.auth import login
 from .utils import parse_date_safely
-from .tasks import process_drive_tickets, process_drive_investments
 from datetime import datetime, timedelta
 from django.db.models import Sum
 from decimal import Decimal
 from django.db.models import Sum, Q
-from .utils import calculate_monthly_profit
 from django.contrib.auth.models import User
 from django.utils.dateformat import DateFormat
 from django.db.models.functions import TruncMonth
@@ -21,6 +19,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
+from .tasks import process_drive_tickets, process_drive_investments
 from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm 
 from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService
 from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual, PendingInvestment
