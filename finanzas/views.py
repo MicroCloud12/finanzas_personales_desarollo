@@ -273,7 +273,7 @@ def vista_dashboard(request):
         #Suma de Ahorro total que es ingreso de la quincena a la cuenta de ahorro
         ahorro_total = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena') & Q(cuenta_destino='Cuenta Ahorro')),
         #
-        proviciones = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Cuenta Ahorro')),
+        #proviciones = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Cuenta Ahorro')),
         # Suma de transferencias que no son ahorro y vienen de la quincena
         transferencias_efectivo = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
         #
@@ -286,7 +286,7 @@ def vista_dashboard(request):
     ingresos = agregados.get('ingresos_efectivo') or Decimal('0.00')
     gastos = agregados.get('gastos_efectivo') or Decimal('0.00')
     ahorro_total = agregados.get('ahorro_total') or Decimal('0.00')
-    proviciones = agregados.get('proviciones') or Decimal('0.00')
+    #proviciones = agregados.get('proviciones') or Decimal('0.00')
     transferencias = agregados.get('transferencias_efectivo') or Decimal('0.00')
     gastos_ahorro = agregados.get('gastos_ahorro') or Decimal('0.00')
     ingresos_ahorro = agregados.get('ingresos_ahorro') or Decimal('0.00')
@@ -303,7 +303,7 @@ def vista_dashboard(request):
 
     balance = ingresos - gastos
     disponible_banco = ingresos - gastos - transferencias - ahorro_total
-    ahorro = ahorro_total - proviciones - gastos_ahorro + ingresos_ahorro
+    ahorro = ahorro_total - gastos_ahorro + ingresos_ahorro
 
     context = {
         'ingresos': ingresos,
