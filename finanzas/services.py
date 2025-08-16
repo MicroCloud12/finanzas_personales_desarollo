@@ -2,6 +2,7 @@
 import os
 import json
 import base64
+import requests
 import mercadopago
 from PIL import Image
 from io import BytesIO
@@ -452,3 +453,26 @@ class InvestmentService:
             datos_json=data,
             estado='pendiente'
         )
+    
+class ExchangeRateService:
+    """Servicio para obtener el tipo de cambio histórico USD/MXN."""
+
+    token = os.getenv("Banxico_API_KEY")
+    BASE_URL = f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/SF63528/datos/oportuno?token={token}"
+
+    def get_usd_mxn_rate(self, date_obj):
+        """Obtiene el tipo de cambio USD->MXN para una fecha dada."""
+        try:
+            response = requests.get(self.BASE_URL)
+            response.raise_for_status()
+            data = response.json()
+            # Extraemos la información relevante
+            serie_data = data['bmx']['series'][0]['datos'][0]
+            fecha = serie_data['fecha']
+            rate = serie_data['dato']
+            
+            print(f"Tipo de cambio USD/MXN para {fecha}: {rate}")
+            return Decimal(str(rate)) if rate is not None else None
+        except Exception as e:
+            print(f"Error al obtener el tipo de cambio USD/MXN: {e}")
+            return None

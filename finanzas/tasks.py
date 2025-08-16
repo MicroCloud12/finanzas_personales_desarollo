@@ -4,7 +4,8 @@ from io import BytesIO
 from PIL import Image
 from celery import shared_task, group
 from django.contrib.auth.models import User
-from .services import GoogleDriveService, GeminiService, TransactionService, InvestmentService, get_gemini_service
+from .services import GoogleDriveService, GeminiService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService
+from .utils import parse_date_safely
 
 
 logger = logging.getLogger(__name__)
@@ -129,6 +130,13 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         else:
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
+        # Obtener tipo de cambio USD/MXN para la fecha de compra
+        fecha = parse_date_safely(extracted_data.get("fecha_compra") or extracted_data.get("fecha"))
+        rate_service = ExchangeRateService()
+        rate = rate_service.get_usd_mxn_rate(fecha)
+        if rate is not None:
+            extracted_data["tipo_cambio_usd"] = float(rate)
+
         investment_service.create_pending_investment(user, extracted_data)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
