@@ -177,6 +177,8 @@ class GeminiService:
             "moneda": "MXN",
             "tipo_cambio_usd": null
             }
+
+            *Aseguarte que aunque el ticker sea ETH/MXN en caso de Etherum, BTC/MXN en caso de Bitcoin cambialo ETH/USD y BTC/USD, ya que estoy convirtiendo todo en USD y no en MXN.
         """
     #def extract_data_from_image(self, image: Image.Image) -> dict:
         # ... (el resto de la función no cambia)

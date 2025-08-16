@@ -1,11 +1,12 @@
-import logging
 import time
-from io import BytesIO
+import logging
 from PIL import Image
+from io import BytesIO
+from decimal import Decimal
+from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
-from .services import GoogleDriveService, GeminiService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService
-from .utils import parse_date_safely
+from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService
 
 
 logger = logging.getLogger(__name__)
@@ -34,33 +35,20 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
         
         # 1. Usar servicios
         gdrive_service = GoogleDriveService(user)
-        #gemini_service = GeminiService()
         gemini_service = get_gemini_service()
         transaction_service = TransactionService()
 
         # 2. Obtener contenido del archivo
-        start_download = time.perf_counter()
         file_content = gdrive_service.get_file_content(file_id)
-        #image = Image.open(file_content)
-        download_time = time.perf_counter() - start_download
-        logger.info("Download time for %s: %.2fs", file_name, download_time)
-        #image = load_and_optimize_image(file_content)
 
-        # 3. Extraer datos con Gemini
-        #start_gemini = time.perf_counter()
-        #extracted_data = gemini_service.extract_data_from_image(image)
         if mime_type in ('image/jpeg', 'image/png'):
             image = load_and_optimize_image(file_content)
-            start_gemini = time.perf_counter()
             extracted_data = gemini_service.extract_data_from_image(image)
         elif mime_type == 'application/pdf':
-            start_gemini = time.perf_counter()
             extracted_data = gemini_service.extract_data_from_pdf(file_content.getvalue())
         else:
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
-        gemini_time = time.perf_counter() - start_gemini
-        logger.info("Gemini processing time for %s: %.2fs", file_name, gemini_time)
 
         # 4. Crear transacción pendiente
         transaction_service.create_pending_transaction(user, extracted_data)
@@ -120,10 +108,12 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         gdrive_service = GoogleDriveService(user)
         gemini_service = get_gemini_service()
         investment_service = InvestmentService()
-
+        current_price = StockPriceService()
         file_content = gdrive_service.get_file_content(file_id)
+
         if mime_type in ('image/jpeg', 'image/png'):
-            image = Image.open(file_content)
+            image = load_and_optimize_image(file_content)
+            #image = Image.open(file_content)
             extracted_data = gemini_service.extract_data_from_inversion(image)
         elif mime_type == 'application/pdf':
             extracted_data = gemini_service.extract_inversion_from_pdf(file_content.getvalue())
@@ -138,15 +128,32 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
             extracted_data["tipo_cambio_usd"] = float(rate)
 
         if extracted_data["moneda"] == "MXN":
-            extracted_data['precio_por_titulo'] = extracted_data['precio_por_titulo'] / rate
-            print(f"Precio por título en USD: {extracted_data['precio_por_titulo']}")
-            '''
-            costo_total_adquisicion = cantidad_titulos * precio_compra_titulo
-            valor_actual_mercado = cantidad_titulos * precio_actual_titulo
-            ganancia_perdida_no_realizada = valor_actual_mercado - costo_total_adquisicion
-            '''
-            pass
-        investment_service.create_pending_investment(user, extracted_data)
+            extracted_data['precio_por_titulo'] = Decimal(str(extracted_data['precio_por_titulo'])) / Decimal(str(rate))
+            costo_total_adquisicion = extracted_data['cantidad_titulos'] * extracted_data['precio_por_titulo']
+            valor_actual_titulo = current_price.get_current_price(extracted_data['emisora_ticker']) * extracted_data['cantidad_titulos']
+            ganancia_perdida_no_realizada = valor_actual_titulo - costo_total_adquisicion
+
+        elif extracted_data["moneda"] == "USD":
+            costo_total_adquisicion = extracted_data['cantidad_titulos'] * extracted_data['precio_por_titulo']
+            valor_actual_titulo = current_price.get_current_price(extracted_data['emisora_ticker']) * extracted_data['cantidad_titulos']
+            ganancia_perdida_no_realizada = valor_actual_titulo - costo_total_adquisicion
+        else:
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Unsupported currency'}
+
+        valores = {
+            'fecha_compra': extracted_data['fecha_compra'],
+            'emisora_ticker': extracted_data['emisora_ticker'],
+            'nombre_activo': extracted_data['nombre_activo'],
+            'cantidad_titulos': extracted_data['cantidad_titulos'],
+            'precio_por_titulo': extracted_data['precio_por_titulo'],
+            'costo_total_adquisicion': costo_total_adquisicion,
+            'valor_actual_titulo': valor_actual_titulo,
+            'ganancia_perdida_no_realizada': ganancia_perdida_no_realizada,
+            'tipo_cambio' : extracted_data['tipo_cambio_usd'],
+        }
+
+        #investment_service.create_pending_investment(user, extracted_data)
+        investment_service.create_pending_investment(user, valores)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
     except ConnectionError as e:
