@@ -457,20 +457,17 @@ class InvestmentService:
 class ExchangeRateService:
     """Servicio para obtener el tipo de cambio histórico USD/MXN."""
 
-    token = os.getenv("Banxico_API_KEY")
-    BASE_URL = f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/SF63528/datos/oportuno?token={token}"
-
     def get_usd_mxn_rate(self, date_obj):
         """Obtiene el tipo de cambio USD->MXN para una fecha dada."""
         try:
-            response = requests.get(self.BASE_URL)
+            token = os.getenv("CURRENCYAPI_API_KEY")
+            BASE_URL = f"https://api.currencyapi.com/v3/historical?apikey={token}&currencies=MXN&base_currency=USD&date={date_obj}"
+            response = requests.get(BASE_URL)
             response.raise_for_status()
             data = response.json()
-            # Extraemos la información relevante
-            serie_data = data['bmx']['series'][0]['datos'][0]
-            fecha = serie_data['fecha']
-            rate = serie_data['dato']
-            
+            fecha = data['meta']['last_updated_at']
+            rate = data['data']['MXN']['value']
+
             print(f"Tipo de cambio USD/MXN para {fecha}: {rate}")
             return Decimal(str(rate)) if rate is not None else None
         except Exception as e:

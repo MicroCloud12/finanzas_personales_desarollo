@@ -137,6 +137,15 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         if rate is not None:
             extracted_data["tipo_cambio_usd"] = float(rate)
 
+        if extracted_data["moneda"] == "MXN":
+            extracted_data['precio_por_titulo'] = extracted_data['precio_por_titulo'] / rate
+            print(f"Precio por título en USD: {extracted_data['precio_por_titulo']}")
+            '''
+            costo_total_adquisicion = cantidad_titulos * precio_compra_titulo
+            valor_actual_mercado = cantidad_titulos * precio_actual_titulo
+            ganancia_perdida_no_realizada = valor_actual_mercado - costo_total_adquisicion
+            '''
+            pass
         investment_service.create_pending_investment(user, extracted_data)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
