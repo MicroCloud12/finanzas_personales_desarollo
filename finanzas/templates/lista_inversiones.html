@@ -4,7 +4,12 @@
 
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Detalle de Inversiones</h1>
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Portafolio de Inversiones</h1>
+            <p class="mt-1 text-sm text-gray-600">
+                Analiza el rendimiento de tus activos y registra nuevas inversiones.
+            </p>
+        </div>
         <div class="flex items-center space-x-4"> 
             <a href="{% url 'crear_inversion' %}" class="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
                 + Añadir Inversion
