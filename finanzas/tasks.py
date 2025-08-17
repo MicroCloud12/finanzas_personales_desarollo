@@ -163,6 +163,7 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
             'valor_actual_mercado': str(valor_actual_mercado), # Convertir a string
             'ganancia_perdida_no_realizada': str(ganancia_perdida_no_realizada), # Convertir a string
             'tipo_cambio': str(rate) if rate is not None else None, # Convertir a string
+            'moneda': "USD"
         }
 
         print(f"datos extraidos: {extracted_data}")

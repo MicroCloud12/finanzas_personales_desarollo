@@ -34,7 +34,7 @@
                 </td>
                 <td class="px-6 py-4 text-sm">{{ investment.datos_json.cantidad_titulos }}</td>
                 <td class="px-6 py-4 text-sm font-semibold text-blue-600">
-                    ${{ investment.datos_json.costo_total|floatformat:2|intcomma }}
+                    ${{ investment.datos_json.costo_total_adquisicion|floatformat:2|intcomma }}
                     <span class="text-gray-500 font-normal">{{ investment.datos_json.moneda }}</span>
                 </td>
                 <td class="px-6 py-4 flex items-center space-x-4">
