@@ -82,7 +82,7 @@ class GeminiService:
         # Reforzamos la instrucción de la fecha.
         self.prompt_tickets = """
             Eres un asistente experto en contabilidad para un sistema de finanzas personales.
-            Tu tarea es analizar la imagen de un documento y extraer la información clave con la máxima precisión.
+            Tu tarea es analizar la imagen lo mas detallado posible de un documento y extraer la información clave con la máxima precisión.
             Devuelve SIEMPRE la respuesta en formato JSON, sin absolutamente ningún texto adicional.
 
             ### CONTEXTO:
@@ -126,7 +126,14 @@ class GeminiService:
             Ahora, analiza la siguiente imagen:
         """
         self.prompt_inversion = """
-            Eres un asistente experto en finanzas, especializado en extraer datos clave de comprobantes de inversión (compra de acciones o criptomonedas). Tu única tarea es analizar la imagen y devolver la información en un formato JSON estricto, sin ningún texto o explicación adicional.
+            Eres un asistente experto en finanzas, especializado en extraer datos clave de comprobantes de inversión (compra de acciones o criptomonedas). 
+            Tu tarea es analizar la imagen lo mas detallado posible de un documento y extraer la información clave con la máxima precisión.
+            Devuelve SIEMPRE la respuesta en formato JSON, sin absolutamente ningún texto adicional.
+
+            ### CONTEXTO:
+            El usuario ha subido una imagen de una inversion que ha comprado.
+            Necesito que identifiques el tipo de documento y extraigas los siguientes campos:
+
             ### FORMATO DE SALIDA (JSON):
             {
             "fecha_compra": "YYYY-MM-DD",
@@ -189,7 +196,6 @@ class GeminiService:
         cleaned_response = response.text.strip().replace("```json", "").replace("```", "").strip()
         
         try:
-            print(f"Respuesta de Gemini: {json.loads(cleaned_response)}")
             return json.loads(cleaned_response)
         except json.JSONDecodeError:
             print(f"Error: La respuesta de Gemini no es un JSON válido: {cleaned_response}")
@@ -201,22 +207,6 @@ class GeminiService:
         return self._generate_and_parse(self.prompt_tickets, image)
     
     def extract_data_from_inversion(self, image: Image.Image) -> dict:
-        """
-        Extrae datos de una imagen de inversión utilizando Gemini.
-        
-        # Aquí podrías usar un prompt diferente si es necesario
-        response = self.model.generate_content([self.prompt_inversion, image])
-        cleaned_response = response.text.strip().replace("```json", "").replace("```", "").strip()
-        
-        try:
-            return json.loads(cleaned_response)
-        except json.JSONDecodeError:
-            print(f"Error: La respuesta de Gemini no es un JSON válido: {cleaned_response}")
-            return {
-                "error": "Respuesta no válida de la IA",
-                "raw_response": cleaned_response
-            }
-        """
         return self._generate_and_parse(self.prompt_inversion, image)
     
     def extract_data_from_pdf(self, pdf_bytes: bytes) -> dict:
@@ -358,15 +348,12 @@ class StockPriceService:
             if isinstance(data, list):
                 data = data[0] if data else {}
             current_price = data.get("close") or data.get("price")
-            #return float(current_price) if current_price else None
-            #data, _ = self.ts.get_quote_endpoint(symbol=ticker)
-            #current_price = data.get('05. price')
-            #return float(current_price) if current_price else None
-            price = float(current_price) if current_price else None
-            if price is not None:
+            if current_price is not None:
+                # Convertimos a Decimal de forma segura antes de retornar
+                price = Decimal(str(current_price))
                 self._price_cache[cache_key] = price
-            return price
-        
+                return price
+            return None
         except Exception as e:
             print(f"Error al llamar a la API de Twelve Data para {ticker}: {e}")
             return None
@@ -469,8 +456,6 @@ class ExchangeRateService:
             data = response.json()
             fecha = data['meta']['last_updated_at']
             rate = data['data']['MXN']['value']
-
-            print(f"Tipo de cambio USD/MXN para {fecha}: {rate}")
             return Decimal(str(rate)) if rate is not None else None
         except Exception as e:
             print(f"Error al obtener el tipo de cambio USD/MXN: {e}")

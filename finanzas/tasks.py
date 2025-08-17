@@ -2,7 +2,7 @@ import time
 import logging
 from PIL import Image
 from io import BytesIO
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
@@ -120,42 +120,57 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         else:
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
-        # Obtener tipo de cambio USD/MXN para la fecha de compra
+        try:
+            cantidad = Decimal(str(extracted_data.get("cantidad_titulos", 0)))
+            precio_por_titulo_orig = Decimal(str(extracted_data.get("precio_por_titulo", 0)))
+        except InvalidOperation:
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Datos numéricos inválidos de Gemini'}
+
+        # 2. Obtener tipo de cambio y precio actual (ya devuelven Decimal o None)
         fecha = parse_date_safely(extracted_data.get("fecha_compra") or extracted_data.get("fecha"))
         rate_service = ExchangeRateService()
-        rate = rate_service.get_usd_mxn_rate(fecha)
-        if rate is not None:
-            extracted_data["tipo_cambio_usd"] = float(rate)
+        rate = rate_service.get_usd_mxn_rate(fecha) # Este servicio ya devuelve Decimal
 
-        if extracted_data["moneda"] == "MXN":
-            extracted_data['precio_por_titulo'] = Decimal(str(extracted_data['precio_por_titulo'])) / Decimal(str(rate))
-            costo_total_adquisicion = extracted_data['cantidad_titulos'] * extracted_data['precio_por_titulo']
-            valor_actual_titulo = current_price.get_current_price(extracted_data['emisora_ticker']) * extracted_data['cantidad_titulos']
-            ganancia_perdida_no_realizada = valor_actual_titulo - costo_total_adquisicion
+        precio_actual_usd = current_price.get_current_price(extracted_data['emisora_ticker'])
+        if precio_actual_usd is None:
+            # Si la API falla, usamos el precio de compra como respaldo
+            precio_actual_usd = precio_por_titulo_orig if extracted_data.get("moneda") == "USD" else (precio_por_titulo_orig / rate if rate else None)
+        
+        if precio_actual_usd is None:
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'No se pudo obtener el precio actual ni el tipo de cambio'}
 
-        elif extracted_data["moneda"] == "USD":
-            costo_total_adquisicion = extracted_data['cantidad_titulos'] * extracted_data['precio_por_titulo']
-            valor_actual_titulo = current_price.get_current_price(extracted_data['emisora_ticker']) * extracted_data['cantidad_titulos']
-            ganancia_perdida_no_realizada = valor_actual_titulo - costo_total_adquisicion
-        else:
-            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Unsupported currency'}
 
+        # 3. Realizar todos los cálculos usando exclusivamente Decimal
+        precio_por_titulo_usd = precio_por_titulo_orig
+        if extracted_data.get("moneda") == "MXN":
+            if rate is None or rate == 0:
+                return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Tipo de cambio no disponible para conversión de MXN'}
+            precio_por_titulo_usd = precio_por_titulo_orig / rate
+
+        costo_total_adquisicion = cantidad * precio_por_titulo_usd
+        valor_actual_mercado = cantidad * precio_actual_usd
+        ganancia_perdida_no_realizada = valor_actual_mercado - costo_total_adquisicion
+
+        extracted_data['tipo_cambio_usd'] = str(rate) if rate is not None else None
+        # 4. Guardar los datos finales (todos como Decimal)
         valores = {
-            'fecha_compra': extracted_data['fecha_compra'],
-            'emisora_ticker': extracted_data['emisora_ticker'],
-            'nombre_activo': extracted_data['nombre_activo'],
-            'cantidad_titulos': extracted_data['cantidad_titulos'],
-            'precio_por_titulo': extracted_data['precio_por_titulo'],
-            'costo_total_adquisicion': costo_total_adquisicion,
-            'valor_actual_titulo': valor_actual_titulo,
-            'ganancia_perdida_no_realizada': ganancia_perdida_no_realizada,
-            'tipo_cambio' : extracted_data['tipo_cambio_usd'],
+            'fecha_compra': extracted_data.get('fecha_compra'),
+            'emisora_ticker': extracted_data.get('emisora_ticker'),
+            'nombre_activo': extracted_data.get('nombre_activo'),
+            'cantidad_titulos': str(cantidad), # Convertir a string
+            'precio_por_titulo': str(precio_por_titulo_usd), # Convertir a string
+            'costo_total_adquisicion': str(costo_total_adquisicion), # Convertir a string
+            'valor_actual_mercado': str(valor_actual_mercado), # Convertir a string
+            'ganancia_perdida_no_realizada': str(ganancia_perdida_no_realizada), # Convertir a string
+            'tipo_cambio': str(rate) if rate is not None else None, # Convertir a string
         }
 
-        #investment_service.create_pending_investment(user, extracted_data)
+        print(f"datos extraidos: {extracted_data}")
         investment_service.create_pending_investment(user, valores)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
+      #investment_service.create_pending_investment(user, extracted_data)
+
     except ConnectionError as e:
         self.update_state(state='FAILURE', meta=str(e))
         return {'status': 'FAILURE', 'file_name': file_name, 'error': 'ConnectionError'}
