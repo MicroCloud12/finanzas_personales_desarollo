@@ -552,27 +552,43 @@ def aprobar_inversion(request, inversion_id):
     if request.method == 'POST':
         datos = pending.datos_json
         
-        # Creamos la inversión final usando los datos del JSON
+        # --- CORRECCIÓN AQUÍ ---
+        # Leemos los datos correctos que calculamos en la tarea asíncrona.
+        
+        # 1. Obtenemos el precio actual que guardamos. Si no existe, usamos el de compra como respaldo.
+        precio_actual = datos.get("valor_actual_mercado", datos.get("precio_por_titulo", "0.0"))
+
+        # 2. Obtenemos el tipo de cambio usando la clave correcta ('tipo_cambio').
+        tipo_cambio = datos.get("tipo_cambio")
+
+        # 3. Creamos la inversión final usando los datos correctos del JSON.
         inversiones.objects.create(
             propietario=request.user,
             fecha_compra=parse_date_safely(datos.get("fecha_compra")),
             emisora_ticker=datos.get("emisora_ticker"),
             nombre_activo=datos.get("nombre_activo"),
-            cantidad_titulos=Decimal(str(datos.get("cantidad_titulos", 0.0))),
-            precio_compra_titulo=Decimal(str(datos.get("precio_por_titulo", 0.0))),
-            costo_total_adquisicion=Decimal(str(datos.get("costo_total", 0.0))),
-            precio_actual_titulo=Decimal(str(datos.get("precio_por_titulo", 0.0))), # Inicialmente es el mismo
-            tipo_cambio_compra=Decimal(str(datos.get("tipo_cambio_usd"))) if datos.get("tipo_cambio_usd") else None,
+            cantidad_titulos=Decimal(datos.get("cantidad_titulos", "0.0")),
+            precio_compra_titulo=Decimal(datos.get("precio_por_titulo", "0.0")),
+            
+            # Usamos el precio actual del mercado que calculamos en la tarea
+            precio_actual_titulo=Decimal(precio_actual) / Decimal(datos.get("cantidad_titulos", "1.0")),
+
+            # Usamos la clave correcta para el tipo de cambio
+            tipo_cambio_compra=Decimal(tipo_cambio) if tipo_cambio is not None else None,
         )
         
-        # Marcamos la pendiente como aprobada y la eliminamos (o la guardamos como 'aprobada')
+        # El modelo `inversiones` calculará automáticamente:
+        # - costo_total_adquisicion
+        # - valor_actual_mercado
+        # - ganancia_perdida_no_realizada
+        # ...en su método .save(), que es llamado por .create()
+
         pending.estado = 'aprobada'
         pending.save()
         
         messages.success(request, f"Inversión en {datos.get('nombre_activo')} aprobada correctamente.")
         return redirect('revisar_inversiones')
 
-    # Si no es POST, simplemente redirigimos a la página de revisión.
     return redirect('revisar_inversiones')
 
 @login_required
