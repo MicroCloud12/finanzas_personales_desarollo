@@ -116,3 +116,11 @@ INFO 2025-08-12 18:30:45,353 tasks Download time for Comparto 'Ticket_142_6_5410
 INFO 2025-08-12 18:30:51,025 tasks Gemini processing time for Comparto 'Ticket_142_6_54106' contigo: 5.67s
 INFO 2025-08-15 11:17:09,779 tasks Download time for Comparto 'comprobante_transferencia_15-Ago-2025_08_21_23 h' contigo: 1.35s
 INFO 2025-08-15 11:17:16,224 tasks Gemini processing time for Comparto 'comprobante_transferencia_15-Ago-2025_08_21_23 h' contigo: 6.44s
+INFO 2025-08-16 11:31:06,605 tasks Download time for Compartir comprobante: 2.29s
+INFO 2025-08-16 11:31:14,072 tasks Gemini processing time for Compartir comprobante: 7.37s
+INFO 2025-08-16 11:31:14,086 tasks Download time for Comparto 'comprobante_transferencia_15-Ago-2025_08_21_23 h' contigo: 9.33s
+INFO 2025-08-16 11:31:20,538 tasks Gemini processing time for Comparto 'comprobante_transferencia_15-Ago-2025_08_21_23 h' contigo: 6.45s
+INFO 2025-08-16 11:31:20,706 tasks Download time for 20250816_095647.jpg: 16.62s
+INFO 2025-08-16 11:31:26,224 tasks Gemini processing time for 20250816_095647.jpg: 5.38s
+INFO 2025-08-16 11:31:26,502 tasks Download time for 20250815_142550.jpg: 21.97s
+INFO 2025-08-16 11:31:32,053 tasks Gemini processing time for 20250815_142550.jpg: 5.41s

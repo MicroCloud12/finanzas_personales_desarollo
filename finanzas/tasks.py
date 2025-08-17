@@ -1,10 +1,12 @@
-import logging
 import time
-from io import BytesIO
+import logging
 from PIL import Image
+from io import BytesIO
+from decimal import Decimal, InvalidOperation
+from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
-from .services import GoogleDriveService, GeminiService, TransactionService, InvestmentService, get_gemini_service
+from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService
 
 
 logger = logging.getLogger(__name__)
@@ -33,33 +35,20 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
         
         # 1. Usar servicios
         gdrive_service = GoogleDriveService(user)
-        #gemini_service = GeminiService()
         gemini_service = get_gemini_service()
         transaction_service = TransactionService()
 
         # 2. Obtener contenido del archivo
-        start_download = time.perf_counter()
         file_content = gdrive_service.get_file_content(file_id)
-        #image = Image.open(file_content)
-        download_time = time.perf_counter() - start_download
-        logger.info("Download time for %s: %.2fs", file_name, download_time)
-        #image = load_and_optimize_image(file_content)
 
-        # 3. Extraer datos con Gemini
-        #start_gemini = time.perf_counter()
-        #extracted_data = gemini_service.extract_data_from_image(image)
         if mime_type in ('image/jpeg', 'image/png'):
             image = load_and_optimize_image(file_content)
-            start_gemini = time.perf_counter()
             extracted_data = gemini_service.extract_data_from_image(image)
         elif mime_type == 'application/pdf':
-            start_gemini = time.perf_counter()
             extracted_data = gemini_service.extract_data_from_pdf(file_content.getvalue())
         else:
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
-        gemini_time = time.perf_counter() - start_gemini
-        logger.info("Gemini processing time for %s: %.2fs", file_name, gemini_time)
 
         # 4. Crear transacción pendiente
         transaction_service.create_pending_transaction(user, extracted_data)
@@ -119,19 +108,70 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         gdrive_service = GoogleDriveService(user)
         gemini_service = get_gemini_service()
         investment_service = InvestmentService()
-
+        current_price = StockPriceService()
         file_content = gdrive_service.get_file_content(file_id)
+
         if mime_type in ('image/jpeg', 'image/png'):
-            image = Image.open(file_content)
+            image = load_and_optimize_image(file_content)
+            #image = Image.open(file_content)
             extracted_data = gemini_service.extract_data_from_inversion(image)
         elif mime_type == 'application/pdf':
             extracted_data = gemini_service.extract_inversion_from_pdf(file_content.getvalue())
         else:
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
-        investment_service.create_pending_investment(user, extracted_data)
+        try:
+            cantidad = Decimal(str(extracted_data.get("cantidad_titulos", 0)))
+            precio_por_titulo_orig = Decimal(str(extracted_data.get("precio_por_titulo", 0)))
+        except InvalidOperation:
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Datos numéricos inválidos de Gemini'}
+
+        # 2. Obtener tipo de cambio y precio actual (ya devuelven Decimal o None)
+        fecha = parse_date_safely(extracted_data.get("fecha_compra") or extracted_data.get("fecha"))
+        rate_service = ExchangeRateService()
+        rate = rate_service.get_usd_mxn_rate(fecha) # Este servicio ya devuelve Decimal
+
+        precio_actual_usd = current_price.get_current_price(extracted_data['emisora_ticker'])
+        if precio_actual_usd is None:
+            # Si la API falla, usamos el precio de compra como respaldo
+            precio_actual_usd = precio_por_titulo_orig if extracted_data.get("moneda") == "USD" else (precio_por_titulo_orig / rate if rate else None)
+        
+        if precio_actual_usd is None:
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'No se pudo obtener el precio actual ni el tipo de cambio'}
+
+
+        # 3. Realizar todos los cálculos usando exclusivamente Decimal
+        precio_por_titulo_usd = precio_por_titulo_orig
+        if extracted_data.get("moneda") == "MXN":
+            if rate is None or rate == 0:
+                return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Tipo de cambio no disponible para conversión de MXN'}
+            precio_por_titulo_usd = precio_por_titulo_orig / rate
+
+        costo_total_adquisicion = cantidad * precio_por_titulo_usd
+        valor_actual_mercado = cantidad * precio_actual_usd
+        ganancia_perdida_no_realizada = valor_actual_mercado - costo_total_adquisicion
+
+        extracted_data['tipo_cambio_usd'] = str(rate) if rate is not None else None
+        # 4. Guardar los datos finales (todos como Decimal)
+        valores = {
+            'fecha_compra': extracted_data.get('fecha_compra'),
+            'emisora_ticker': extracted_data.get('emisora_ticker'),
+            'nombre_activo': extracted_data.get('nombre_activo'),
+            'cantidad_titulos': str(cantidad), # Convertir a string
+            'precio_por_titulo': str(precio_por_titulo_usd), # Convertir a string
+            'costo_total_adquisicion': str(costo_total_adquisicion), # Convertir a string
+            'valor_actual_mercado': str(valor_actual_mercado), # Convertir a string
+            'ganancia_perdida_no_realizada': str(ganancia_perdida_no_realizada), # Convertir a string
+            'tipo_cambio': str(rate) if rate is not None else None, # Convertir a string
+            'moneda': "USD"
+        }
+
+        print(f"datos extraidos: {extracted_data}")
+        investment_service.create_pending_investment(user, valores)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
+      #investment_service.create_pending_investment(user, extracted_data)
+
     except ConnectionError as e:
         self.update_state(state='FAILURE', meta=str(e))
         return {'status': 'FAILURE', 'file_name': file_name, 'error': 'ConnectionError'}
