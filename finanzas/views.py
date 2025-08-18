@@ -275,44 +275,36 @@ def vista_dashboard(request):
         fecha__month=month
     )
 
+     # --- LA MAGIA DE LA OPTIMIZACIÓN ---
     # Hacemos UNA SOLA CONSULTA para obtener todos los totales
     agregados = transacciones.aggregate(
-        # Suma de ingresos que no son ahorro y vienen de la quincena
-        ingresos_efectivo = Sum('monto',filter=Q(tipo='INGRESO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-        # Suma de gastos que no son ahorro y vienen de la quincena
-        gastos_efectivo = Sum('monto',filter=Q(tipo='GASTO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-        #Suma de Ahorro total que es ingreso de la quincena a la cuenta de ahorro
-        ahorro_total = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena') & Q(cuenta_destino='Cuenta Ahorro')),
-        #
-        #proviciones = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Cuenta Ahorro')),
-        # Suma de transferencias que no son ahorro y vienen de la quincena
-        transferencias_efectivo = Sum('monto',filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-        #
-        gastos_ahorro = Sum('monto', filter=Q(tipo='GASTO')  & Q(cuenta_origen='Cuenta Ahorro')),
-        # Suma de ingresos que son ahorro y vienen de la quincena
-        ingresos_ahorro = Sum('monto', filter=Q(tipo='INGRESO') & Q(cuenta_origen='Cuenta Ahorro')),
+        ingresos_efectivo=Sum('monto', filter=Q(tipo='INGRESO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
+        gastos_efectivo=Sum('monto', filter=Q(tipo='GASTO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
+        ahorro_total=Sum('monto', filter=Q(tipo='TRANSFERENCIA', categoria='Ahorro', cuenta_origen='Efectivo Quincena', cuenta_destino='Cuenta Ahorro')),
+        transferencias_efectivo=Sum('monto', filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
+        gastos_ahorro=Sum('monto', filter=Q(tipo='GASTO', cuenta_origen='Cuenta Ahorro')),
+        ingresos_ahorro=Sum('monto', filter=Q(tipo='INGRESO', cuenta_origen='Cuenta Ahorro')),
     )
 
-    # Asignamos los valores, usando .get() para manejar resultados nulos de forma segura
-    ingresos = agregados.get('ingresos_efectivo') or Decimal('0.00')
-    gastos = agregados.get('gastos_efectivo') or Decimal('0.00')
-    ahorro_total = agregados.get('ahorro_total') or Decimal('0.00')
-    #proviciones = agregados.get('proviciones') or Decimal('0.00')
-    transferencias = agregados.get('transferencias_efectivo') or Decimal('0.00')
-    gastos_ahorro = agregados.get('gastos_ahorro') or Decimal('0.00')
-    ingresos_ahorro = agregados.get('ingresos_ahorro') or Decimal('0.00')
-
-    # Hacemos UNA SOLA CONSULTA para ambos valores
+    # Igualmente, hacemos UNA SOLA CONSULTA para las inversiones
     agregados_inversion = inversiones.objects.filter(propietario=request.user).aggregate(
         total_inicial=Sum('costo_total_adquisicion'),
         total_actual=Sum('valor_actual_mercado')
     )
+    # --- FIN DE LA OPTIMIZACIÓN ---
 
-    # Asignamos los valores
+    # El resto de tu lógica para calcular y asignar valores es correcta y se mantiene
+    ingresos = agregados.get('ingresos_efectivo') or Decimal('0.00')
+    gastos = agregados.get('gastos_efectivo') or Decimal('0.00')
+    ahorro_total = agregados.get('ahorro_total') or Decimal('0.00')
+    transferencias = agregados.get('transferencias_efectivo') or Decimal('0.00')
+    gastos_ahorro = agregados.get('gastos_ahorro') or Decimal('0.00')
+    ingresos_ahorro = agregados.get('ingresos_ahorro') or Decimal('0.00')
+
     inversion_inicial_usd = agregados_inversion.get('total_inicial') or Decimal('0.00')
     inversion_actual = agregados_inversion.get('total_actual') or Decimal('0.00')
 
-    balance = ingresos - gastos
+    balance = ingresos - gastos - transferencias
     disponible_banco = ingresos - gastos - transferencias - ahorro_total
     ahorro = ahorro_total - gastos_ahorro + ingresos_ahorro
 
