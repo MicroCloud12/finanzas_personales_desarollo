@@ -304,9 +304,9 @@ def vista_dashboard(request):
     inversion_inicial_usd = agregados_inversion.get('total_inicial') or Decimal('0.00')
     inversion_actual = agregados_inversion.get('total_actual') or Decimal('0.00')
 
-    balance = ingresos - gastos - transferencias
+    balance = ingresos - gastos - gastos_ahorro
     disponible_banco = ingresos - gastos - transferencias - ahorro_total
-    ahorro = ahorro_total - gastos_ahorro + ingresos_ahorro
+    ahorro = ahorro_total - gastos_ahorro + ingresos_ahorro + transferencias
 
     context = {
         'ingresos': ingresos,
