@@ -203,6 +203,7 @@ SOCIALACCOUNT_PROVIDERS = {
             'profile',
             'email',
             'https://www.googleapis.com/auth/drive.readonly', # Permiso para LEER archivos de Drive
+            'https://www.googleapis.com/auth/drive'
         ],
         'AUTH_PARAMS': {
             'access_type': 'offline', # crucial para obtener un refresh_token y acceder cuando el usuario no está
