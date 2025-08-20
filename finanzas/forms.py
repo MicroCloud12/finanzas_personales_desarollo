@@ -135,20 +135,21 @@ class DeudaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Clases de Tailwind para aplicar a los campos
-        input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        select_classes = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            super().__init__(*args, **kwargs)
+            
+            # Clases de Tailwind para aplicar a los campos
+            input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            select_classes = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 
-        # Aplicamos los estilos a cada campo
-        for field_name, field in self.fields.items():
-            if isinstance(field.widget, forms.Select):
-                field.widget.attrs.update({'class': select_cases})
-            else:
-                field.widget.attrs.update({'class': input_classes})
-                
-        # Hacemos que el campo de fecha use el widget de fecha de HTML5
-        self.fields['fecha_adquisicion'].widget = forms.DateInput(
-            attrs={'type': 'date', 'class': input_classes}
+            # Aplicamos los estilos a cada campo
+            for field_name, field in self.fields.items():
+                if isinstance(field.widget, forms.Select):
+                    # --- ¡AQUÍ ESTABA EL ERROR CORREGIDO! ---
+                    field.widget.attrs.update({'class': select_classes})
+                else:
+                    field.widget.attrs.update({'class': input_classes})
+                    
+            # Hacemos que el campo de fecha use el widget de fecha de HTML5
+            self.fields['fecha_adquisicion'].widget = forms.DateInput(
+                attrs={'type': 'date', 'class': input_classes}
         )
