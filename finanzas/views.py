@@ -6,7 +6,6 @@ from django.urls import reverse
 from django.contrib import messages
 from django.http import JsonResponse
 from django.contrib.auth import login
-from .utils import parse_date_safely
 from datetime import datetime, timedelta
 from django.core.mail import send_mail
 from django.conf import settings
@@ -20,6 +19,7 @@ from celery.result import AsyncResult, GroupResult
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from .utils import parse_date_safely, generar_tabla_amortizacion
 from django.shortcuts import render, redirect, get_object_or_404
 from .tasks import process_drive_tickets, process_drive_investments
 from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, DeudaForm
@@ -761,3 +761,29 @@ def eliminar_deuda(request, deuda_id):
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
     # ... (lógica de confirmación y eliminación)
     return redirect('lista_deudas')
+
+
+@login_required
+def crear_deuda(request):
+    """
+    Maneja la creación de una nueva deuda.
+    """
+    if request.method == 'POST':
+        form = DeudaForm(request.POST)
+        if form.is_valid():
+            deuda = form.save(commit=False)
+            deuda.propietario = request.user
+            deuda.save() # Se guarda la deuda primero
+            
+            # --- 2. ¡AQUÍ OCURRE LA MAGIA! ---
+            # Si la deuda es un préstamo, generamos su tabla de amortización
+            if deuda.tipo_deuda == 'PRESTAMO':
+                generar_tabla_amortizacion(deuda)
+            
+            messages.success(request, f"Deuda '{deuda.nombre}' creada con éxito.")
+            return redirect('lista_deudas')
+    else:
+        form = DeudaForm()
+    
+    context = {'form': form}
+    return render(request, 'crear_deuda.html', context)

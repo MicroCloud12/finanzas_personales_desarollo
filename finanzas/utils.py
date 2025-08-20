@@ -1,10 +1,8 @@
-# finanzas/utils.py
 from decimal import Decimal
-from calendar import monthrange
-from .models import inversiones
 from datetime import datetime, date
 from collections import defaultdict
-
+from dateutil.relativedelta import relativedelta
+from .models import inversiones, Deuda, PagoAmortizacion
 
 def parse_date_safely(date_str: str | None) -> date:
     """
@@ -69,55 +67,11 @@ def calculate_monthly_profit(user, price_service=None):
 
     # Iteramos por cada una de las inversiones del usuario
     for inv in inversiones_usuario:
-        '''
-        # Iteramos por cada mes desde la fecha de compra hasta el día de hoy
-        fecha_iter = inv.fecha_compra
-        while fecha_iter <= hoy:
-            mes_str = fecha_iter.strftime('%Y-%m')
-            
-            # Buscamos el precio de cierre para el final de ese mes
-            ultimo_dia_mes = monthrange(fecha_iter.year, fecha_iter.month)[1]
-            fecha_cierre_mes = date(fecha_iter.year, fecha_iter.month, ultimo_dia_mes)
-        '''
+
         inversiones_por_ticker[inv.emisora_ticker].append(inv)
         inicio = inv.fecha_compra.replace(day=1)
 
-        '''
-        series = servicio_precios.get_monthly_series(inv.emisora_ticker, inicio, hoy)
-        precios_por_mes = {p["datetime"][:7]: Decimal(str(p["close"])) for p in series}
 
-            # Usamos nuestro caché para no volver a pedir el mismo precio
-            cache_key = f"{inv.emisora_ticker}-{fecha_cierre_mes}"
-            precio_cierre = cache_precios.get(cache_key)
-        
-            if precio_cierre is None:
-                precio_cierre_float = servicio_precios.get_closing_price_for_date(inv.emisora_ticker, fecha_cierre_mes)
-                
-                # Guardamos en el caché, incluso si es None, para no volver a preguntar
-                cache_precios[cache_key] = precio_cierre_float
-                precio_cierre = Decimal(str(precio_cierre_float)) if precio_cierre_float is not None else None
-        
-        fecha_iter = inicio
-        while fecha_iter <= hoy:
-            mes_str = fecha_iter.strftime("%Y-%m")
-            precio_cierre = precios_por_mes.get(mes_str)
-            if precio_cierre is not None:
-                print(f"DEBUG: Para {inv.emisora_ticker} en {mes_str}, la API devolvió un precio de cierre de: {precio_cierre}")
-                # Calculamos la ganancia no realizada para ESA inversión a final de ESE mes
-                #ganancia_no_realizada = (precio_cierre - inv.precio_compra_titulo) * inv.cantidad_titulos
-                
-                # Sumamos la ganancia de esta inversión al total de ese mes
-                #ganancias_mensuales[mes_str] += ganancia_no_realizada
-                ganancia = (
-                    precio_cierre - inv.precio_compra_titulo
-                    ) * inv.cantidad_titulos
-                ganancias_mensuales[mes_str] += ganancia
-            # Avanzamos al siguiente mes
-            if fecha_iter.month == 12:
-                fecha_iter = date(fecha_iter.year + 1, 1, 1)
-            else:
-                fecha_iter = date(fecha_iter.year, fecha_iter.month + 1, 1)
-        '''
         if inv.emisora_ticker not in inicio_por_ticker or inicio < inicio_por_ticker[inv.emisora_ticker]:
             inicio_por_ticker[inv.emisora_ticker] = inicio
         # Consultamos la serie mensual solo una vez por ticker
@@ -146,3 +100,55 @@ def calculate_monthly_profit(user, price_service=None):
                     fecha_iter = date(fecha_iter.year, fecha_iter.month + 1, 1)
     # Ordenamos por fecha para devolver un diccionario coherente
     return dict(sorted(ganancias_mensuales.items()))
+
+def generar_tabla_amortizacion(deuda: Deuda):
+    """
+    Calcula y guarda la tabla de amortización para un préstamo.
+    Utiliza el sistema de amortización francés (cuotas fijas).
+    """
+    # Solo se ejecuta para préstamos, no para tarjetas de crédito
+    if deuda.tipo_deuda != 'PRESTAMO' or deuda.plazo_meses == 0:
+        return
+
+    # --- 1. Preparación de Variables ---
+    tasa_interes_mensual = (deuda.tasa_interes / Decimal(100)) / Decimal(12)
+    plazo = deuda.plazo_meses
+    monto_prestamo = deuda.monto_total
+    saldo_pendiente = monto_prestamo
+    
+    # --- 2. Cálculo de la Cuota Mensual Fija ---
+    # Fórmula del sistema francés
+    if tasa_interes_mensual > 0:
+        factor = (tasa_interes_mensual * (1 + tasa_interes_mensual) ** plazo) / (((1 + tasa_interes_mensual) ** plazo) - 1)
+        cuota_mensual = monto_prestamo * factor
+    else:
+        # Si no hay interés, la cuota es simplemente el total dividido por el plazo
+        cuota_mensual = monto_prestamo / plazo
+
+    # --- 3. Generación de cada Fila de la Tabla ---
+    fecha_pago = deuda.fecha_adquisicion
+
+    for i in range(1, plazo + 1):
+        # Avanzamos la fecha al siguiente mes para cada cuota
+        fecha_pago += relativedelta(months=1)
+        
+        intereses_cuota = saldo_pendiente * tasa_interes_mensual
+        capital_cuota = cuota_mensual - intereses_cuota
+        saldo_pendiente -= capital_cuota
+
+        # El último pago puede tener un pequeño ajuste para que el saldo sea exactamente cero
+        if i == plazo:
+            capital_cuota += saldo_pendiente
+            saldo_pendiente = Decimal(0)
+
+        PagoAmortizacion.objects.create(
+            deuda=deuda,
+            numero_cuota=i,
+            fecha_vencimiento=fecha_pago,
+            capital=capital_cuota.quantize(Decimal('0.01')),
+            interes=intereses_cuota.quantize(Decimal('0.01')),
+            # Aquí asumimos un IVA del 16% sobre los intereses, como es común en México.
+            # Podrías hacerlo un campo configurable en el futuro.
+            iva=(intereses_cuota * Decimal('0.16')).quantize(Decimal('0.01')),
+            saldo_insoluto=saldo_pendiente.quantize(Decimal('0.01'))
+        )
