@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Mis Deudas y Créditos</h1>
+            <p class="mt-1 text-sm text-gray-600">
+                Aquí puedes gestionar tus préstamos y tarjetas de crédito.
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'crear_deuda' %}" class="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                + Añadir Deuda
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="bg-white shadow-lg rounded-lg overflow-x-auto">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th class="px-5 py-3">Nombre</th>
+                    <th class="px-5 py-3">Tipo</th>
+                    <th class="px-5 py-3">Monto Total / Límite</th>
+                    <th class="px-5 py-3">Saldo Pendiente</th>
+                    <th class="px-6 py-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for deuda in deudas %}
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-5 py-5 bg-white text-sm">
+                            <p class="text-gray-900 font-bold whitespace-no-wrap">{{ deuda.nombre }}</p>
+                            <p class="text-gray-600 whitespace-no-wrap">Adquirida: {{ deuda.fecha_adquisicion|date:"Y-m-d" }}</p>
+                        </td>
+                        <td class="px-5 py-5 bg-white text-sm">{{ deuda.get_tipo_deuda_display }}</td>
+                        <td class="px-5 py-5 bg-white text-sm">${{ deuda.monto_total|floatformat:2|intcomma }}</td>
+                        <td class="px-5 py-5 bg-white text-sm font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</td>
+                        <td class="px-5 py-5 bg-white text-sm">
+                            <a href="{% url 'detalle_deuda' deuda.id %}" class="text-blue-600 hover:text-blue-900">Ver Detalles</a>
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900 ml-2">Editar</a>
+                            <a href="#" class="text-red-600 hover:text-red-900 ml-2">Eliminar</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-10 text-gray-500">Aún no has registrado ninguna deuda. ¡Añade la primera!</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
