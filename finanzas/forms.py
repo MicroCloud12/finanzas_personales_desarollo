@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import registro_transacciones, inversiones, Deuda
+from .models import registro_transacciones, inversiones, Deuda, PagoAmortizacion
 
 
 
@@ -152,4 +152,21 @@ class DeudaForm(forms.ModelForm):
             # Hacemos que el campo de fecha use el widget de fecha de HTML5
             self.fields['fecha_adquisicion'].widget = forms.DateInput(
                 attrs={'type': 'date', 'class': input_classes}
+        )
+            
+class PagoAmortizacionForm(forms.ModelForm):
+    class Meta:
+        model = PagoAmortizacion
+        # Incluimos solo los campos que el usuario debe llenar
+        fields = ['fecha_vencimiento', 'capital', 'interes', 'iva', 'saldo_insoluto']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"
+        
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': input_classes})
+            
+        self.fields['fecha_vencimiento'].widget = forms.DateInput(
+            attrs={'type': 'date', 'class': input_classes}
         )

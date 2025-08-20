@@ -22,7 +22,7 @@ from django.contrib.auth.decorators import login_required
 from .utils import parse_date_safely, generar_tabla_amortizacion
 from django.shortcuts import render, redirect, get_object_or_404
 from .tasks import process_drive_tickets, process_drive_investments
-from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, DeudaForm
+from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, DeudaForm, PagoAmortizacionForm
 from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService
 from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual, PendingInvestment, Deuda, PagoAmortizacion
 
@@ -725,54 +725,6 @@ def crear_deuda(request):
         if form.is_valid():
             deuda = form.save(commit=False)
             deuda.propietario = request.user
-            deuda.save()
-            
-            # --- Lógica futura ---
-            # Si es un préstamo, aquí llamaremos a la función que genera la tabla de amortización.
-            
-            messages.success(request, f"Deuda '{deuda.nombre}' creada con éxito.")
-            return redirect('lista_deudas')
-    else:
-        form = DeudaForm()
-    
-    context = {'form': form}
-    return render(request, 'crear_deuda.html', context)
-
-# Placeholder para las vistas que construiremos a continuación.
-# Esto evita que la aplicación se rompa por las URLs que ya creamos.
-
-@login_required
-def detalle_deuda(request, deuda_id):
-    # Lógica para ver detalles y la tabla de amortización (la haremos después)
-    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    context = {'deuda': deuda}
-    return render(request, 'detalle_deuda.html', context)
-
-@login_required
-def editar_deuda(request, deuda_id):
-    # Lógica para editar (la haremos después)
-    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    # ... (lógica del formulario de edición)
-    return redirect('lista_deudas')
-
-@login_required
-def eliminar_deuda(request, deuda_id):
-    # Lógica para eliminar (la haremos después)
-    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    # ... (lógica de confirmación y eliminación)
-    return redirect('lista_deudas')
-
-
-@login_required
-def crear_deuda(request):
-    """
-    Maneja la creación de una nueva deuda.
-    """
-    if request.method == 'POST':
-        form = DeudaForm(request.POST)
-        if form.is_valid():
-            deuda = form.save(commit=False)
-            deuda.propietario = request.user
             deuda.save() # Se guarda la deuda primero
             
             # --- 2. ¡AQUÍ OCURRE LA MAGIA! ---
@@ -787,3 +739,50 @@ def crear_deuda(request):
     
     context = {'form': form}
     return render(request, 'crear_deuda.html', context)
+
+# Placeholder para las vistas que construiremos a continuación.
+# Esto evita que la aplicación se rompa por las URLs que ya creamos.
+
+@login_required
+def detalle_deuda(request, deuda_id):
+    """
+    Muestra los detalles de una deuda específica, incluyendo su tabla de
+    amortización si es un préstamo.
+    """
+    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
+    
+    # Usamos el 'related_name' que definimos en el modelo para traer todos
+    # los pagos de amortización de esta deuda.
+    amortizacion = deuda.amortizacion.all()
+    
+    context = {
+        'deuda': deuda,
+        'amortizacion': amortizacion # Pasamos la tabla de amortización al contexto
+    }
+    return render(request, 'detalle_deuda.html', context)
+
+@login_required
+def editar_deuda(request, deuda_id):
+    # Lógica para editar (la haremos después)
+    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
+    # ... (lógica del formulario de edición)
+    return redirect('lista_deudas')
+
+@login_required
+def eliminar_deuda(request, deuda_id):
+    """
+    Maneja la eliminación de una deuda y sus pagos de amortización asociados.
+    """
+    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
+    
+    # Si el usuario confirma la eliminación (envía el formulario)
+    if request.method == 'POST':
+        nombre_deuda = deuda.nombre
+        deuda.delete()
+        messages.success(request, f"La deuda '{nombre_deuda}' ha sido eliminada correctamente.")
+        return redirect('lista_deudas')
+    
+    # Si es la primera vez que se carga la página, muestra la confirmación
+    context = {'deuda': deuda}
+    return render(request, 'confirmar_eliminar_deuda.html', context)
+
