@@ -49,7 +49,7 @@ Puede automatizar este comando de dos maneras:
 1. Asegúrese de que `celery` esté configurado correctamente. Inicie un worker con:
 
 ```bash
-celery -A config worker -l info
+celery -A config worker -l info -P gevent -c 4
 ```
 
 2. Inicie un proceso `beat` para lanzar el comando de forma periódica (por ejemplo, cada día primero de mes):
