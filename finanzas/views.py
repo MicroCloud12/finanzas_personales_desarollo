@@ -22,9 +22,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from .tasks import process_drive_tickets, process_drive_investments
-from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm 
+from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, DeudaForm
 from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService
-from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual, PendingInvestment
+from .models import registro_transacciones, Suscripcion, TransaccionPendiente, inversiones, GananciaMensual,GananciaMensual, PendingInvestment, Deuda, PagoAmortizacion
+
 
 logger = logging.getLogger(__name__)
 
@@ -701,3 +702,62 @@ def datos_inversiones(request):
     labels = [DateFormat(item['month']).format('Y-m') for item in qs]
     values = [item['total'] for item in qs]
     return JsonResponse({'labels': labels, 'data': values})
+
+'''
+Deudas y amortizaciones
+'''
+@login_required
+def lista_deudas(request):
+    """
+    Muestra una lista de todas las deudas (préstamos y tarjetas) del usuario.
+    """
+    deudas = Deuda.objects.filter(propietario=request.user).order_by('fecha_adquisicion')
+    context = {'deudas': deudas}
+    return render(request, 'lista_deudas.html', context)
+
+@login_required
+def crear_deuda(request):
+    """
+    Maneja la creación de una nueva deuda.
+    """
+    if request.method == 'POST':
+        form = DeudaForm(request.POST)
+        if form.is_valid():
+            deuda = form.save(commit=False)
+            deuda.propietario = request.user
+            deuda.save()
+            
+            # --- Lógica futura ---
+            # Si es un préstamo, aquí llamaremos a la función que genera la tabla de amortización.
+            
+            messages.success(request, f"Deuda '{deuda.nombre}' creada con éxito.")
+            return redirect('lista_deudas')
+    else:
+        form = DeudaForm()
+    
+    context = {'form': form}
+    return render(request, 'crear_deuda.html', context)
+
+# Placeholder para las vistas que construiremos a continuación.
+# Esto evita que la aplicación se rompa por las URLs que ya creamos.
+
+@login_required
+def detalle_deuda(request, deuda_id):
+    # Lógica para ver detalles y la tabla de amortización (la haremos después)
+    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
+    context = {'deuda': deuda}
+    return render(request, 'detalle_deuda.html', context)
+
+@login_required
+def editar_deuda(request, deuda_id):
+    # Lógica para editar (la haremos después)
+    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
+    # ... (lógica del formulario de edición)
+    return redirect('lista_deudas')
+
+@login_required
+def eliminar_deuda(request, deuda_id):
+    # Lógica para eliminar (la haremos después)
+    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
+    # ... (lógica de confirmación y eliminación)
+    return redirect('lista_deudas')

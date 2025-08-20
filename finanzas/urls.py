@@ -43,6 +43,9 @@ urlpatterns = [
     path('suscripcion/fallida/', views.suscripcion_fallida, name='suscripcion_fallida'),
     path('suscripcion/webhook/', views.mercadopago_webhook, name='mercadopago_webhook'),
     path('api/datos-ganancias-mensuales/', views.datos_ganancias_mensuales, name='api_ganancias_mensuales'),
-    #path('deudas/', views.lista_deudas, name='lista_deudas'),
-    #path('deudas/crear/', views.crear_deuda, name='crear_deuda'),
+    path('deudas/', views.lista_deudas, name='lista_deudas'),
+    path('deudas/crear/', views.crear_deuda, name='crear_deuda'),
+    path('deudas/<int:deuda_id>/', views.detalle_deuda, name='detalle_deuda'),
+    path('deudas/<int:deuda_id>/editar/', views.editar_deuda, name='editar_deuda'),
+    path('deudas/<int:deuda_id>/eliminar/', views.eliminar_deuda, name='eliminar_deuda'),
 ]
