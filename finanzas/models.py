@@ -19,8 +19,7 @@ class registro_transacciones(models.Model):
     tipo = models.CharField(max_length=15, choices=TIPO_CHOICES)
     cuenta_origen = models.CharField(max_length=100)
     cuenta_destino = models.CharField(max_length=100)
-    id_prestamo_ref = models.CharField(max_length=10, blank=True, null=True)
-
+    deuda_asociada = models.ForeignKey('Deuda', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
     def __str__(self):
         return f"{self.id} - {self.descripcion}"
 
@@ -169,3 +168,68 @@ class PendingInvestment(models.Model):
     def __str__(self):
         nombre_activo = self.datos_json.get('nombre_activo', 'N/A')
         return f"Inversión Pendiente de {self.propietario.username} en {nombre_activo}"
+    
+class Deuda(models.Model):
+    """
+    Modelo para registrar deudas, ya sean préstamos a plazo o
+    líneas de crédito revolvente como las tarjetas de crédito.
+    """
+    TIPO_DEUDA_CHOICES = [
+        ('PRESTAMO', 'Préstamo a Plazo'),
+        ('TARJETA_CREDITO', 'Tarjeta de Crédito'),
+    ]
+
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE)
+    nombre = models.CharField(max_length=100, unique=True, help_text="Un nombre único para identificar esta deuda (ej. 'Préstamo Coche')")
+    tipo_deuda = models.CharField(max_length=20, choices=TIPO_DEUDA_CHOICES, default='PRESTAMO')
+
+        # --- AYUDA AÑADIDA AQUÍ ---
+    monto_total = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        help_text="Para préstamos: el monto original. Para tarjetas de crédito: el límite de crédito total."
+    )
+    tasa_interes = models.DecimalField(max_digits=5, decimal_places=2, help_text="Tasa de interés anual (%)")
+    plazo_meses = models.PositiveIntegerField(default=1, help_text="Para préstamos a plazo")
+    fecha_adquisicion = models.DateField(default=timezone.now)
+    saldo_pendiente = models.DecimalField(max_digits=12, decimal_places=2, blank=True)
+
+    def __str__(self):
+        return self.nombre
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.saldo_pendiente = self.monto_total
+        super().save(*args, **kwargs)
+
+class PagoAmortizacion(models.Model):
+    """
+    Representa una cuota individual en la tabla de amortización de un préstamo.
+    """
+    deuda = models.ForeignKey(Deuda, on_delete=models.CASCADE, related_name='amortizacion')
+    numero_cuota = models.PositiveIntegerField()
+    fecha_vencimiento = models.DateField()
+    capital = models.DecimalField(max_digits=10, decimal_places=2)
+    interes = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # --- NUEVOS CAMPOS ---
+    iva = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="IVA sobre los intereses")
+    saldo_insoluto = models.DecimalField(max_digits=12, decimal_places=2, help_text="Saldo pendiente después de este pago")
+    
+    # --- CAMBIO DE NOMBRE PARA MAYOR CLARIDAD ---
+    pago_total = models.DecimalField(max_digits=10, decimal_places=2, help_text="Suma de capital + interés + IVA")
+    
+    pagado = models.BooleanField(default=False)
+    transaccion_pago = models.OneToOneField(registro_transacciones, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['numero_cuota']
+
+    def save(self, *args, **kwargs):
+        # --- LÓGICA AUTOMÁTICA ---
+        # Calculamos el pago total automáticamente antes de guardar.
+        self.pago_total = self.capital + self.interes + self.iva
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Cuota {self.numero_cuota} de {self.deuda.nombre}"
