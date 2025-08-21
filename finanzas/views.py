@@ -151,14 +151,18 @@ def aprobar_ticket(request, ticket_id):
 @login_required
 def crear_transacciones(request):
     if request.method == 'POST':
-        form = TransaccionesForm(request.POST)
+        form = TransaccionesForm(request.POST, user=request.user)
         if form.is_valid():
             nueva_transaccion = form.save(commit=False)
             nueva_transaccion.propietario = request.user
             nueva_transaccion.save()
-            return redirect('dashboard')
+            return redirect('lista_transacciones')
+        else:
+            logger.error(f"Error de validación en TransaccionesForm: {form.errors.as_json()}")
     else: 
-        form = TransaccionesForm()
+        form = TransaccionesForm(user=request.user)
+        logger.debug(f"Campo Deuda Asociada renderizado como: {form['deuda_asociada']}")
+
     context = {'form': form}
     return render(request, 'transacciones.html', context)
 
@@ -189,13 +193,17 @@ def lista_transacciones(request):
 @login_required
 def editar_transaccion(request, transaccion_id):
     transaccion = get_object_or_404(registro_transacciones, id=transaccion_id, propietario=request.user)
+    
     if request.method == 'POST':
-        form = TransaccionesForm(request.POST, instance=transaccion)
+        # --- CAMBIO 1: Pasamos el 'user' aquí ---
+        form = TransaccionesForm(request.POST, instance=transaccion, user=request.user)
         if form.is_valid():
             form.save()
             return redirect('lista_transacciones')
     else:
-        form = TransaccionesForm(instance=transaccion)
+        # --- CAMBIO 2: Y también lo pasamos aquí ---
+        form = TransaccionesForm(instance=transaccion, user=request.user)
+    
     return render(request, 'editar_transaccion.html', {'form': form})
 
 @login_required
@@ -729,8 +737,8 @@ def crear_deuda(request):
             
             # --- 2. ¡AQUÍ OCURRE LA MAGIA! ---
             # Si la deuda es un préstamo, generamos su tabla de amortización
-            if deuda.tipo_deuda == 'PRESTAMO':
-                generar_tabla_amortizacion(deuda)
+            #if deuda.tipo_deuda == 'PRESTAMO':
+            #    generar_tabla_amortizacion(deuda)
             
             messages.success(request, f"Deuda '{deuda.nombre}' creada con éxito.")
             return redirect('lista_deudas')
@@ -794,3 +802,14 @@ def eliminar_deuda(request, deuda_id):
     context = {'deuda': deuda}
     return render(request, 'confirmar_eliminar_deuda.html', context)
 
+def politica_privacidad(request):
+    """
+    Muestra la política de privacidad de la aplicación.
+    """
+    return render(request, 'politica_privacidad.html')
+
+def terminos_servicio(request):
+    """
+    Muestra los términos de servicio de la aplicación.
+    """
+    return render(request, 'terminos_servicio.html')

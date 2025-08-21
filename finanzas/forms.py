@@ -4,13 +4,18 @@ from django.contrib.auth.forms import UserCreationForm
 from .models import registro_transacciones, inversiones, Deuda, PagoAmortizacion
 
 
-
+'''
 class TransaccionesForm (forms.ModelForm):
     class Meta():
         model = registro_transacciones
         # En lugar de listar los campos que queremos, listamos los que NO queremos.
         # Esto oculta el campo 'propietario' del formulario.
         exclude = ('propietario',)
+        deuda_asociada = forms.ModelChoiceField(
+            queryset=Deuda.objects.none(),  # Empezamos con un queryset vacío
+            required=False,
+            label="Deuda Asociada (Opcional)"
+        )
         # --- AQUÍ ESTÁ LA NUEVA MAGIA ---
         # Definimos explícitamente qué widget y qué atributos
         # queremos para cada campo del formulario.
@@ -25,23 +30,73 @@ class TransaccionesForm (forms.ModelForm):
             'deuda_asociada': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
         }
 
+
     # --- AÑADIMOS ESTA LÓGICA DE ESTILOS ---
         def __init__(self, *args, **kwargs):
+            user = kwargs.pop('user', None)
             super().__init__(*args, **kwargs)
-
+             # Si recibimos un usuario, filtramos el queryset de deudas
+            if user:
+                self.fields['deuda_asociada'].queryset = Deuda.objects.filter(propietario=user)
+            # 2. Hacemos que el campo sea opcional y le ponemos una etiqueta más clara
+            self.fields['deuda_asociada'].required = False
+            self.fields['deuda_asociada'].label = "Deuda Asociada (Opcional)"
+            self.fields['deuda_asociada'].empty_label = "Ninguna" # Texto para la opción vacía
             # Definimos las clases para los campos de texto, fecha, número, etc.
             tailwind_input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             # Clases para el menú desplegable (select)
             tailwind_select_classes = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 
-            # Iteramos sobre todos los campos para aplicar las clases
             for field_name, field in self.fields.items():
-                if field.widget.input_type == 'select':
-                    # Si el campo es un menú desplegable (como nuestro campo 'tipo')
+                if hasattr(field.widget, 'input_type') and field.widget.input_type == 'select':
                     field.widget.attrs.update({'class': tailwind_select_classes})
                 else:
-                    # Para todos los demás campos
                     field.widget.attrs.update({'class': tailwind_input_classes})
+'''
+
+class TransaccionesForm(forms.ModelForm):
+    class Meta:
+        model = registro_transacciones
+        exclude = ('propietario',)
+        widgets = {
+            'fecha': forms.DateInput(attrs={'type': 'date','class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'descripcion': forms.Textarea(attrs={'rows': 3, 'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'categoria': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'monto': forms.NumberInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'tipo': forms.Select(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'cuenta_origen': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'cuenta_destino': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'deuda_asociada': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        # --- ¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE! ---
+        # 1. Atrapamos el 'user' que nos pasa la vista.
+        user = kwargs.pop('user', None)
+        
+        # 2. Llamamos al constructor original, PERO ya sin el argumento 'user'.
+        super(TransaccionesForm, self).__init__(*args, **kwargs)
+        
+        # 3. Ahora que el formulario está inicializado, podemos modificar sus campos.
+        if user:
+            self.fields['deuda_asociada'].queryset = Deuda.objects.filter(propietario=user)
+        
+        self.fields['deuda_asociada'].required = False
+        self.fields['deuda_asociada'].label = "Deuda Asociada (Opcional)"
+        self.fields['deuda_asociada'].empty_label = "Ninguna"
+
+        # Aplicamos estilos
+        tailwind_select_classes = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+        tailwind_input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            if isinstance(widget, forms.Select):
+                widget.attrs.update({'class': tailwind_select_classes})
+            elif isinstance(widget, forms.DateInput):
+                widget.attrs.update({'class': tailwind_input_classes, 'type': 'date'})
+            else:
+                widget.attrs.update({'class': tailwind_input_classes})
 
 class FormularioRegistroPersonalizado(UserCreationForm):
     # El campo de email y la validación que ya teníamos están perfectos.
@@ -158,7 +213,7 @@ class PagoAmortizacionForm(forms.ModelForm):
     class Meta:
         model = PagoAmortizacion
         # Incluimos solo los campos que el usuario debe llenar
-        fields = ['fecha_vencimiento', 'capital', 'interes', 'iva', 'saldo_insoluto']
+        fields = ['fecha_vencimiento', 'capital', 'interes', 'iva']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -48,4 +48,6 @@ urlpatterns = [
     path('deudas/<int:deuda_id>/', views.detalle_deuda, name='detalle_deuda'),
     path('deudas/<int:deuda_id>/editar/', views.editar_deuda, name='editar_deuda'),
     path('deudas/<int:deuda_id>/eliminar/', views.eliminar_deuda, name='eliminar_deuda'),
+    path('privacy-policy/', views.politica_privacidad, name='privacy_policy'),
+    path('terms-of-service/', views.terminos_servicio, name='terms_of_service'),
 ]

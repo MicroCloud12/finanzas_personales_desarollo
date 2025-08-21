@@ -1,3 +1,4 @@
+# finanzas/utils.py
 from decimal import Decimal
 from datetime import datetime, date
 from collections import defaultdict
@@ -71,7 +72,7 @@ def calculate_monthly_profit(user, price_service=None):
         inversiones_por_ticker[inv.emisora_ticker].append(inv)
         inicio = inv.fecha_compra.replace(day=1)
 
-
+    
         if inv.emisora_ticker not in inicio_por_ticker or inicio < inicio_por_ticker[inv.emisora_ticker]:
             inicio_por_ticker[inv.emisora_ticker] = inicio
         # Consultamos la serie mensual solo una vez por ticker
@@ -100,3 +101,55 @@ def calculate_monthly_profit(user, price_service=None):
                     fecha_iter = date(fecha_iter.year, fecha_iter.month + 1, 1)
     # Ordenamos por fecha para devolver un diccionario coherente
     return dict(sorted(ganancias_mensuales.items()))
+
+def generar_tabla_amortizacion(deuda: Deuda):
+    """
+    Calcula y guarda la tabla de amortización para un préstamo.
+    Utiliza el sistema de amortización francés (cuotas fijas).
+    """
+    # Solo se ejecuta para préstamos, no para tarjetas de crédito
+    if deuda.tipo_deuda != 'PRESTAMO' or deuda.plazo_meses == 0:
+        return
+
+    # --- 1. Preparación de Variables ---
+    tasa_interes_mensual = (deuda.tasa_interes / Decimal(100)) / Decimal(12)
+    plazo = deuda.plazo_meses
+    monto_prestamo = deuda.monto_total
+    saldo_pendiente = monto_prestamo
+    
+    # --- 2. Cálculo de la Cuota Mensual Fija ---
+    # Fórmula del sistema francés
+    if tasa_interes_mensual > 0:
+        factor = (tasa_interes_mensual * (1 + tasa_interes_mensual) ** plazo) / (((1 + tasa_interes_mensual) ** plazo) - 1)
+        cuota_mensual = monto_prestamo * factor
+    else:
+        # Si no hay interés, la cuota es simplemente el total dividido por el plazo
+        cuota_mensual = monto_prestamo / plazo
+
+    # --- 3. Generación de cada Fila de la Tabla ---
+    fecha_pago = deuda.fecha_adquisicion
+
+    for i in range(1, plazo + 1):
+        # Avanzamos la fecha al siguiente mes para cada cuota
+        fecha_pago += relativedelta(months=1)
+        
+        intereses_cuota = saldo_pendiente * tasa_interes_mensual
+        capital_cuota = cuota_mensual - intereses_cuota
+        saldo_pendiente -= capital_cuota
+
+        # El último pago puede tener un pequeño ajuste para que el saldo sea exactamente cero
+        if i == plazo:
+            capital_cuota += saldo_pendiente
+            saldo_pendiente = Decimal(0)
+
+        PagoAmortizacion.objects.create(
+            deuda=deuda,
+            numero_cuota=i,
+            fecha_vencimiento=fecha_pago,
+            capital=capital_cuota.quantize(Decimal('0.01')),
+            interes=intereses_cuota.quantize(Decimal('0.01')),
+            # Aquí asumimos un IVA del 16% sobre los intereses, como es común en México.
+            # Podrías hacerlo un campo configurable en el futuro.
+            iva=(intereses_cuota * Decimal('0.16')).quantize(Decimal('0.01')),
+            saldo_insoluto=saldo_pendiente.quantize(Decimal('0.01'))
+        )

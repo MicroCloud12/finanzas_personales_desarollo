@@ -235,10 +235,23 @@ class PagoAmortizacion(models.Model):
         ordering = ['numero_cuota']
 
     def save(self, *args, **kwargs):
-        # --- LÓGICA AUTOMÁTICA ---
-        # Calculamos el pago total automáticamente antes de guardar.
+        # --- LÓGICA DE CÁLCULO MEJORADA ---
+
+        # 1. Calculamos el pago total (esto ya lo teníamos)
         self.pago_total = self.capital + self.interes + self.iva
-        super().save(*args, **kwargs)
+        
+        # 2. Calculamos el saldo insoluto
+        # Buscamos la última cuota guardada para esta deuda
+        ultima_cuota = self.deuda.amortizacion.order_by('-numero_cuota').first()
+        
+        if ultima_cuota:
+            # Si ya hay cuotas, el nuevo saldo es el saldo anterior menos el capital actual
+            self.saldo_insoluto = ultima_cuota.saldo_insoluto - self.capital
+        else:
+            # Si esta es la primera cuota, el saldo es el total de la deuda menos el capital actual
+            self.saldo_insoluto = self.deuda.monto_total - self.capital
+            
+        super().save(*args, **kwargs) # Guardamos el objeto con los campos ya calculados
 
     def __str__(self):
         return f"Cuota {self.numero_cuota} de {self.deuda.nombre}"
