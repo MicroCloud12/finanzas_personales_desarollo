@@ -745,19 +745,27 @@ def crear_deuda(request):
 
 @login_required
 def detalle_deuda(request, deuda_id):
-    """
-    Muestra los detalles de una deuda específica, incluyendo su tabla de
-    amortización si es un préstamo.
-    """
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    
-    # Usamos el 'related_name' que definimos en el modelo para traer todos
-    # los pagos de amortización de esta deuda.
     amortizacion = deuda.amortizacion.all()
-    
+
+    # Si se envía el formulario para añadir una cuota
+    if request.method == 'POST':
+        form = PagoAmortizacionForm(request.POST)
+        if form.is_valid():
+            pago = form.save(commit=False)
+            pago.deuda = deuda
+            # Calculamos el número de cuota automáticamente
+            pago.numero_cuota = amortizacion.count() + 1
+            pago.save() # El modelo calculará el pago_total automáticamente
+            messages.success(request, "Cuota añadida correctamente.")
+            return redirect('detalle_deuda', deuda_id=deuda.id)
+    else:
+        form = PagoAmortizacionForm()
+
     context = {
         'deuda': deuda,
-        'amortizacion': amortizacion # Pasamos la tabla de amortización al contexto
+        'amortizacion': amortizacion,
+        'form': form # Pasamos el formulario a la plantilla
     }
     return render(request, 'detalle_deuda.html', context)
 
