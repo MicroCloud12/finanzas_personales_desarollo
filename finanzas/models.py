@@ -170,29 +170,38 @@ class PendingInvestment(models.Model):
         return f"Inversión Pendiente de {self.propietario.username} en {nombre_activo}"
     
 class Deuda(models.Model):
-    """
-    Modelo para registrar deudas, ya sean préstamos a plazo o
-    líneas de crédito revolvente como las tarjetas de crédito.
-    """
     TIPO_DEUDA_CHOICES = [
         ('PRESTAMO', 'Préstamo a Plazo'),
         ('TARJETA_CREDITO', 'Tarjeta de Crédito'),
     ]
 
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    nombre = models.CharField(max_length=100, unique=True, help_text="Un nombre único para identificar esta deuda (ej. 'Préstamo Coche')")
+    
+    # --- PASO 1: Quitamos el unique=True de aquí ---
+    nombre = models.CharField(
+        max_length=100, 
+        help_text="Un nombre único para identificar esta deuda (ej. 'Préstamo Coche')"
+    )
+    
     tipo_deuda = models.CharField(max_length=20, choices=TIPO_DEUDA_CHOICES, default='PRESTAMO')
-
-        # --- AYUDA AÑADIDA AQUÍ ---
     monto_total = models.DecimalField(
         max_digits=12, 
         decimal_places=2, 
         help_text="Para préstamos: el monto original. Para tarjetas de crédito: el límite de crédito total."
     )
     tasa_interes = models.DecimalField(max_digits=5, decimal_places=2, help_text="Tasa de interés anual (%)")
-    plazo_meses = models.PositiveIntegerField(default=1, help_text="Para préstamos a plazo")
+    plazo_meses = models.PositiveIntegerField(default=1, help_text="Para tarjetas de crédito, puede ser 1.")
     fecha_adquisicion = models.DateField(default=timezone.now)
-    saldo_pendiente = models.DecimalField(max_digits=12, decimal_places=2, blank=True)
+    saldo_pendiente = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        blank=True,
+        help_text="El monto que se debe actualmente. Se actualiza con cada pago."
+    )
+
+    # --- PASO 2: Añadimos la clase Meta con la nueva regla ---
+    class Meta:
+        unique_together = ['propietario', 'nombre']
 
     def __str__(self):
         return self.nombre
