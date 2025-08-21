@@ -66,21 +66,21 @@ class TransaccionesForm(forms.ModelForm):
             'tipo': forms.Select(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'cuenta_origen': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'cuenta_destino': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
-            'deuda_asociada': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            # --- CAMBIO CLAVE AQUÍ ---
+            'deuda_asociada': forms.Select(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
         }
-
     def __init__(self, *args, **kwargs):
         # --- ¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE! ---
         # 1. Atrapamos el 'user' que nos pasa la vista.
         user = kwargs.pop('user', None)
-        
+
         # 2. Llamamos al constructor original, PERO ya sin el argumento 'user'.
         super(TransaccionesForm, self).__init__(*args, **kwargs)
-        
+
         # 3. Ahora que el formulario está inicializado, podemos modificar sus campos.
         if user:
             self.fields['deuda_asociada'].queryset = Deuda.objects.filter(propietario=user)
-        
+
         self.fields['deuda_asociada'].required = False
         self.fields['deuda_asociada'].label = "Deuda Asociada (Opcional)"
         self.fields['deuda_asociada'].empty_label = "Ninguna"
