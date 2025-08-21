@@ -242,3 +242,20 @@ class PagoAmortizacion(models.Model):
 
     def __str__(self):
         return f"Cuota {self.numero_cuota} de {self.deuda.nombre}"
+    
+class AmortizacionPendiente(models.Model):
+    """
+    Almacena una tabla de amortización completa extraída por la IA,
+    pendiente de la revisión y aprobación del usuario.
+    """
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE)
+    # A qué deuda se asociará esta tabla de amortización
+    deuda = models.ForeignKey(Deuda, on_delete=models.CASCADE, related_name='amortizaciones_pendientes')
+    # Aquí guardaremos la lista completa de cuotas extraídas por Gemini
+    datos_json = models.JSONField()
+    nombre_archivo = models.CharField(max_length=255)
+    estado = models.CharField(max_length=10, choices=(('pendiente', 'Pendiente'), ('aprobada', 'Aprobada')), default='pendiente')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Amortización Pendiente para '{self.deuda.nombre}' del archivo '{self.nombre_archivo}'"
