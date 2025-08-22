@@ -876,6 +876,21 @@ def aprobar_amortizacion(request, pendiente_id):
 
     return redirect('revisar_amortizaciones', deuda_id=deuda.id)
 
+@login_required
+def rechazar_amortizacion(request, pendiente_id):
+    """Marca una tabla de amortización pendiente como rechazada."""
+    pendiente = get_object_or_404(AmortizacionPendiente, id=pendiente_id, propietario=request.user)
+    deuda_id = pendiente.deuda.id
+
+    if request.method == 'POST':
+        pendiente.estado = 'rechazada'
+        pendiente.save()
+        messages.success(request, f"La tabla de amortización del archivo '{pendiente.nombre_archivo}' ha sido rechazada.")
+        return redirect('revisar_amortizaciones', deuda_id=deuda_id)
+
+    # Si se accede por GET, simplemente redirigir
+    return redirect('revisar_amortizaciones', deuda_id=deuda_id)
+
 def politica_privacidad(request):
     """
     Muestra la política de privacidad de la aplicación.

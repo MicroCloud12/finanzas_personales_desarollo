@@ -251,34 +251,38 @@ def process_single_amortization(self, user_id: int, file_id: str, file_name: str
 @shared_task
 def process_drive_amortizations(user_id: int, deuda_id: int):
     """
-    Busca tablas de amortización en Drive y lanza tareas para procesarlas.
+    Busca tablas de amortización en Drive y lanza tareas para procesar solo
+    los archivos cuyo nombre coincida con el de la deuda.
     """
     try:
         user = User.objects.get(id=user_id)
+        
         # --- NUEVA LÓGICA (PASO 1: OBTENER NOMBRE DE LA DEUDA) ---
         try:
             deuda = Deuda.objects.get(id=deuda_id, propietario=user)
             # Normalizamos el nombre de la deuda para una comparación robusta
             # Ejemplo: "Préstamo Coche" -> "préstamo coche"
             nombre_deuda_normalizado = deuda.nombre.lower()
+            print(f"Nombre de deuda normalizado: {nombre_deuda_normalizado}")
         except Deuda.DoesNotExist:
             return {'status': 'ERROR', 'message': 'La deuda especificada no fue encontrada.'}
+
         gdrive_service = GoogleDriveService(user)
-        # Buscamos en una nueva carpeta específica para estos documentos
-        files_to_process = gdrive_service.list_files_in_folder(
+        todos_los_archivos = gdrive_service.list_files_in_folder(
             folder_name="Tablas de Amortizacion",
             mimetypes=['image/jpeg', 'image/png', 'application/pdf']
         )
 
-        if not files_to_process:
+        if not todos_los_archivos:
             return {'status': 'NO_FILES', 'message': 'No se encontraron archivos en la carpeta.'}
 
         # --- NUEVA LÓGICA (PASO 2 y 3: FILTRAR ARCHIVOS) ---
         files_to_process = []
-        for archivo in files_to_process:
+        for archivo in todos_los_archivos:
             # Normalizamos el nombre del archivo
             # Ejemplo: "Amortizacion - Préstamo Coche.pdf" -> "amortizacion - préstamo coche.pdf"
             nombre_archivo_normalizado = archivo['name'].lower()
+            print(f"Nombre de archivo normalizado: {nombre_archivo_normalizado}")
             
             # Comprobamos si el nombre de la deuda está contenido en el nombre del archivo
             if nombre_deuda_normalizado in nombre_archivo_normalizado:
