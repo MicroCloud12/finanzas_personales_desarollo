@@ -754,17 +754,26 @@ def crear_deuda(request):
 @login_required
 def detalle_deuda(request, deuda_id):
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    amortizacion = deuda.amortizacion.all()
+    # Obtenemos la amortización ordenada para facilitar el cálculo
+    amortizacion = deuda.amortizacion.all().order_by('-numero_cuota') 
 
-    # Si se envía el formulario para añadir una cuota
     if request.method == 'POST':
         form = PagoAmortizacionForm(request.POST)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.deuda = deuda
-            # Calculamos el número de cuota automáticamente
-            pago.numero_cuota = amortizacion.count() + 1
-            pago.save() # El modelo calculará el pago_total automáticamente
+            pago.numero_cuota = (amortizacion.first().numero_cuota if amortizacion.exists() else 0) + 1
+
+            # --- LÓGICA DE CÁLCULO AÑADIDA AQUÍ ---
+            ultima_cuota = amortizacion.first()
+            if ultima_cuota:
+                # Si ya hay cuotas, el nuevo saldo es el saldo anterior menos el capital de la nueva cuota
+                pago.saldo_insoluto = ultima_cuota.saldo_insoluto - pago.capital
+            else:
+                # Si es la primera cuota, se calcula sobre el monto total de la deuda
+                pago.saldo_insoluto = deuda.monto_total - pago.capital
+            
+            pago.save() # El modelo ahora solo calculará el pago_total y guardará.
             messages.success(request, "Cuota añadida correctamente.")
             return redirect('detalle_deuda', deuda_id=deuda.id)
     else:
@@ -772,8 +781,9 @@ def detalle_deuda(request, deuda_id):
 
     context = {
         'deuda': deuda,
-        'amortizacion': amortizacion,
-        'form': form # Pasamos el formulario a la plantilla
+        # La pasamos ordenada ascendentemente a la plantilla para la visualización
+        'amortizacion': deuda.amortizacion.all().order_by('numero_cuota'), 
+        'form': form 
     }
     return render(request, 'detalle_deuda.html', context)
 

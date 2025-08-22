@@ -103,10 +103,10 @@ def calculate_monthly_profit(user, price_service=None):
     return dict(sorted(ganancias_mensuales.items()))
 
 def generar_tabla_amortizacion(deuda: Deuda):
-    """
+    '''
     Calcula y guarda la tabla de amortización para un préstamo.
     Utiliza el sistema de amortización francés (cuotas fijas).
-    """
+    '''
     # Solo se ejecuta para préstamos, no para tarjetas de crédito
     if deuda.tipo_deuda != 'PRESTAMO' or deuda.plazo_meses == 0:
         return

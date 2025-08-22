@@ -1,7 +1,8 @@
 from django.db import models
-from django.contrib.auth.models import User
-from django.utils import timezone
+from django.db.models import F
 from django.conf import settings
+from django.utils import timezone
+from django.contrib.auth.models import User
 
 
 class registro_transacciones(models.Model):
@@ -14,14 +15,33 @@ class registro_transacciones(models.Model):
         ('INGRESO', 'Ingreso'),
         ('GASTO', 'Gasto'),
         ('TRANSFERENCIA','Transferencia'),
-
     ]
     tipo = models.CharField(max_length=15, choices=TIPO_CHOICES)
     cuenta_origen = models.CharField(max_length=100)
     cuenta_destino = models.CharField(max_length=100)
     deuda_asociada = models.ForeignKey('Deuda', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
+
     def __str__(self):
         return f"{self.id} - {self.descripcion}"
+
+    # --- LÓGICA CORRECTA PARA GUARDAR UNA TRANSACCIÓN ---
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Guarda la transacción primero
+
+        if self.deuda_asociada:
+            deuda = self.deuda_asociada
+            if deuda.tipo_deuda == 'TARJETA_CREDITO':
+                deuda.saldo_pendiente -= self.monto
+                deuda.save()
+            elif deuda.tipo_deuda == 'PRESTAMO':
+                cuota_a_pagar = PagoAmortizacion.objects.filter(deuda=deuda, pagado=False).order_by('numero_cuota').first()
+                if cuota_a_pagar:
+                    cuota_a_pagar.pagado = True
+                    cuota_a_pagar.transaccion_pago = self
+                    cuota_a_pagar.save()
+                    # Actualiza el saldo usando el 'capital' de la cuota, no un campo de la transacción.
+                    deuda.saldo_pendiente = F('saldo_pendiente') - cuota_a_pagar.capital
+                    deuda.save()
 
 class GoogleCredentials(models.Model):
     # Un enlace uno-a-uno con el usuario de Django. Cada usuario solo puede tener un set de credenciales.
@@ -212,46 +232,26 @@ class Deuda(models.Model):
         super().save(*args, **kwargs)
 
 class PagoAmortizacion(models.Model):
-    """
-    Representa una cuota individual en la tabla de amortización de un préstamo.
-    """
     deuda = models.ForeignKey(Deuda, on_delete=models.CASCADE, related_name='amortizacion')
     numero_cuota = models.PositiveIntegerField()
     fecha_vencimiento = models.DateField()
     capital = models.DecimalField(max_digits=10, decimal_places=2)
     interes = models.DecimalField(max_digits=10, decimal_places=2)
-    
-    # --- NUEVOS CAMPOS ---
     iva = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="IVA sobre los intereses")
     saldo_insoluto = models.DecimalField(max_digits=12, decimal_places=2, help_text="Saldo pendiente después de este pago")
-    
-    # --- CAMBIO DE NOMBRE PARA MAYOR CLARIDAD ---
     pago_total = models.DecimalField(max_digits=10, decimal_places=2, help_text="Suma de capital + interés + IVA")
-    
     pagado = models.BooleanField(default=False)
     transaccion_pago = models.OneToOneField(registro_transacciones, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         ordering = ['numero_cuota']
 
+    # --- MÉTODO SAVE CORREGIDO PARA LA AMORTIZACIÓN ---
     def save(self, *args, **kwargs):
-        # --- LÓGICA DE CÁLCULO MEJORADA ---
-
-        # 1. Calculamos el pago total (esto ya lo teníamos)
+        # Esta lógica SOLO calcula el pago_total, pero NO el saldo_insoluto.
+        # Esto previene el error de recálculo al simplemente marcar una cuota como pagada.
         self.pago_total = self.capital + self.interes + self.iva
-        
-        # 2. Calculamos el saldo insoluto
-        # Buscamos la última cuota guardada para esta deuda
-        ultima_cuota = self.deuda.amortizacion.order_by('-numero_cuota').first()
-        
-        if ultima_cuota:
-            # Si ya hay cuotas, el nuevo saldo es el saldo anterior menos el capital actual
-            self.saldo_insoluto = ultima_cuota.saldo_insoluto - self.capital
-        else:
-            # Si esta es la primera cuota, el saldo es el total de la deuda menos el capital actual
-            self.saldo_insoluto = self.deuda.monto_total - self.capital
-            
-        super().save(*args, **kwargs) # Guardamos el objeto con los campos ya calculados
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Cuota {self.numero_cuota} de {self.deuda.nombre}"
