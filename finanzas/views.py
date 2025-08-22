@@ -719,8 +719,12 @@ def lista_deudas(request):
     """
     Muestra una lista de todas las deudas (préstamos y tarjetas) del usuario.
     """
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    es_usuario_premium = suscripcion.is_active()
     deudas = Deuda.objects.filter(propietario=request.user).order_by('fecha_adquisicion')
-    context = {'deudas': deudas}
+    context = {'deudas': deudas,
+               'es_usuario_premium': es_usuario_premium
+              }
     return render(request, 'lista_deudas.html', context)
 
 @login_required
