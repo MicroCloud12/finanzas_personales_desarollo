@@ -187,9 +187,46 @@ class GeminiService:
 
             *Aseguarte que aunque el ticker sea ETH/MXN en caso de Etherum, BTC/MXN en caso de Bitcoin cambialo ETH/USD y BTC/USD, ya que estoy convirtiendo todo en USD y no en MXN.
         """
-    #def extract_data_from_image(self, image: Image.Image) -> dict:
-        # ... (el resto de la función no cambia)
-        #response = self.model.generate_content([self.prompt_tickets, image])
+        self.prompt_deudas = """
+            Eres un asistente experto en finanzas, especializado en digitalizar tablas de amortización de préstamos.
+            Tu tarea es analizar la imagen de un documento y extraer CADA UNA de las filas de la tabla de pagos con la máxima precisión.
+            Devuelve SIEMPRE la respuesta como un array de objetos JSON, sin texto adicional.
+
+            ### CONTEXTO:
+            El usuario ha subido una imagen de una tabla de amortización. Necesito que extraigas los datos de cada cuota.
+
+            ### FORMATO DE SALIDA ESTRICTO (Array de JSON):
+            [
+              {
+                "fecha_vencimiento": "YYYY-MM-DD",
+                "capital": 0.00,
+                "interes": 0.00,
+                "iva": 0.00,
+                "saldo_insoluto": 0.00
+              },
+              {
+                "fecha_vencimiento": "YYYY-MM-DD",
+                "capital": 0.00,
+                "interes": 0.00,
+                "iva": 0.00,
+                "saldo_insoluto": 0.00
+              }
+            ]
+            
+            ### REGLAS DE EXTRACCIÓN POR CAMPO:
+            1.  **fecha_vencimiento**: La fecha exacta de pago de esa cuota. Formato AÑO-MES-DÍA.
+            2.  **capital**: El monto destinado a la "Amortización de Capital". Debe ser un número (float).
+            3.  **interes**: El monto de "Intereses". Debe ser un número (float).
+            4.  **iva**: El monto del "IVA". Si la columna no existe, el valor debe ser 0.00.
+            5.  **saldo_insoluto**: El "Saldo Insoluto" o saldo restante DESPUÉS de ese pago. Debe ser un número (float).
+
+            ### NOTA IMPORTANTE:
+            - Ignora el "Pago Total del Periodo", ya que lo calcularemos después.
+            - Asegúrate de devolver un objeto JSON por CADA fila de la tabla de amortización.
+
+            Ahora, analiza la siguiente imagen y extrae todas las filas de la tabla de amortización:
+        """
+
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Genera la respuesta de Gemini y devuelve el JSON parseado."""
         response = self.model.generate_content([prompt, content])
@@ -203,11 +240,11 @@ class GeminiService:
                 "error": "Respuesta no válida de la IA",
                 "raw_response": cleaned_response
             }
+    '''
+    Extraccion de datos de los tickets de imágenes y PDFs utilizando Gemini.
+    '''
     def extract_data_from_image(self, image: Image.Image) -> dict:
         return self._generate_and_parse(self.prompt_tickets, image)
-    
-    def extract_data_from_inversion(self, image: Image.Image) -> dict:
-        return self._generate_and_parse(self.prompt_inversion, image)
     
     def extract_data_from_pdf(self, pdf_bytes: bytes) -> dict:
         """Extrae datos de un PDF utilizando Gemini."""
@@ -218,7 +255,13 @@ class GeminiService:
             }
         }
         return self._generate_and_parse(self.prompt_tickets, pdf_part)
-
+    
+    '''
+    Extraccion de datos de las inversiones de imágenes y PDFs utilizando Gemini.
+    '''
+    def extract_data_from_inversion(self, image: Image.Image) -> dict:
+        return self._generate_and_parse(self.prompt_inversion, image)
+    
     def extract_inversion_from_pdf(self, pdf_bytes: bytes) -> dict:
         """Extrae datos de un PDF de inversión utilizando Gemini."""
         pdf_part = {
@@ -228,6 +271,23 @@ class GeminiService:
             }
         }
         return self._generate_and_parse(self.prompt_inversion, pdf_part)
+    
+    '''
+    Extraccion de datos de las deudas de imágenes y PDFs utilizando Gemini.
+    '''
+    def extract_deudas_from_image(self, image: Image.Image) -> dict:
+        """Extrae datos de una imagen de inversión utilizando Gemini."""
+        return self._generate_and_parse(self.prompt_deudas, image)
+    
+    def extract_deudas_from_pdf(self, pdf_bytes: bytes) -> dict:
+        """Extrae datos de un PDF de tabla de amortización utilizando Gemini."""
+        pdf_part = {
+            "inline_data": {
+                "mime_type": "application/pdf",
+                "data": base64.b64encode(pdf_bytes).decode("utf-8"),
+            }
+        }
+        return self._generate_and_parse(self.prompt_deudas, pdf_part)
     
 _gemini_singleton = None
 def get_gemini_service() -> GeminiService:
