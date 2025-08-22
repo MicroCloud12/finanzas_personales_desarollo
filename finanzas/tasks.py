@@ -7,7 +7,7 @@ from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService
-
+from .models import Deuda, AmortizacionPendiente, PagoAmortizacion
 
 logger = logging.getLogger(__name__)
 
@@ -209,4 +209,94 @@ def process_drive_investments(user_id):
 
     except Exception as e:
         # Manejo de errores
+        return {'status': 'ERROR', 'message': str(e)}
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def process_single_amortization(self, user_id: int, file_id: str, file_name: str, mime_type: str, deuda_id: int):
+    """Procesa un único archivo de tabla de amortización."""
+    try:
+        user = User.objects.get(id=user_id)
+        deuda = Deuda.objects.get(id=deuda_id, propietario=user)
+
+        gdrive_service = GoogleDriveService(user)
+        gemini_service = get_gemini_service()
+        file_content = gdrive_service.get_file_content(file_id)
+
+        if mime_type in ('image/jpeg', 'image/png'):
+            image = load_and_optimize_image(file_content)
+            extracted_data = gemini_service.extract_deudas_from_image(image)
+        elif mime_type == 'application/pdf':
+            extracted_data = gemini_service.extract_deudas_from_pdf(file_content.getvalue())
+        else:
+            return {'status': 'UNSUPPORTED', 'file_name': file_name}
+
+        # Guardamos la tabla de amortización pendiente de revisión
+        AmortizacionPendiente.objects.create(
+            propietario=user,
+            deuda=deuda,
+            datos_json=extracted_data,
+            nombre_archivo=file_name,
+            estado='pendiente'
+        )
+
+        return {'status': 'SUCCESS', 'file_name': file_name}
+
+    except Deuda.DoesNotExist:
+        return {'status': 'FAILURE', 'file_name': file_name, 'error': f'No se encontró la deuda con ID {deuda_id}'}
+    except Exception as e:
+        self.retry(exc=e)
+        return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
+
+@shared_task
+def process_drive_amortizations(user_id: int, deuda_id: int):
+    """
+    Busca tablas de amortización en Drive y lanza tareas para procesarlas.
+    """
+    try:
+        user = User.objects.get(id=user_id)
+        # --- NUEVA LÓGICA (PASO 1: OBTENER NOMBRE DE LA DEUDA) ---
+        try:
+            deuda = Deuda.objects.get(id=deuda_id, propietario=user)
+            # Normalizamos el nombre de la deuda para una comparación robusta
+            # Ejemplo: "Préstamo Coche" -> "préstamo coche"
+            nombre_deuda_normalizado = deuda.nombre.lower()
+        except Deuda.DoesNotExist:
+            return {'status': 'ERROR', 'message': 'La deuda especificada no fue encontrada.'}
+        gdrive_service = GoogleDriveService(user)
+        # Buscamos en una nueva carpeta específica para estos documentos
+        files_to_process = gdrive_service.list_files_in_folder(
+            folder_name="Tablas de Amortizacion",
+            mimetypes=['image/jpeg', 'image/png', 'application/pdf']
+        )
+
+        if not files_to_process:
+            return {'status': 'NO_FILES', 'message': 'No se encontraron archivos en la carpeta.'}
+
+        # --- NUEVA LÓGICA (PASO 2 y 3: FILTRAR ARCHIVOS) ---
+        files_to_process = []
+        for archivo in files_to_process:
+            # Normalizamos el nombre del archivo
+            # Ejemplo: "Amortizacion - Préstamo Coche.pdf" -> "amortizacion - préstamo coche.pdf"
+            nombre_archivo_normalizado = archivo['name'].lower()
+            
+            # Comprobamos si el nombre de la deuda está contenido en el nombre del archivo
+            if nombre_deuda_normalizado in nombre_archivo_normalizado:
+                files_to_process.append(archivo)
+        
+        # --- FIN DE LA NUEVA LÓGICA ---
+
+        if not files_to_process:
+            return {'status': 'NO_FILES', 'message': f"No se encontraron archivos que coincidan con el nombre '{deuda.nombre}'."}
+
+        job = group(
+            process_single_amortization.s(user.id, item['id'], item['name'], item['mimeType'], deuda_id)
+            for item in files_to_process
+        )
+        result_group = job.apply_async()
+        result_group.save()
+
+        return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
+
+    except Exception as e:
         return {'status': 'ERROR', 'message': str(e)}
