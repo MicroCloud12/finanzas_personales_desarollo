@@ -14,14 +14,26 @@
             <a href="{% url 'crear_transacciones' %}" class="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
                 + Añadir Transacción
             </a>
-        
+            {% if es_usuario_premium %}
+            {# Si el usuario ES premium, mostramos el botón funcional #}
             <a href="{% url 'procesamiento_automatico' %}" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
                 + Añadir Automáticamente
             </a>
             <a href="{% url 'revisar_tickets' %}" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
                 Revisar Tickets Pendientes
             </a>
-        
+                        {% else %}
+            {# Si el usuario NO es premium, mostramos un botón deshabilitado y un mensaje #}
+            <div class="p-4 bg-gray-100 rounded-lg border border-gray-200">
+                <button disabled class="inline-block bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg cursor-not-allowed">
+                    ✨ Iniciar Sincronización Automática
+                </button>
+                <p class="mt-3 text-sm text-gray-700">
+                    Esta es una función premium. 
+                    <a href="{% url 'gestionar_suscripcion' %}" class="text-indigo-600 font-bold hover:underline">¡Actualiza tu plan para activarla!</a>
+                </p>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% if messages %}
