@@ -557,18 +557,16 @@ class RISCService:
 
     def validate_token(self, token: str) -> dict:
         """
-        Valida un token de seguridad (SET) de Google.
+        Valida un token de seguridad (SET) de Google y procesa los eventos.
         Devuelve el payload decodificado si es válido, de lo contrario lanza una excepción.
         """
         jwk_client = self._get_jwk_client()
-        
-        # 1. Obtener la clave de firma del token
+
         try:
             signing_key = jwk_client.get_signing_key_from_jwt(token)
         except jwt.exceptions.PyJWKClientError as e:
             raise ValueError(f"No se pudo encontrar la clave de firma: {e}")
 
-        # 2. Decodificar y validar el token
         try:
             payload = jwt.decode(
                 token,
@@ -577,10 +575,19 @@ class RISCService:
                 audience=self.audience,
                 issuer="https://accounts.google.com",
             )
+
+            # --- LÓGICA DE PROCESAMIENTO QUE YA TENÍAS ---
+            events = payload.get('events', {})
+            for event_type, event_data in events.items():
+                if event_type == "https://schemas.openid.net/secevent/risc/event-type/verification":
+                    state = event_data.get('state')
+                    # ¡CAMBIO CLAVE! Usamos el logger para un registro robusto.
+                    logger.info(f"✅ Evento de verificación RISC recibido. Estado: {state}")
+
             return payload
         except jwt.PyJWTError as e:
             raise ValueError(f"Token inválido: {e}")
-
+    
     def process_security_event(self, payload: dict):
         """
         Procesa los eventos de seguridad dentro de un token validado.
