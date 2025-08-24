@@ -54,6 +54,7 @@ urlpatterns = [
     path('deudas/revisar-amortizaciones/<int:deuda_id>/', views.revisar_amortizaciones, name='revisar_amortizaciones'),
     path('deudas/aprobar-amortizacion/<int:pendiente_id>/', views.aprobar_amortizacion, name='aprobar_amortizacion'),
     path('deudas/rechazar-amortizacion/<int:pendiente_id>/', views.rechazar_amortizacion, name='rechazar_amortizacion'),
+    path('risc-webhook/', views.risc_webhook, name='risc_webhook'),
     # --- Fin de las nuevas URLs ---
     path('privacy-policy/', views.politica_privacidad, name='privacy_policy'),
     path('terms-of-service/', views.terminos_servicio, name='terms_of_service'),

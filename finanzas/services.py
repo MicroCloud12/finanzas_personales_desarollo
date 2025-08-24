@@ -1,24 +1,31 @@
 # finanzas/services.py
 import os
 import json
+import jwt
 import base64
 import requests
+import logging
 import mercadopago
 from PIL import Image
 from io import BytesIO
 from decimal import Decimal
 from twelvedata import TDClient
+from jwt import PyJWKClient
 from cachetools import TTLCache
 from django.conf import settings
 import google.generativeai as genai
 from django.http import JsonResponse
 from .utils import parse_date_safely
+from allauth.socialaccount.models import SocialAccount
+from django.contrib.sessions.models import Session
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 #from alpha_vantage.timeseries import TimeSeries
 from google.oauth2.credentials import Credentials
 from allauth.socialaccount.models import SocialApp, SocialToken
 from .models import registro_transacciones, TransaccionPendiente, User, inversiones, PendingInvestment
+
+logger = logging.getLogger(__name__)
 
 class GoogleDriveService:
     # ... (esta clase no cambia)
@@ -520,3 +527,94 @@ class ExchangeRateService:
         except Exception as e:
             print(f"Error al obtener el tipo de cambio USD/MXN: {e}")
             return None
+        
+class RISCService:
+    """
+    Servicio para manejar y validar eventos de seguridad de Google RISC.
+    """
+    # URL del endpoint de configuración de RISC de Google
+    GOOGLE_RISC_CONFIG_URL = "https://accounts.google.com/.well-known/risc-configuration"
+    
+    # Caché para las claves públicas de Google para no tener que pedirlas en cada request
+    _jwk_client = None
+
+    def __init__(self):
+        # Obtenemos el "audience", que es tu Client ID de Google.
+        # ¡Asegúrate de añadir GOOGLE_CLIENT_ID a tu archivo .env!
+        self.audience = os.getenv("GOOGLE_CLIENT_ID")
+        if not self.audience:
+            raise ValueError("El GOOGLE_CLIENT_ID no está configurado en el archivo .env")
+
+    def _get_jwk_client(self):
+        """
+        Obtiene y cachea el cliente JWK para verificar la firma de los tokens.
+        """
+        if self._jwk_client is None:
+            config = requests.get(self.GOOGLE_RISC_CONFIG_URL).json()
+            jwks_uri = config.get("jwks_uri")
+            self._jwk_client = PyJWKClient(jwks_uri)
+        return self._jwk_client
+
+    def validate_token(self, token: str) -> dict:
+        """
+        Valida un token de seguridad (SET) de Google.
+        Devuelve el payload decodificado si es válido, de lo contrario lanza una excepción.
+        """
+        jwk_client = self._get_jwk_client()
+        
+        # 1. Obtener la clave de firma del token
+        try:
+            signing_key = jwk_client.get_signing_key_from_jwt(token)
+        except jwt.exceptions.PyJWKClientError as e:
+            raise ValueError(f"No se pudo encontrar la clave de firma: {e}")
+
+        # 2. Decodificar y validar el token
+        try:
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=self.audience,
+                issuer="https://accounts.google.com",
+            )
+            return payload
+        except jwt.PyJWTError as e:
+            raise ValueError(f"Token inválido: {e}")
+
+    def process_security_event(self, payload: dict):
+        """
+        Procesa los eventos de seguridad dentro de un token validado.
+        """
+        events = payload.get("events", {})
+        for event_type, event_details in events.items():
+            subject = event_details.get("subject", {})
+            user_google_id = subject.get("sub")
+
+            if not user_google_id:
+                continue
+
+            # Busca al usuario en tu base de datos a través de su ID de Google
+            try:
+                social_account = SocialAccount.objects.get(provider='google', uid=user_google_id)
+                user = social_account.user
+                
+                # --- ¡AQUÍ TOMAS ACCIÓN! ---
+                # Dependiendo del tipo de evento, decides qué hacer.
+                
+                if event_type == "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
+                    # Si la cuenta de Google fue deshabilitada, desactivamos al usuario localmente.
+                    user.is_active = False
+                    user.save()
+                    # Borramos todas sus sesiones para forzar un logout.
+                    Session.objects.filter(session_key__in=user.session_set.values_list('session_key', flat=True)).delete()
+                    logger.warning(f"Usuario {user.username} desactivado debido a evento RISC: Cuenta de Google deshabilitada.")
+
+                elif event_type == "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
+                    # Si Google revocó las sesiones, hacemos lo mismo.
+                    Session.objects.filter(session_key__in=user.session_set.values_list('session_key', flat=True)).delete()
+                    logger.warning(f"Sesiones del usuario {user.username} revocadas debido a evento RISC.")
+                
+                # Puedes añadir más `elif` para otros tipos de eventos que quieras manejar.
+
+            except SocialAccount.DoesNotExist:
+                logger.warning(f"Se recibió un evento RISC para un usuario de Google con ID {user_google_id} que no existe en el sistema.")
