@@ -49,8 +49,22 @@ function initScrollAnimations() {
     scrollElements.forEach(el => observer.observe(el));
 }
 
+function setupMobileMenu() {
+    const menuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    if (menuButton && mobileMenu) {
+        menuButton.addEventListener('click', () => {
+            const expanded = menuButton.getAttribute('aria-expanded') === 'true';
+            menuButton.setAttribute('aria-expanded', (!expanded).toString());
+            mobileMenu.classList.toggle('hidden');
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     fadeFlashMessage();
     setupProfileMenu();
     initScrollAnimations();
+    setupMobileMenu();
 });

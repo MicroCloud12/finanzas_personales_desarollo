@@ -49,13 +49,33 @@
       </div>
       {% endif %}
       <div class="-mr-2 flex md:hidden">
-        <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 focus:outline-none">
+          <button
+            type="button"
+            id="mobile-menu-button"
+            aria-controls="mobile-menu"
+            aria-expanded="false"
+            class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 focus:outline-none">
           <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
       </div>
-
     </div>
+  </div>
+  <div id="mobile-menu" class="md:hidden hidden px-2 pt-2 pb-3 space-y-1 border-t border-gray-200 bg-white">
+    {% if user.is_authenticated %}
+      <a href="{% url 'dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Dashboard</a>
+      <a href="{% url 'lista_transacciones' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Transacciones</a>
+      <a href="{% url 'lista_inversiones' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Inversiones</a>
+      <a href="{% url 'lista_deudas' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Deudas</a>
+      <a href="{% url 'gestionar_suscripcion' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Mi Suscripción</a>
+      <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Cerrar Sesión</button>
+      </form>
+    {% else %}
+      <a href="{% url 'registro_usuarios' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Registrarse</a>
+      <a href="{% url 'login' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Iniciar Sesión</a>
+    {% endif %}
   </div>
 </header>
