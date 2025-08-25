@@ -109,42 +109,8 @@ function initInversionesChart() {
                 });
             });
     }
-// Gráfico de ganancias mensuales
-/*function initGananciasMensualesChart() {
-    const canvas = document.getElementById('monthlyProfitChart');
-    if (!canvas) return;
-    const url = canvas.dataset.url;
-    fetch(url)
-        .then(resp => resp.json())
-        .then(data => {
-            new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        label: 'Ganancia Mensual',
-                        data: data.data,
-                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                        borderColor: '#6366F1',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: value => '$' + value.toLocaleString()
-                            }
-                        }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        });
-}*/
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
     initGastosChart();
