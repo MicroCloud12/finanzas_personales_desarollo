@@ -1,87 +1,126 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% block title %}Mi Portafolio de Inversiones | Finanzas Personales{% endblock %}
 {% block content %}
 
 <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-800">Portafolio de Inversiones</h1>
-            <p class="mt-1 text-sm text-gray-600">
-                Analiza el rendimiento de tus activos y registra nuevas inversiones.
-            </p>
-        </div>
-        <div class="flex items-center space-x-4"> 
-            <a href="{% url 'crear_inversion' %}" class="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-                + Añadir Inversion
-            </a>
-            {% if es_usuario_premium %}
-            {# Si el usuario ES premium, mostramos el botón funcional #}
-            <a href="{% url 'procesamiento_inversiones' %}" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-                + Añadir Automáticamente
-            </a>
-            <a href="{% url 'revisar_inversiones' %}" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-                Revisar Inversiones Pendientes
-            </a>
-            {% else %}
-            {# Si el usuario NO es premium, mostramos un botón deshabilitado y un mensaje #}
-            <div class="p-4 bg-gray-100 rounded-lg border border-gray-200">
-                <button disabled class="inline-block bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg cursor-not-allowed">
-                    ✨ Iniciar Sincronización Automática
-                </button>
-                <p class="mt-3 text-sm text-gray-700">
-                    Esta es una función premium. 
-                    <a href="{% url 'gestionar_suscripcion' %}" class="text-indigo-600 font-bold hover:underline">¡Actualiza tu plan para activarla!</a>
-                </p>
-            </div>
-            {% endif %}
-        </div>
+    
+    {# Título de la Página #}
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Portafolio de Inversiones</h1>
+        <p class="mt-1 text-sm text-gray-600">
+            Analiza el rendimiento de tus activos y registra nuevas inversiones.
+        </p>
     </div>
+
+    {# Contenedor de Botones (Idéntico a lista_transacciones.html) #}
+    <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+        <a href="{% url 'crear_inversion' %}" class="w-full sm:w-auto text-center bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+            + Añadir Inversión
+        </a>
+        
+        {% if es_usuario_premium %}
+          <a href="{% url 'procesamiento_inversiones' %}" class="w-full sm:w-auto text-center bg-green-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+            + Añadir Automáticamente
+          </a>
+          <a href="{% url 'revisar_inversiones' %}" class="w-full sm:w-auto text-center bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
+            Revisar Inversiones Pendientes
+          </a>
+        {% else %}
+          <div class="w-full sm:flex-1 p-4 bg-gray-100 rounded-lg border border-gray-200">
+              <button disabled class="w-full bg-gray-400 text-white font-semibold px-6 py-2 rounded-lg cursor-not-allowed">
+                  ✨ Iniciar Sincronización Automática
+              </button>
+              <p class="mt-2 text-sm text-gray-700 text-center">
+                  Esta es una función premium. 
+                  <a href="{% url 'gestionar_suscripcion' %}" class="text-indigo-600 font-bold hover:underline">¡Actualiza tu plan!</a>
+              </p>
+          </div>
+        {% endif %}
+    </div>
+
     {% include 'partials/_error_message.html'%}
 
-    <div class="bg-white shadow-lg rounded-lg overflow-x-auto">
-        <table class="min-w-full leading-normal">
-            <thead>
-                <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    <th class="px-5 py-3">Ticker</th>
-                    <th class="px-5 py-3">Cantidad</th>
-                    <th class="px-5 py-3">Precio Compra</th>
-                    <th class="px-5 py-3">Costo Total</th>
-                    <th class="px-5 py-3">Precio Actual</th>
-                    <th class="px-5 py-3">Valor Mercado</th>
-                    <th class="px-5 py-3">Gan./Pérd. No Realizada</th>
-                    <th class="px-6 py-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for inv in inversiones %}
-                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-5 py-5 bg-white text-sm">
-                            <p class="text-gray-900 font-bold whitespace-no-wrap">{{ inv.emisora_ticker }}</p>
-                            <p class="text-gray-600 whitespace-no-wrap">{{ inv.nombre_activo }}</p>
-                        </td>
-                        <td class="px-5 py-5 bg-white text-sm">{{ inv.cantidad_titulos }}</td>
-                        <td class="px-5 py-5 bg-white text-sm">${{ inv.precio_compra_titulo|floatformat:2|intcomma }}</td>
-                        <td class="px-5 py-5 bg-white text-sm">${{ inv.costo_total_adquisicion|floatformat:2|intcomma }}</td>
-                        <td class="px-5 py-5 bg-white text-sm font-semibold">${{ inv.precio_actual_titulo|floatformat:2|intcomma }}</td>
-                        <td class="px-5 py-5 bg-white text-sm font-bold">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</td>
-                        <td class="px-5 py-5 bg-white text-sm font-semibold {% if inv.Ganancia_Pérdida_No_Realizada >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
-                            ${{ inv.ganancia_perdida_no_realizada|floatformat:2|intcomma }}
-                        </td>
-                        <td class="px-5 py-5 bg-white text-sm">
-                            <a href="{% url 'editar_inversion' inv.id %}" class="text-indigo-600 hover:text-indigo-900">Editar</a>
-                            <form action="{% url 'eliminar_inversion' inv.id %}" method="post" class="inline">
-                                {% csrf_token %}
-                                <button type="submit" class="text-red-600 hover:text-red-900 ml-2">Eliminar</button>
-                            </form>
-                        </td>
+    <div class="hidden md:block mt-6 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 overflow-x-auto">
+        <div class="inline-block min-w-full shadow-md rounded-lg overflow-hidden">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <th class="px-5 py-3">Ticker</th>
+                        <th class="px-5 py-3">Cantidad</th>
+                        <th class="px-5 py-3">Precio Compra</th>
+                        <th class="px-5 py-3">Costo Total</th>
+                        <th class="px-5 py-3">Precio Actual</th>
+                        <th class="px-5 py-3">Valor Mercado</th>
+                        <th class="px-5 py-3">Gan./Pérd. No Realizada</th>
+                        <th class="px-6 py-3">Acciones</th>
                     </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="8" class="text-center py-10 text-gray-500">Aún no has registrado ninguna inversión. ¡Añade la primera!</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for inv in inversiones %}
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="px-5 py-5 bg-white text-sm">
+                                <p class="text-gray-900 font-bold whitespace-no-wrap">{{ inv.emisora_ticker }}</p>
+                                <p class="text-gray-600 whitespace-no-wrap">{{ inv.nombre_activo }}</p>
+                            </td>
+                            <td class="px-5 py-5 bg-white text-sm">{{ inv.cantidad_titulos }}</td>
+                            <td class="px-5 py-5 bg-white text-sm">${{ inv.precio_compra_titulo|floatformat:2|intcomma }}</td>
+                            <td class="px-5 py-5 bg-white text-sm">${{ inv.costo_total_adquisicion|floatformat:2|intcomma }}</td>
+                            <td class="px-5 py-5 bg-white text-sm font-semibold">${{ inv.precio_actual_titulo|floatformat:2|intcomma }}</td>
+                            <td class="px-5 py-5 bg-white text-sm font-bold">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</td>
+                            <td class="px-5 py-5 bg-white text-sm font-semibold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                ${{ inv.ganancia_perdida_no_realizada|floatformat:2|intcomma }}
+                            </td>
+                            <td class="px-5 py-5 bg-white text-sm">
+                                <a href="{% url 'editar_inversion' inv.id %}" class="text-indigo-600 hover:text-indigo-900">Editar</a>
+                                <form action="{% url 'eliminar_inversion' inv.id %}" method="post" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-red-600 hover:text-red-900 ml-2">Eliminar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-10 text-gray-500">Aún no has registrado ninguna inversión. ¡Añade la primera!</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="md:hidden mt-6 space-y-4">
+        {% for inv in inversiones %}
+        <div class="bg-white p-4 rounded-lg shadow-md border-l-4 {% if inv.ganancia_perdida_no_realizada >= 0 %}border-green-500{% else %}border-red-500{% endif %}">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="font-bold text-gray-800 text-lg">{{ inv.emisora_ticker }}</p>
+                    <p class="text-sm text-gray-600">{{ inv.nombre_activo }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xl font-bold text-gray-900">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</p>
+                    <p class="text-sm font-semibold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        ${{ inv.ganancia_perdida_no_realizada|floatformat:2|intcomma }}
+                    </p>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+                <p class="text-sm text-gray-500">Cantidad: <span class="font-medium text-gray-700">{{ inv.cantidad_titulos }}</span></p>
+                <div>
+                    <a href="{% url 'editar_inversion' inv.id %}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium mr-3">Editar</a>
+                    <form action="{% url 'eliminar_inversion' inv.id %}" method="post" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">Eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-10 text-gray-500">
+            <p>Aún no has registrado ninguna inversión.</p>
+        </div>
+        {% endfor %}
     </div>
 </div>
+
 {% endblock %}
