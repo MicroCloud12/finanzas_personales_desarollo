@@ -4,11 +4,9 @@
 {% block content %}
 {% load static %}
 
-<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Tu Resumen Financiero</h1>
-    </div>
-    <div class="bg-white p-4 rounded-lg shadow-md mb-8">
+<div class="container mx-auto px-4 sm:px-6 lg:px-6 py-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Tu Resumen Financiero</h1>
+    <div class="bg-white p-3 rounded-lg shadow-md mt-4 w-full container mx-auto px-2 sm:px-6 py-6">
         <form method="GET" action="" class="flex flex-col sm:flex-row sm:items-end sm:flex-wrap gap-4">
             <div class="w-full sm:flex-1">
                 <label for="month" class="block text-sm font-medium text-gray-700">Mes:</label>
@@ -33,11 +31,10 @@
             </div>
         </form>
     </div>
-
+</div>
     <div class="container mx-auto px-4 sm:px-8 py-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">Dashboard Financiero</h1>
+        <h2 class="text-xl font-semibold text-gray-700 mb-8">Resumen del Mes</h2>
         <div class="mb-10">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Resumen del Mes</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
                     <h3 class="text-sm font-medium text-gray-500 uppercase">Ingresos (Mes)</h3>
@@ -76,8 +73,9 @@
                 </div>
         </div>
     <!-- Sección de Patrimonio e Inversiones -->
+     <div class="container mx-auto px-4 sm:px-8 py-8"></div>
         <div class="mb-10">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Patrimonio</h2>
+            <h2 class="text-xl font-semibold text-gray-700 mb-6">Patrimonio</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-teal-500">
                     <h3 class="text-sm font-medium text-gray-500 uppercase">Ahorro</h3>
@@ -103,6 +101,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </div>
 
