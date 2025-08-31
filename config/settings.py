@@ -53,6 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django_session_timeout.middleware.SessionTimeoutMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -264,3 +265,15 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# --- DJANGO SESSION TIMEOUT SETTINGS ---
+# Tiempo en segundos que una sesión puede estar inactiva. 
+# Después de este tiempo, el usuario tendrá que volver a iniciar sesión.
+SESSION_EXPIRE_SECONDS = 1800  # 30 minutos (30 * 60)
+
+# Si es True, la sesión expira después del tiempo definido en SESSION_EXPIRE_SECONDS
+# desde la última actividad del usuario. Si es False, expira desde el inicio de sesión.
+SESSION_EXPIRE_AFTER_LAST_ACTIVITY = True
+
+# URL a la que se redirige al usuario cuando su sesión expira.
+SESSION_TIMEOUT_REDIRECT = 'login' 
