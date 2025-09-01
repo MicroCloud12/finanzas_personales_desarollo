@@ -124,3 +124,5 @@ INFO 2025-08-16 11:31:20,706 tasks Download time for 20250816_095647.jpg: 16.62s
 INFO 2025-08-16 11:31:26,224 tasks Gemini processing time for 20250816_095647.jpg: 5.38s
 INFO 2025-08-16 11:31:26,502 tasks Download time for 20250815_142550.jpg: 21.97s
 INFO 2025-08-16 11:31:32,053 tasks Gemini processing time for 20250815_142550.jpg: 5.41s
+ERROR 2025-09-01 10:32:56,929 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "Select a valid choice. Mensualidad is not one of the available choices.", "code": "invalid_choice"}]}
+ERROR 2025-09-01 10:33:31,696 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "Select a valid choice. Mensualidad is not one of the available choices.", "code": "invalid_choice"}]}
