@@ -63,18 +63,24 @@
             </label>
             <div class="mt-1">
                 <select name="{{ form.deuda_asociada.name }}" id="{{ form.deuda_asociada.id_for_label }}" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    
                     {% for value, text in form.deuda_asociada.field.choices %}
                         <option value="{{ value }}" {% if form.deuda_asociada.value == value %}selected{% endif %}>
                             {{ text }}
                         </option>
                     {% endfor %}
-
                 </select>
             </div>
             {% for error in form.errors.deuda_asociada %}
                 <p class="mt-2 text-xs text-red-600">{{ error }}</p>
             {% endfor %}
+        </div>
+        <div>
+            <label for="{{ form.tipo_pago.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.tipo_pago.label }}</label>
+            <div class="mt-1">
+                <select name="{{ form.tipo_pago.name }}" id="{{ form.tipo_pago.id_for_label }}" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    {% include 'partials/_tipo_pago_options.html' with selected=form.tipo_pago.value %}
+                </select>
+            </div>
         </div>
         <div>
           <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">

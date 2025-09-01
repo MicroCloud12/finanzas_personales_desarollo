@@ -69,7 +69,7 @@ def registro(request):
     return render(request, 'registro.html', context)
 
 '''
-Views relacionadas a las trabsacciones
+Views relacionadas a las transacciones
 '''
 @login_required
 def aprobar_todos_tickets(request):

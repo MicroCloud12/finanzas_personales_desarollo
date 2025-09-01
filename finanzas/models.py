@@ -20,29 +20,62 @@ class registro_transacciones(models.Model):
     cuenta_origen = models.CharField(max_length=100)
     cuenta_destino = models.CharField(max_length=100)
     deuda_asociada = models.ForeignKey('Deuda', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
+    
+    # Este es el campo que estamos modificando
+    TIPO_PAGO_CHOICES = [
+        ('MENSUALIDAD', 'Pago de Mensualidad'),
+        ('CAPITAL', 'Pago a Capital'),
+    ]
+    # LA LÍNEA CLAVE ES AÑADIR default='MENSUALIDAD'
+    tipo_pago = models.CharField(max_length=15, choices=TIPO_PAGO_CHOICES, default='MENSUALIDAD')
+
 
     def __str__(self):
         return f"{self.id} - {self.descripcion}"
 
-    # --- LÓGICA CORRECTA PARA GUARDAR UNA TRANSACCIÓN ---
+    # Tu método save que modificamos anteriormente va aquí...
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)  # Guarda la transacción primero
+        # Primero guardamos la transacción para tenerla registrada
+        super().save(*args, **kwargs)
 
         if self.deuda_asociada:
             deuda = self.deuda_asociada
-            if deuda.tipo_deuda == 'TARJETA_CREDITO':
+            
+            # Lógica para PAGO A CAPITAL
+            if self.tipo_pago == 'CAPITAL':
+                # Restamos el monto del pago directamente al saldo pendiente
                 deuda.saldo_pendiente -= self.monto
                 deuda.save()
-            elif deuda.tipo_deuda == 'PRESTAMO':
+
+                # Ahora, marcamos las cuotas de la tabla de amortización como pagadas
+                monto_pago_capital = self.monto
+                cuotas_pendientes = PagoAmortizacion.objects.filter(
+                    deuda=deuda, pagado=False
+                ).order_by('-numero_cuota')
+
+                for cuota in cuotas_pendientes:
+                    if monto_pago_capital <= 0:
+                        break 
+                    if monto_pago_capital >= cuota.capital:
+                        cuota.pagado = True
+                        cuota.save()
+                        monto_pago_capital -= cuota.capital
+
+            # Lógica para TARJETA DE CRÉDITO
+            elif deuda.tipo_deuda == 'TARJETA_CREDITO':
+                deuda.saldo_pendiente -= self.monto
+                deuda.save()
+
+            # Lógica para PAGO DE MENSUALIDAD
+            elif deuda.tipo_deuda == 'PRESTAMO' and self.tipo_pago == 'MENSUALIDAD':
                 cuota_a_pagar = PagoAmortizacion.objects.filter(deuda=deuda, pagado=False).order_by('numero_cuota').first()
                 if cuota_a_pagar:
                     cuota_a_pagar.pagado = True
                     cuota_a_pagar.transaccion_pago = self
                     cuota_a_pagar.save()
-                    # Actualiza el saldo usando el 'capital' de la cuota, no un campo de la transacción.
                     deuda.saldo_pendiente = F('saldo_pendiente') - cuota_a_pagar.capital
                     deuda.save()
-
+ 
 class GoogleCredentials(models.Model):
     # Un enlace uno-a-uno con el usuario de Django. Cada usuario solo puede tener un set de credenciales.
     user = models.OneToOneField(User, on_delete=models.CASCADE)
