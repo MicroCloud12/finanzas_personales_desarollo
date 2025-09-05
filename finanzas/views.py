@@ -895,7 +895,7 @@ def politica_privacidad(request):
     """
     Muestra la política de privacidad de la aplicación.
     """
-    return render(request, 'politica_privacidad.html')
+    return render(request, 'privacy_policy.html')
 
 def terminos_servicio(request):
     """

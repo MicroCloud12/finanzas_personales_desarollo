@@ -202,8 +202,7 @@ SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [
             'profile',
-            'email',
-            'https://www.googleapis.com/auth/drive.readonly', # Permiso para LEER archivos de Drive
+            'email', # Permiso para LEER archivos de Drive
             'https://www.googleapis.com/auth/drive'
         ],
         'AUTH_PARAMS': {

@@ -35,39 +35,43 @@ class registro_transacciones(models.Model):
 
     # Tu método save que modificamos anteriormente va aquí...
     def save(self, *args, **kwargs):
-        # Primero guardamos la transacción para tenerla registrada
         super().save(*args, **kwargs)
 
         if self.deuda_asociada:
             deuda = self.deuda_asociada
             
-            # Lógica para PAGO A CAPITAL
             if self.tipo_pago == 'CAPITAL':
-                # Restamos el monto del pago directamente al saldo pendiente
                 deuda.saldo_pendiente -= self.monto
                 deuda.save()
 
-                # Ahora, marcamos las cuotas de la tabla de amortización como pagadas
                 monto_pago_capital = self.monto
+                # --- ¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE! ---
+                # Ordenamos de la primera a la última para pagar las cuotas en orden.
                 cuotas_pendientes = PagoAmortizacion.objects.filter(
                     deuda=deuda, pagado=False
-                ).order_by('-numero_cuota')
+                ).order_by('numero_cuota') # Quitamos el signo '-'
 
                 for cuota in cuotas_pendientes:
                     if monto_pago_capital <= 0:
-                        break 
+                        break
+                    
+                    # Comparamos con el capital de la cuota
                     if monto_pago_capital >= cuota.capital:
                         cuota.pagado = True
                         cuota.save()
                         monto_pago_capital -= cuota.capital
+                    else:
+                        # Si el pago no cubre toda la cuota, nos detenemos.
+                        # Una mejora futura podría ser manejar pagos parciales a capital.
+                        break
 
-            # Lógica para TARJETA DE CRÉDITO
             elif deuda.tipo_deuda == 'TARJETA_CREDITO':
+                # Esta lógica sigue igual
                 deuda.saldo_pendiente -= self.monto
                 deuda.save()
 
-            # Lógica para PAGO DE MENSUALIDAD
             elif deuda.tipo_deuda == 'PRESTAMO' and self.tipo_pago == 'MENSUALIDAD':
+                # Esta lógica sigue igual
                 cuota_a_pagar = PagoAmortizacion.objects.filter(deuda=deuda, pagado=False).order_by('numero_cuota').first()
                 if cuota_a_pagar:
                     cuota_a_pagar.pagado = True
