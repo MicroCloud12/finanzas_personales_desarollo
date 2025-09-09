@@ -43,9 +43,17 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
 
         if mime_type in ('image/jpeg', 'image/png'):
             image = load_and_optimize_image(file_content)
-            extracted_data = gemini_service.extract_data_from_image(image)
+            extracted_data = gemini_service.extract_data(
+                        prompt_name = "prompt_tickets",
+                        file_data = image,
+                        mime_type = "image/jpeg"  # o 'image/png'
+                    )
         elif mime_type == 'application/pdf':
-            extracted_data = gemini_service.extract_data_from_pdf(file_content.getvalue())
+            extracted_data = gemini_service.extract_data(
+                        prompt_name="prompt_tickets",
+                        file_data = file_content.getvalue(),
+                        mime_type="application/pdf"
+                        )
         else:
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
