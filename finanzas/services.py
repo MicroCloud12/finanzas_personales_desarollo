@@ -247,6 +247,7 @@ class GeminiService:
                 "error": "Respuesta no válida de la IA",
                 "raw_response": cleaned_response
             }
+        
     '''
     Extraccion de datos de los tickets de imágenes y PDFs utilizando Gemini.
     '''
