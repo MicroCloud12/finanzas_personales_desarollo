@@ -24,54 +24,34 @@ def load_and_optimize_image(file_content, max_width: int = 1024, quality: int = 
     return Image.open(buffer)
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-#def process_single_ticket(self, user_id: int, file_id: str, file_name: str):
 def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime_type: str):
     """
     Procesa un único ticket: lo descarga, lo analiza con Gemini y lo guarda como pendiente.
-    Utiliza los servicios para abstraer la lógica.
     """
     try:
         user = User.objects.get(id=user_id)
-        
-        # 1. Usar servicios
         gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service()
+        gemini_service = get_gemini_service() # Correcto, usando el singleton
         transaction_service = TransactionService()
 
-        # 2. Obtener contenido del archivo
         file_content = gdrive_service.get_file_content(file_id)
-
-        if mime_type in ('image/jpeg', 'image/png'):
-            image = load_and_optimize_image(file_content)
-            extracted_data = gemini_service.extract_data(
-                        prompt_name = "prompt_tickets",
-                        file_data = image,
-                        mime_type = "image/jpeg"  # o 'image/png'
-                    )
-        elif mime_type == 'application/pdf':
-            extracted_data = gemini_service.extract_data(
-                        prompt_name="prompt_tickets",
-                        file_data = file_content.getvalue(),
-                        mime_type="application/pdf"
-                        )
-        else:
-            return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
+        # --- LÓGICA DE EXTRACCIÓN UNIFICADA ---
+        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
+        
+        extracted_data = gemini_service.extract_data(
+            prompt_name="tickets", # Usamos la clave del prompt
+            file_data=file_data,
+            mime_type=mime_type
+        )
+        
+        if extracted_data.get("error"):
+             return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['raw_response']}
 
-        # 4. Crear transacción pendiente
         transaction_service.create_pending_transaction(user, extracted_data)
-
-        # (Opcional) Aquí podrías añadir la lógica para mover el archivo a una carpeta "Procesados"
-        # gdrive_service.move_file_to_processed(file_id, ...)
-        
         return {'status': 'SUCCESS', 'file_name': file_name}
 
-    except ConnectionError as e:
-        # Error de conexión (ej. token no válido), no reintentar.
-        self.update_state(state='FAILURE', meta=str(e))
-        return {'status': 'FAILURE', 'file_name': file_name, 'error': 'ConnectionError'}
     except Exception as e:
-        # Para otros errores, reintentar
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 

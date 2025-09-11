@@ -87,7 +87,8 @@ class GeminiService:
         
         # --- CAMBIO EN EL PROMPT ---
         # Reforzamos la instrucción de la fecha.
-        self.prompt_tickets = """
+        self.prompts = { 
+            "tickets": """
             Eres un asistente experto en contabilidad para un sistema de finanzas personales.
             Tu tarea es analizar la imagen lo mas detallado posible de un documento y extraer la información clave con la máxima precisión.
             Devuelve SIEMPRE la respuesta en formato JSON, sin absolutamente ningún texto adicional.
@@ -131,8 +132,8 @@ class GeminiService:
             - En caso de que el Establecimiento sea Express, sustituyelo por DIDI e igual en caso de que sea Tickets ponlos en mayusculas.
 
             Ahora, analiza la siguiente imagen:
-        """
-        self.prompt_inversion = """
+        """,
+        "inversion": """
             Eres un asistente experto en finanzas, especializado en extraer datos clave de comprobantes de inversión (compra de acciones o criptomonedas). 
             Tu tarea es analizar la imagen lo mas detallado posible de un documento y extraer la información clave con la máxima precisión.
             Devuelve SIEMPRE la respuesta en formato JSON, sin absolutamente ningún texto adicional.
@@ -193,8 +194,8 @@ class GeminiService:
             }
 
             *Aseguarte que aunque el ticker sea ETH/MXN en caso de Etherum, BTC/MXN en caso de Bitcoin cambialo ETH/USD y BTC/USD, ya que estoy convirtiendo todo en USD y no en MXN.
-        """
-        self.prompt_deudas = """
+        """,
+        "deudas": """
             Eres un asistente experto en finanzas, especializado en digitalizar tablas de amortización de préstamos.
             Tu tarea es analizar la imagen de un documento y extraer CADA UNA de las filas de la tabla de pagos con la máxima precisión.
             Devuelve SIEMPRE la respuesta como un array de objetos JSON, sin texto adicional.
@@ -233,6 +234,35 @@ class GeminiService:
 
             Ahora, analiza la siguiente imagen y extrae todas las filas de la tabla de amortización:
         """
+        }
+        
+    def _prepare_content(self, file_data, mime_type):
+        """
+        Prepara el contenido del archivo (imagen o PDF) para la API de Gemini.
+        """
+        if "pdf" in mime_type:
+            return {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(file_data).decode("utf-8"),
+                }
+            }
+        elif "image" in mime_type:
+            return file_data # El SDK puede manejar objetos PIL.Image directamente
+        
+        raise ValueError(f"Tipo de MIME no soportado: {mime_type}")
+
+    def extract_data(self, prompt_name: str, file_data, mime_type: str) -> dict:
+        """
+        Extrae datos de una imagen o PDF utilizando un prompt específico.
+        """
+        if prompt_name not in self.prompts:
+            raise ValueError(f"El prompt '{prompt_name}' no existe.")
+
+        prompt = self.prompts[prompt_name]
+        prepared_content = self._prepare_content(file_data, mime_type)
+        
+        return self._generate_and_parse(prompt, prepared_content)
 
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Genera la respuesta de Gemini y devuelve el JSON parseado."""
@@ -242,60 +272,11 @@ class GeminiService:
         try:
             return json.loads(cleaned_response)
         except json.JSONDecodeError:
-            print(f"Error: La respuesta de Gemini no es un JSON válido: {cleaned_response}")
+            logger.error(f"Error: La respuesta de Gemini no es un JSON válido: {cleaned_response}")
             return {
                 "error": "Respuesta no válida de la IA",
                 "raw_response": cleaned_response
             }
-        
-    '''
-    Extraccion de datos de los tickets de imágenes y PDFs utilizando Gemini.
-    '''
-    def extract_data_from_image(self, image: Image.Image) -> dict:
-        return self._generate_and_parse(self.prompt_tickets, image)
-    
-    def extract_data_from_pdf(self, pdf_bytes: bytes) -> dict:
-        """Extrae datos de un PDF utilizando Gemini."""
-        pdf_part = {
-            "inline_data": {
-                "mime_type": "application/pdf",
-                "data": base64.b64encode(pdf_bytes).decode("utf-8"),
-            }
-        }
-        return self._generate_and_parse(self.prompt_tickets, pdf_part)
-    
-    '''
-    Extraccion de datos de las inversiones de imágenes y PDFs utilizando Gemini.
-    '''
-    def extract_data_from_inversion(self, image: Image.Image) -> dict:
-        return self._generate_and_parse(self.prompt_inversion, image)
-    
-    def extract_inversion_from_pdf(self, pdf_bytes: bytes) -> dict:
-        """Extrae datos de un PDF de inversión utilizando Gemini."""
-        pdf_part = {
-            "inline_data": {
-                "mime_type": "application/pdf",
-                "data": base64.b64encode(pdf_bytes).decode("utf-8"),
-            }
-        }
-        return self._generate_and_parse(self.prompt_inversion, pdf_part)
-    
-    '''
-    Extraccion de datos de las deudas de imágenes y PDFs utilizando Gemini.
-    '''
-    def extract_deudas_from_image(self, image: Image.Image) -> dict:
-        """Extrae datos de una imagen de inversión utilizando Gemini."""
-        return self._generate_and_parse(self.prompt_deudas, image)
-    
-    def extract_deudas_from_pdf(self, pdf_bytes: bytes) -> dict:
-        """Extrae datos de un PDF de tabla de amortización utilizando Gemini."""
-        pdf_part = {
-            "inline_data": {
-                "mime_type": "application/pdf",
-                "data": base64.b64encode(pdf_bytes).decode("utf-8"),
-            }
-        }
-        return self._generate_and_parse(self.prompt_deudas, pdf_part)
     
 _gemini_singleton = None
 def get_gemini_service() -> GeminiService:
