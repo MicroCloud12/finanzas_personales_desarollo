@@ -77,6 +77,7 @@ class GoogleDriveService:
         request = self.service.files().get_media(fileId=file_id)
         return BytesIO(request.execute())
 
+
 class GeminiService:
     """
     Servicio para interactuar con la API de Gemini de Google.

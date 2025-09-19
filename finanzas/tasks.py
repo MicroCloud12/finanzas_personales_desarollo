@@ -33,8 +33,9 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
         gdrive_service = GoogleDriveService(user)
         gemini_service = get_gemini_service() # Correcto, usando el singleton
         transaction_service = TransactionService()
-
         file_content = gdrive_service.get_file_content(file_id)
+
+        
         
         # --- LÓGICA DE EXTRACCIÓN UNIFICADA ---
         file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
@@ -99,58 +100,60 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         current_price = StockPriceService()
         file_content = gdrive_service.get_file_content(file_id)
 
-        if mime_type in ('image/jpeg', 'image/png'):
-            image = load_and_optimize_image(file_content)
-            #image = Image.open(file_content)
-            extracted_data = gemini_service.extract_data_from_inversion(image)
-        elif mime_type == 'application/pdf':
-            extracted_data = gemini_service.extract_inversion_from_pdf(file_content.getvalue())
-        else:
+        # --- CORRECCIÓN 1: Unificar la preparación de datos y la llamada a Gemini ---
+        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
+
+        extracted_data = gemini_service.extract_data(
+            prompt_name="inversion", # Usamos la clave del prompt "inversion"
+            file_data=file_data,
+            mime_type=mime_type
+        )
+        
+        if mime_type not in ('image/jpeg', 'image/png', 'application/pdf'):
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
         
+        # (El resto de tu lógica para procesar los datos de inversión se mantiene igual)
         try:
             cantidad = Decimal(str(extracted_data.get("cantidad_titulos", 0)))
             precio_por_titulo_orig = Decimal(str(extracted_data.get("precio_por_titulo", 0)))
         except InvalidOperation:
             return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Datos numéricos inválidos de Gemini'}
-
-        # 2. Obtener tipo de cambio y precio actual (ya devuelven Decimal o None)
+        
+        # ... (resto de la lógica sin cambios)
         fecha = parse_date_safely(extracted_data.get("fecha_compra") or extracted_data.get("fecha"))
         rate_service = ExchangeRateService()
-        rate = rate_service.get_usd_mxn_rate(fecha) # Este servicio ya devuelve Decimal
+        rate = rate_service.get_usd_mxn_rate(fecha)
 
         precio_actual_usd = current_price.get_current_price(extracted_data['emisora_ticker'])
         if precio_actual_usd is None:
-            # Si la API falla, usamos el precio de compra como respaldo
             precio_actual_usd = precio_por_titulo_orig if extracted_data.get("moneda") == "USD" else (precio_por_titulo_orig / rate if rate else None)
         
         if precio_actual_usd is None:
             return {'status': 'FAILURE', 'file_name': file_name, 'error': 'No se pudo obtener el precio actual ni el tipo de cambio'}
-
-
-        # 3. Realizar todos los cálculos usando exclusivamente Decimal
+        
+        # ... (más lógica sin cambios)
         precio_por_titulo_usd = precio_por_titulo_orig
         if extracted_data.get("moneda") == "MXN":
             if rate is None or rate == 0:
                 return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Tipo de cambio no disponible para conversión de MXN'}
             precio_por_titulo_usd = precio_por_titulo_orig / rate
-
+        
         costo_total_adquisicion = cantidad * precio_por_titulo_usd
         valor_actual_mercado = cantidad * precio_actual_usd
         ganancia_perdida_no_realizada = valor_actual_mercado - costo_total_adquisicion
 
         extracted_data['tipo_cambio_usd'] = str(rate) if rate is not None else None
-        # 4. Guardar los datos finales (todos como Decimal)
+        
         valores = {
             'fecha_compra': extracted_data.get('fecha_compra'),
             'emisora_ticker': extracted_data.get('emisora_ticker'),
             'nombre_activo': extracted_data.get('nombre_activo'),
-            'cantidad_titulos': str(cantidad), # Convertir a string
-            'precio_por_titulo': str(precio_por_titulo_usd), # Convertir a string
-            'costo_total_adquisicion': str(costo_total_adquisicion), # Convertir a string
-            'valor_actual_mercado': str(valor_actual_mercado), # Convertir a string
-            'ganancia_perdida_no_realizada': str(ganancia_perdida_no_realizada), # Convertir a string
-            'tipo_cambio': str(rate) if rate is not None else None, # Convertir a string
+            'cantidad_titulos': str(cantidad),
+            'precio_por_titulo': str(precio_por_titulo_usd),
+            'costo_total_adquisicion': str(costo_total_adquisicion),
+            'valor_actual_mercado': str(valor_actual_mercado),
+            'ganancia_perdida_no_realizada': str(ganancia_perdida_no_realizada),
+            'tipo_cambio': str(rate) if rate is not None else None,
             'moneda': "USD"
         }
 
@@ -158,7 +161,6 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         investment_service.create_pending_investment(user, valores)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
-      #investment_service.create_pending_investment(user, extracted_data)
 
     except ConnectionError as e:
         self.update_state(state='FAILURE', meta=str(e))
@@ -166,6 +168,7 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
     except Exception as e:
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
+
 
 @shared_task
 def process_drive_investments(user_id):
@@ -210,16 +213,19 @@ def process_single_amortization(self, user_id: int, file_id: str, file_name: str
         gdrive_service = GoogleDriveService(user)
         gemini_service = get_gemini_service()
         file_content = gdrive_service.get_file_content(file_id)
+        
+        # --- CORRECCIÓN 2: Unificar la preparación de datos y la llamada a Gemini ---
+        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
+        
+        extracted_data = gemini_service.extract_data(
+            prompt_name="deudas", # Usamos la clave del prompt "deudas"
+            file_data=file_data,
+            mime_type=mime_type
+        )
 
-        if mime_type in ('image/jpeg', 'image/png'):
-            image = load_and_optimize_image(file_content)
-            extracted_data = gemini_service.extract_deudas_from_image(image)
-        elif mime_type == 'application/pdf':
-            extracted_data = gemini_service.extract_deudas_from_pdf(file_content.getvalue())
-        else:
+        if mime_type not in ('image/jpeg', 'image/png', 'application/pdf'):
             return {'status': 'UNSUPPORTED', 'file_name': file_name}
 
-        # Guardamos la tabla de amortización pendiente de revisión
         AmortizacionPendiente.objects.create(
             propietario=user,
             deuda=deuda,
