@@ -203,7 +203,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': [
             'profile',
             'email',
-            'https://www.googleapis.com/auth/drive',
+            'https://www.googleapis.com/auth/drive.readonly',
         ],
         'AUTH_PARAMS': {
             'access_type': 'offline',  # <-- ESTE ES EL CAMBIO CLAVE
