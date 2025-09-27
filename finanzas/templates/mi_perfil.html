@@ -1,0 +1,19 @@
+{%extends 'base.html' %}
+{% load humanize %}
+{% block title %}Mi Perfil | Finanzas Personales{% endblock %}
+{% load static %}
+{% block content %}
+
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Mi Perfil</h1>
+        <p>Bienvenido a tu Perfil</p>
+    </div>
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <a href="{% url 'gestionar_suscripcion' %}" class="w-full sm:w-auto text-center bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Mi Suscripción</a>
+        <a href="" class="w-full sm:w-auto text-center bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Eliminar Cuenta</a>
+    </div>
+</div>
+
+                  
+{% endblock %}

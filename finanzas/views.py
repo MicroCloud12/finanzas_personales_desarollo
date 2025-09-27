@@ -929,3 +929,11 @@ def risc_webhook(request):
         # Si hay un error de validación o formato, lo registramos y respondemos mal
         logger.error(f"Error procesando el webhook de RISC: {e}")
         return JsonResponse({'error': str(e)}, status=400) # Bad Request
+    
+
+@login_required
+def mi_perfil(request):
+    """
+    Muestra y permite editar el perfil del usuario.
+    """
+    return render(request, 'mi_perfil.html')
