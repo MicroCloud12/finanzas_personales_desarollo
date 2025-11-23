@@ -1,6 +1,7 @@
 # Ignorar archivos compilados de Python
 __pycache__/
 *.pyc
+*.pyo
 
 # Ignorar respaldos de Redis
 dump.rdb
