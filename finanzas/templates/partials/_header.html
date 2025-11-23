@@ -15,7 +15,7 @@
             <a href="{% url 'lista_transacciones' %}" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Transacciones</a>
             <a href="{% url 'lista_inversiones' %}" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Inversiones</a>
             <a href="{% url 'lista_deudas' %}" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Deudas</a>
-            <!-- <a href="#" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Mi Suscripción</a>-->
+            <a href="{% url 'facturacion' %}" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Facturación</a>
           {% else %}
             <a href="{% url 'registro_usuarios' %}" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Registrarse</a>
             <a href="{% url 'login' %}" class="bg-indigo-600 text-white hover:bg-indigo-700 font-semibold px-4 py-2 rounded-md text-sm shadow-md transition-all duration-200">Iniciar Sesión</a>
@@ -36,7 +36,7 @@
           </div>
           <div id="profile-menu" class="hidden absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
             <div class="py-1" role="none">
-              <a href="{% url 'gestionar_suscripcion' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mi Suscripción</a>
+              <a href="{% url 'mi_perfil' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mi Perfil</a>
               <form action="{% url 'logout' %}" method="post" class="inline">
                 {% csrf_token %}
                 <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -69,6 +69,7 @@
       <a href="{% url 'lista_inversiones' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Inversiones</a>
       <a href="{% url 'lista_deudas' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Deudas</a>
       <a href="{% url 'gestionar_suscripcion' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Mi Suscripción</a>
+      <a href="" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Facturación</a>
       <form action="{% url 'logout' %}" method="post">
         {% csrf_token %}
         <button type="submit" class="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Cerrar Sesión</button>

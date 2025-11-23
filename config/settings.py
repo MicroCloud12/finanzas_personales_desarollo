@@ -202,12 +202,13 @@ SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [
             'profile',
-            'email', # Permiso para LEER archivos de Drive
-            'https://www.googleapis.com/auth/drive'
+            'email',
+            'https://www.googleapis.com/auth/drive.readonly',
         ],
         'AUTH_PARAMS': {
-            'access_type': 'offline', # crucial para obtener un refresh_token y acceder cuando el usuario no está
-        }
+            'access_type': 'offline',  # <-- ESTE ES EL CAMBIO CLAVE
+        },
+        'OAUTH_PKCE_ENABLED': True,
     }
 }
 

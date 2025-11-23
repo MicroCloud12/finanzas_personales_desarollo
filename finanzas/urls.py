@@ -48,6 +48,8 @@ urlpatterns = [
     path('deudas/<int:deuda_id>/', views.detalle_deuda, name='detalle_deuda'),
     path('deudas/<int:deuda_id>/editar/', views.editar_deuda, name='editar_deuda'),
     path('deudas/<int:deuda_id>/eliminar/', views.eliminar_deuda, name='eliminar_deuda'),
+    path('mi_perfil/', views.mi_perfil, name='mi_perfil'),
+    path('facturacion/', views.facturacion, name='facturacion'),
     # --- URLs para el procesamiento automático de deudas ---
     path('deudas/procesamiento/<int:deuda_id>/', views.vista_procesamiento_deudas, name='procesamiento_deudas'),
     path('deudas/procesar-drive/<int:deuda_id>/', views.iniciar_procesamiento_deudas, name='procesar_drive_deudas'),
