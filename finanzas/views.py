@@ -937,3 +937,11 @@ def mi_perfil(request):
     Muestra y permite editar el perfil del usuario.
     """
     return render(request, 'mi_perfil.html')
+
+@login_required
+def facturacion(request):
+    """
+    Muestra el historial de facturación del usuario.
+    """
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    return render(request, 'lista_facturacion.html')
