@@ -233,3 +233,4 @@ INFO 2025-09-11 11:21:54,575 tasks Task 0af49744-6216-48e6-b758-ac84ff794e01: In
 INFO 2025-09-11 11:21:54,878 tasks Task 31add31a-d29b-435e-819e-a4d20e8486fa: Iniciando descarga del archivo 194z7TzTffZ_6ma7FDjgh5FXijw528aRx desde Google Drive.
 INFO 2025-09-11 11:21:55,690 tasks Task ad4cde86-e128-42c3-b34f-9875ee036f70: Iniciando descarga del archivo 13XZDyJ3qfZuA1r70ERv6FIaX7cBRRYEk desde Google Drive.
 INFO 2025-09-11 11:21:55,913 tasks Task 8002199b-f411-4e73-b551-4c070c294d23: Iniciando descarga del archivo 14oLUHHUkoPYwwTHHfud--TfRp8KkfPke desde Google Drive.
+ERROR 2025-11-23 13:07:53,185 views Error en get_initial_task_result: Error 10061 connecting to localhost:6379. No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión.

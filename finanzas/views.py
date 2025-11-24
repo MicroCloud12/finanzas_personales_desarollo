@@ -23,6 +23,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .tasks import process_drive_tickets, process_drive_investments, process_drive_amortizations
 from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, DeudaForm, PagoAmortizacionForm
 from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService, RISCService
+from .services import BillingService
 # Actualizamos las importaciones de modelos
 from .models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
@@ -930,7 +931,6 @@ def risc_webhook(request):
         logger.error(f"Error procesando el webhook de RISC: {e}")
         return JsonResponse({'error': str(e)}, status=400) # Bad Request
     
-
 @login_required
 def mi_perfil(request):
     """
@@ -945,3 +945,13 @@ def facturacion(request):
     """
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     return render(request, 'lista_facturacion.html')
+
+@login_required
+def revisar_factura(request, ticket_id):
+    # ... (obtener el ticket, obtener los datos de Gemini, etc.)
+    # Supongamos que 'datos_gemini' es el JSON que te devolvió la IA
+    
+    # LLAMADA AL SERVICIO
+    contexto_facturacion = BillingService.procesar_datos_facturacion(datos_gemini)
+    
+    return render(request, 'revisar_factura.html', {'factura': contexto_facturacion})
