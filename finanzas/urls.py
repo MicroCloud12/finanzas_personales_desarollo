@@ -60,4 +60,12 @@ urlpatterns = [
     # --- Fin de las nuevas URLs ---
     path('privacy-policy/', views.politica_privacidad, name='privacy_policy'),
     path('terms-of-service/', views.terminos_servicio, name='terms_of_service'),
+    # Vista principal (historial) - YA EXISTÍA
+    path('facturacion/', views.facturacion, name='facturacion'),
+    
+    # NUEVA: Vista para revisar y configurar los datos de una factura específica
+    path('facturacion/revisar/<int:ticket_id>/', views.revisar_factura, name='revisar_factura'),
+    
+    # OPCIONAL: Si decides hacer el procesamiento de facturas por separado de los gastos normales
+    # path('facturacion/procesar-ticket/', views.procesar_ticket_factura, name='procesar_ticket_factura'),
 ]

@@ -17,6 +17,7 @@ import google.generativeai as genai
 from django.http import JsonResponse
 from .utils import parse_date_safely
 from allauth.socialaccount.models import SocialAccount
+from .models import TiendaFacturacion
 from django.contrib.sessions.models import Session
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -76,7 +77,6 @@ class GoogleDriveService:
     def get_file_content(self, file_id: str) -> BytesIO:
         request = self.service.files().get_media(fileId=file_id)
         return BytesIO(request.execute())
-
 
 class GeminiService:
     """
@@ -234,6 +234,38 @@ class GeminiService:
             - Asegúrate de devolver un objeto JSON por CADA fila de la tabla de amortización.
 
             Ahora, analiza la siguiente imagen y extrae todas las filas de la tabla de amortización:
+        """,
+        "facturacion": """
+            Eres un asistente experto en facturación electrónica en México (CFDI).
+            Tu tarea es analizar la imagen de un ticket de compra y extraer TODOS los datos técnicos posibles que podrían servir para facturar.
+            
+            ### OBJETIVO:
+            No filtres información. Extrae cualquier código alfanumérico, folio, referencia, número de autorización, ID web, número de ticket, etc.
+            Identifica también el nombre de la tienda con precisión.
+
+            ### FORMATO DE SALIDA (JSON):
+            {
+              "tienda": "Nombre Oficial de la Tienda (ej. CADENA COMERCIAL OXXO, WALMART)",
+              "fecha_emision": "YYYY-MM-DD",
+              "total_pagado": 0.00,
+              "datos_candidatos": {
+                "Folio": "valor encontrado",
+                "Ticket": "valor encontrado",
+                "Referencia": "valor encontrado",
+                "Autorizacion": "valor encontrado",
+                "WebID": "valor encontrado",
+                "Caja": "valor encontrado",
+                "Transaccion": "valor encontrado"
+                // Añade cualquier otro par clave-valor que veas en el ticket y parezca un identificador único
+              }
+            }
+
+            ### INSTRUCCIONES CLAVE:
+            1. En "datos_candidatos", usa como CLAVE (key) el texto exacto que aparece en el ticket antes del valor (ej. si dice "Folio Vta: 123", la clave es "Folio Vta").
+            2. Si no hay etiqueta clara, usa una genérica como "Codigo_1", "Codigo_Inferior".
+            3. Sé exhaustivo. Es mejor que sobren datos a que falten.
+            
+            Analiza la siguiente imagen:
         """
         }
         
@@ -608,3 +640,64 @@ class RISCService:
 
             except SocialAccount.DoesNotExist:
                 logger.warning(f"Se recibió un evento RISC para un usuario de Google con ID {user_google_id} que no existe en el sistema.")
+
+
+class BillingService:
+    def procesar_datos_facturacion(data_gemini: dict) -> dict:
+        """
+        Procesa los datos extraídos por Gemini para facturación electrónica.
+        """
+        nombre_tienda_raw = data_gemini.get("tienda", "DESCONOCIDO").upper()
+        nombre_tienda = nombre_tienda_raw.strip().upper() if nombre_tienda_raw else "Tienda Desconocida"
+
+
+        datos_candidatos = data_gemini.get("datos_candidatos", {})
+        config_tienda = TiendaFacturacion.objects.filter(tienda__iexact=nombre_tienda).first()
+        
+        resultado = {
+                    'tienda': nombre_tienda,
+                    'fecha_emision': data_gemini.get('fecha_emision'),
+                    'total_pagado': data_gemini.get('total_pagado'),
+                    'es_conocida': False,
+                    'datos_para_cliente': {},     # Lo que le mostraremos al usuario final limpio
+                    'todos_los_datos': datos_candidatos # Respaldo por si el usuario necesita corregir
+                }
+        
+        if config_tienda:
+            # CASO A: TIENDA CONOCIDA
+            # Ya sabemos qué buscar (ej: OXXO -> Folio, ID)
+            resultado['es_conocida'] = True
+            campos_necesarios = config_tienda.campos_requeridos # ej: ["Folio", "WebID"]
+            
+            for campo in campos_necesarios:
+                # Buscamos el valor en lo que trajo Gemini
+                valor = datos_candidatos.get(campo)
+                
+                # Opcional: Lógica "difusa" simple si la llave no es exacta
+                if not valor:
+                    # Buscamos si alguna llave de Gemini "contiene" el nombre del campo
+                    for k, v in datos_candidatos.items():
+                        if campo.lower() in k.lower():
+                            valor = v
+                            break
+                
+                resultado['datos_para_cliente'][campo] = valor or "NO DETECTADO"
+        else:
+            # CASO B: TIENDA NUEVA
+            # No filtramos nada, pasamos todo para que el usuario elija
+            resultado['es_conocida'] = False
+            resultado['datos_para_cliente'] = datos_candidatos
+
+        return resultado
+
+    @staticmethod
+    def guardar_configuracion_tienda(nombre_tienda: str, campos_seleccionados: list):
+        """
+        Guarda o actualiza la configuración de una tienda basada en la selección del usuario.
+        """
+        tienda, created = TiendaFacturacion.objects.get_or_create(
+            tienda=nombre_tienda.strip().upper()
+        )
+        tienda.campos_requeridos = campos_seleccionados
+        tienda.save()
+        return tienda
