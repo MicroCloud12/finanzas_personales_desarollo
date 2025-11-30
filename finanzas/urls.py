@@ -60,11 +60,14 @@ urlpatterns = [
     # --- Fin de las nuevas URLs ---
     path('privacy-policy/', views.politica_privacidad, name='privacy_policy'),
     path('terms-of-service/', views.terminos_servicio, name='terms_of_service'),
-    # Vista principal (historial) - YA EXISTÍA
     path('facturacion/', views.facturacion, name='facturacion'),
     
-    # NUEVA: Vista para revisar y configurar los datos de una factura específica
-    path('facturacion/revisar/<int:ticket_id>/', views.revisar_factura, name='revisar_factura'),
+    # LISTA DE FACTURAS PENDIENTES (NUEVA)
+    path('facturacion/pendientes/', views.revisar_facturas_pendientes, name='revisar_facturas_pendientes'),
+    
+    # DETALLE PARA PROCESAR UNA FACTURA (La que configuramos en el paso anterior)
+    path('facturacion/procesamiento/', views.vista_procesamiento_facturas, name='procesamiento_facturas'),
+    # ...
     
     # OPCIONAL: Si decides hacer el procesamiento de facturas por separado de los gastos normales
     # path('facturacion/procesar-ticket/', views.procesar_ticket_factura, name='procesar_ticket_factura'),

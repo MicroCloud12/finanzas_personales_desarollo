@@ -311,5 +311,15 @@ class AmortizacionPendiente(models.Model):
         return f"Amortización Pendiente para '{self.deuda.nombre}' del archivo '{self.nombre_archivo}'"
     
 class TiendaFacturacion(models.Model):
-    tienda = models.CharField(max_length=150, unique=True, help_text="Nombre único de la tienda o comercio")
-    campos_requerdios = models.JSONField(default=list, help_text="Lista de campos requeridos para facturación electrónica")
+    """
+    Guarda la configuración específica de cada tienda.
+    Ejemplo:
+    tienda: "CADENA COMERCIAL OXXO"
+    campos_requeridos: ["Folio de Venta", "Fecha", "Total"]
+    """
+    tienda = models.CharField(max_length=150, unique=True, help_text="Nombre normalizado de la tienda")
+    # Usamos JSONField para guardar una lista flexible de strings
+    campos_requeridos = models.JSONField(default=list, help_text="Lista de llaves que necesitamos extraer para esta tienda")
+
+    def __str__(self):
+        return f"Configuración para {self.tienda}"
