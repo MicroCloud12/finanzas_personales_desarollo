@@ -51,7 +51,7 @@
                     </td>
                     <td class="px-6 py-4 text-center">
                         {# AQUÍ CONECTAMOS CON LA VISTA DE DETALLE/PROCESAMIENTO QUE HICIMOS ANTES #}
-                        <a href="{% url 'revisar_facturas_pendientes' ticket.id %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                         <a href="{% url 'revisar_factura' ticket.id %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             Generar Datos
                         </a>
@@ -68,5 +68,35 @@
             </tbody>
         </table>
     </div>
+        {% if factura %}
+    <div class="mt-8 grid md:grid-cols-2 gap-6">
+        <div class="bg-white shadow rounded-lg p-6 border border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-900 mb-4">Resumen detectado</h3>
+            <p class="text-sm text-gray-600"><strong>Tienda:</strong> {{ factura.tienda }}</p>
+            <p class="text-sm text-gray-600"><strong>Fecha emisión:</strong> {{ factura.fecha_emision }}</p>
+            <p class="text-sm text-gray-600"><strong>Total pagado:</strong> {{ factura.total_pagado }}</p>
+            <p class="mt-2 text-sm text-gray-600">
+                {% if factura.es_conocida %}
+                    La tienda ya está configurada, solo se muestran los campos necesarios.
+                {% else %}
+                    Tienda nueva: revisa los campos disponibles para enseñarle al sistema qué necesitas.
+                {% endif %}
+            </p>
+        </div>
+        <div class="bg-white shadow rounded-lg p-6 border border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-900 mb-4">Campos sugeridos</h3>
+            <dl class="divide-y divide-gray-200">
+                {% for nombre, valor in factura.datos_para_cliente.items %}
+                    <div class="py-2 grid grid-cols-3 gap-2 items-center">
+                        <dt class="text-sm font-medium text-gray-700 col-span-1">{{ nombre }}</dt>
+                        <dd class="text-sm text-gray-900 col-span-2">{{ valor }}</dd>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-gray-500">No se encontraron campos para mostrar.</p>
+                {% endfor %}
+            </dl>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

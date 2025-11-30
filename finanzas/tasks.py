@@ -7,7 +7,7 @@ from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService
-from .models import Deuda, AmortizacionPendiente, PagoAmortizacion
+from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +291,68 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
             process_single_amortization.s(user.id, item['id'], item['name'], item['mimeType'], deuda_id)
             for item in files_to_process
         )
+        result_group = job.apply_async()
+        result_group.save()
+
+        return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
+
+    except Exception as e:
+        return {'status': 'ERROR', 'message': str(e)}
+    
+
+
+    # ... (código existente) ...
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
+    """
+    Procesa una factura/ticket con el prompt de facturación y la deja como pendiente.
+    """
+    try:
+        user = User.objects.get(id=user_id)
+        gdrive_service = GoogleDriveService(user)
+        gemini_service = get_gemini_service()
+        transaction_service = TransactionService()
+
+        file_content = gdrive_service.get_file_content(file_id)
+        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
+
+        extracted_data = gemini_service.extract_data(
+            prompt_name="facturacion",
+            file_data=file_data,
+            mime_type=mime_type
+        )
+
+        if extracted_data.get("error"):
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['raw_response']}
+
+        transaction_service.create_pending_transaction(user, extracted_data)
+        return {'status': 'SUCCESS', 'file_name': file_name}
+
+    except Exception as e:
+        self.retry(exc=e)
+        return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
+
+
+@shared_task
+def process_drive_for_invoices(user_id: int):
+    """Busca tickets en Drive y los procesa con el prompt de facturación."""
+    try:
+        user = User.objects.get(id=user_id)
+        gdrive_service = GoogleDriveService(user)
+        files_to_process = gdrive_service.list_files_in_folder(
+            folder_name="Tickets de Compra",
+            mimetypes=['image/jpeg', 'image/png', 'application/pdf']
+        )
+
+        if not files_to_process:
+            return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
+
+        job = group(
+            process_single_invoice.s(user.id, item['id'], item['name'], item['mimeType'])
+            for item in files_to_process
+        )
+
         result_group = job.apply_async()
         result_group.save()
 
