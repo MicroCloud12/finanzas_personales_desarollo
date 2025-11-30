@@ -641,50 +641,55 @@ class RISCService:
             except SocialAccount.DoesNotExist:
                 logger.warning(f"Se recibió un evento RISC para un usuario de Google con ID {user_google_id} que no existe en el sistema.")
 
-
 class BillingService:
+    @staticmethod
     def procesar_datos_facturacion(data_gemini: dict) -> dict:
         """
-        Procesa los datos extraídos por Gemini para facturación electrónica.
+        Toma los datos crudos de Gemini y aplica la 'máscara' de configuración
+        si la tienda ya es conocida en la base de datos.
         """
-        nombre_tienda_raw = data_gemini.get("tienda", "DESCONOCIDO").upper()
-        nombre_tienda = nombre_tienda_raw.strip().upper() if nombre_tienda_raw else "Tienda Desconocida"
+        # 1. Normalizar el nombre de la tienda (Mayúsculas y sin espacios extra)
+        nombre_tienda_raw = data_gemini.get("tienda", "DESCONOCIDO")
+        nombre_tienda = nombre_tienda_raw.strip().upper() if nombre_tienda_raw else "DESCONOCIDO"
 
-
+        # 2. Buscar si ya tenemos configuración para esta tienda
+        config_tienda = TiendaFacturacion.objects.filter(tienda=nombre_tienda).first()
+        
         datos_candidatos = data_gemini.get("datos_candidatos", {})
-        config_tienda = TiendaFacturacion.objects.filter(tienda__iexact=nombre_tienda).first()
         
+        # Estructura base del resultado
         resultado = {
-                    'tienda': nombre_tienda,
-                    'fecha_emision': data_gemini.get('fecha_emision'),
-                    'total_pagado': data_gemini.get('total_pagado'),
-                    'es_conocida': False,
-                    'datos_para_cliente': {},     # Lo que le mostraremos al usuario final limpio
-                    'todos_los_datos': datos_candidatos # Respaldo por si el usuario necesita corregir
-                }
-        
+            'tienda': nombre_tienda,
+            'fecha_emision': data_gemini.get('fecha_emision'),
+            'total_pagado': data_gemini.get('total_pagado'),
+            'es_conocida': False,
+            'datos_para_cliente': {},     # Aquí pondremos solo lo necesario
+            'todos_los_datos': datos_candidatos # Respaldo completo
+        }
+
+        # --- CASO A: TIENDA CONOCIDA (Ya sabemos qué pedir) ---
         if config_tienda:
-            # CASO A: TIENDA CONOCIDA
-            # Ya sabemos qué buscar (ej: OXXO -> Folio, ID)
             resultado['es_conocida'] = True
-            campos_necesarios = config_tienda.campos_requeridos # ej: ["Folio", "WebID"]
+            campos_necesarios = config_tienda.campos_requeridos # Ej: ["Folio", "RFC"]
             
             for campo in campos_necesarios:
-                # Buscamos el valor en lo que trajo Gemini
+                # Buscamos el valor exacto en lo que trajo Gemini
                 valor = datos_candidatos.get(campo)
                 
-                # Opcional: Lógica "difusa" simple si la llave no es exacta
+                # Lógica Difusa: Si Gemini cambió un poco el nombre (ej. "Folio:" vs "Folio")
                 if not valor:
-                    # Buscamos si alguna llave de Gemini "contiene" el nombre del campo
                     for k, v in datos_candidatos.items():
+                        # Si la llave guardada está contenida en la llave detectada
                         if campo.lower() in k.lower():
                             valor = v
                             break
                 
-                resultado['datos_para_cliente'][campo] = valor or "NO DETECTADO"
+                resultado['datos_para_cliente'][campo] = valor or "NO DETECTADO (Revisar Ticket)"
+
+        # --- CASO B: TIENDA NUEVA (Aprendizaje) ---
         else:
-            # CASO B: TIENDA NUEVA
-            # No filtramos nada, pasamos todo para que el usuario elija
+            # Si no la conocemos, le mostramos TODO al usuario para que él elija
+            # qué campos son los importantes y guardemos la configuración.
             resultado['es_conocida'] = False
             resultado['datos_para_cliente'] = datos_candidatos
 
@@ -695,9 +700,10 @@ class BillingService:
         """
         Guarda o actualiza la configuración de una tienda basada en la selección del usuario.
         """
-        tienda, created = TiendaFacturacion.objects.get_or_create(
+        tienda_obj, created = TiendaFacturacion.objects.get_or_create(
             tienda=nombre_tienda.strip().upper()
         )
-        tienda.campos_requeridos = campos_seleccionados
-        tienda.save()
-        return tienda
+        # Guardamos la lista de campos que el usuario marcó como útiles
+        tienda_obj.campos_requeridos = campos_seleccionados
+        tienda_obj.save()
+        return tienda_obj

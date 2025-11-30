@@ -941,17 +941,63 @@ def mi_perfil(request):
 @login_required
 def facturacion(request):
     """
-    Muestra el historial de facturación del usuario.
+    Muestra el historial de facturación o tickets listos para facturar.
     """
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    return render(request, 'lista_facturacion.html')
+    
+    # Filtramos las transacciones que probablemente requieran factura (Gasto)
+    # O podrías crear un modelo específico 'Factura' si lo prefieres en el futuro.
+    facturas = registro_transacciones.objects.filter(
+        propietario=request.user,
+        tipo='GASTO' 
+    ).order_by('-fecha')
+
+    context = {
+        'transacciones': facturas, # El template espera 'transacciones'
+        'es_usuario_premium': suscripcion.is_active()
+    }
+    return render(request, 'lista_facturacion.html', context)
 
 @login_required
-def revisar_factura(request, ticket_id):
-    # ... (obtener el ticket, obtener los datos de Gemini, etc.)
-    # Supongamos que 'datos_gemini' es el JSON que te devolvió la IA
+def revisar_facturas_pendientes(request, ticket_id):
+    # 1. Obtener el ticket pendiente (Aseguramos que sea del usuario actual)
+    ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
     
-    # LLAMADA AL SERVICIO
+    # 2. Obtener los datos crudos que extrajo Gemini
+    datos_gemini = ticket.datos_json
+    
+    # 3. Procesar los datos con tu servicio de Facturación
+    # Esto organiza la info y verifica si la tienda ya es conocida
     contexto_facturacion = BillingService.procesar_datos_facturacion(datos_gemini)
     
+    # 4. Manejar el POST (Cuando el usuario guarda la configuración o confirma)
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        
+        if accion == 'guardar_configuracion':
+            # Guardar qué campos pide esta tienda (ej. solo Folio y RFC)
+            nombre_tienda = request.POST.get('nombre_tienda')
+            campos = request.POST.getlist('campos_seleccionados')
+            BillingService.guardar_configuracion_tienda(nombre_tienda, campos)
+            messages.success(request, f"Configuración guardada para {nombre_tienda}. Ahora confirma los datos.")
+            # Recargamos la página para que ahora aparezca como 'Conocida'
+            return redirect('revisar_factura', ticket_id=ticket_id)
+            
+        elif accion == 'confirmar_datos':
+            # Aquí iría la lógica para GENERAR la factura o guardar el registro final
+            # Por ahora, podemos marcar el ticket como 'aprobado' o moverlo a un modelo de 'Facturas'
+            ticket.estado = 'aprobada'
+            ticket.save()
+            messages.success(request, "Información de facturación confirmada.")
+            return redirect('facturacion')
+
     return render(request, 'revisar_factura.html', {'factura': contexto_facturacion})
+
+@login_required
+def vista_procesamiento_facturas(request):
+    """
+    Renderiza la página de 'Procesamiento Automático' específica para Facturación.
+    Permite al usuario iniciar la sincronización de tickets para luego facturarlos.
+    """
+    # Pasamos el contexto necesario, similar a otras vistas de procesamiento
+    return render(request, 'procesamiento_facturas.html')
