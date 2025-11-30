@@ -60,14 +60,18 @@ urlpatterns = [
     # --- Fin de las nuevas URLs ---
     path('privacy-policy/', views.politica_privacidad, name='privacy_policy'),
     path('terms-of-service/', views.terminos_servicio, name='terms_of_service'),
-    path('facturacion/', views.facturacion, name='facturacion'),
-    
-    # LISTA DE FACTURAS PENDIENTES (NUEVA)
+# 1. El endpoint que activa la tarea de Celery (lo que llama el botón)
+    path('api/procesar-facturas/', views.iniciar_procesamiento_facturacion, name='procesamiento_facturas'),
+
+    # 2. La página a la que te redirige al terminar (la tabla de revisión)
     path('facturacion/pendientes/', views.revisar_facturas_pendientes, name='revisar_facturas_pendientes'),
-    
-    # DETALLE PARA PROCESAR UNA FACTURA (La que configuramos en el paso anterior)
-    path('facturacion/procesamiento/', views.vista_procesamiento_facturas, name='procesamiento_facturas'),
-    # ...
+    path('procesamiento-facturacion/', views.vista_procesamiento_facturacion, name='procesamiento_facturacion'),
+    # 3. La vista individual para revisar un ticket específico (ya la tenías, la mantenemos)
+    path('facturacion/revisar/<int:ticket_id>/', views.revisar_factura_individual, name='revisar_factura'),
+    path('facturacion/pendientes/<int:ticket_id>/', views.revisar_factura_detalle, name='revisar_factura'),
+    # 4. Acción para marcar como ya facturado
+    path('facturacion/marcar-listo/<int:factura_id>/', views.marcar_como_facturado, name='marcar_facturado'),
+    path('facturacion/procesar-drive/', views.iniciar_procesamiento_facturacion, name='procesar_drive_facturacion'),
     
     # OPCIONAL: Si decides hacer el procesamiento de facturas por separado de los gastos normales
     # path('facturacion/procesar-ticket/', views.procesar_ticket_factura, name='procesar_ticket_factura'),

@@ -20,16 +20,22 @@ from django.contrib.auth.decorators import login_required
 from .utils import parse_date_safely, generar_tabla_amortizacion
 from django.shortcuts import render, redirect, get_object_or_404
 # Actualizamos las importaciones de tareas
-from .tasks import process_drive_tickets, process_drive_investments, process_drive_amortizations
+from .tasks import (
+    process_drive_tickets,
+    process_drive_investments,
+    process_drive_amortizations,
+    process_drive_for_invoices,
+)
 from .forms import TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, DeudaForm, PagoAmortizacionForm
-from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService, RISCService
-from .services import BillingService
+from .services import TransactionService, MercadoPagoService, StockPriceService, InvestmentService, RISCService, BillingService
 # Actualizamos las importaciones de modelos
 from .models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
     inversiones, GananciaMensual, PendingInvestment, Deuda, 
     PagoAmortizacion, AmortizacionPendiente
 )
+from django.http import JsonResponse
+from .models import TiendaFacturacion # Asegúrate de tener los modelos importados
 
 
 
@@ -959,23 +965,40 @@ def facturacion(request):
     return render(request, 'lista_facturacion.html', context)
 
 @login_required
-def revisar_facturas_pendientes(request, ticket_id):
-    # 1. Obtener el ticket pendiente (asegurando propiedad del usuario)
-    ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
-    
-    # 2. Procesar con nuestra lógica inteligente
-    # Si la tienda ya existe, 'contexto' vendrá filtrado. Si no, vendrá completo.
+def iniciar_procesamiento_facturacion(request):
+    """Inicia la sincronización de tickets pensada para facturación."""
+    try:
+        task = process_drive_for_invoices.delay(request.user.id)
+        return JsonResponse({"task_id": task.id}, status=202)
+    except Exception as e:
+        return JsonResponse({"error": f"No se pudo iniciar la tarea: {str(e)}"}, status=400)
+
+# --- VISTA 2: Listado de Pendientes (La redirección) ---
+def revisar_facturas_pendientes(request):
+    """Lista los tickets pendientes para facturación."""
+    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    return render(request, 'revisar_factura.html', {'tickets': tickets_pendientes})
+
+
+@login_required
+def revisar_factura_detalle(request, ticket_id):
+    """Procesa y muestra los datos de facturación de un ticket concreto."""
+    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    ticket = get_object_or_404(tickets_pendientes, id=ticket_id)
     contexto_facturacion = BillingService.procesar_datos_facturacion(ticket.datos_json)
     
+
     if request.method == 'POST':
         accion = request.POST.get('accion')
         
         # --- FLUJO DE APRENDIZAJE (Guardar Configuración) ---
+
         if accion == 'guardar_configuracion':
             nombre_tienda = request.POST.get('nombre_tienda')
             # Obtenemos la lista de checkboxes que el usuario marcó
             campos_seleccionados = request.POST.getlist('campos_seleccionados')
             
+
             if campos_seleccionados:
                 BillingService.guardar_configuracion_tienda(nombre_tienda, campos_seleccionados)
                 messages.success(request, f"¡Entendido! Para {nombre_tienda} solo necesitamos: {', '.join(campos_seleccionados)}.")
@@ -983,22 +1006,74 @@ def revisar_facturas_pendientes(request, ticket_id):
                 messages.warning(request, "No seleccionaste ningún campo. La configuración no se guardó.")
             
             # Recargamos la misma página. Ahora el servicio detectará que la tienda es 'conocida'
+
             return redirect('revisar_factura', ticket_id=ticket_id)
             
         # --- FLUJO DE CONFIRMACIÓN (Datos Correctos) ---
+
         elif accion == 'confirmar_datos':
             # Aquí finalizas el proceso (ej. marcar como 'listo para facturar' o borrar de pendientes)
             # ticket.estado = 'aprobada' ... etc
             messages.success(request, "Datos de facturación confirmados correctamente.")
             return redirect('facturacion')
+        
+    return render(
+        request,
+        'revisar_factura.html',
+        {
+            'factura': contexto_facturacion,
+            'tickets': tickets_pendientes,
+            'ticket_seleccionado': ticket,
+        }
+    )
+
+# --- VISTA 3: Detalle y Aprendizaje (Lógica del Schema Registry) ---
+@login_required
+def revisar_factura_individual(request, ticket_id):
+    # Obtener el ticket pendiente
+    ticket = get_object_or_404(TiendaFacturacion, id=ticket_id, propietario=request.user)
+    
+    # Procesar con la lógica inteligente (aprende si es tienda nueva)
+    contexto_facturacion = BillingService.procesar_datos_facturacion(ticket.datos_json)
+    
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        
+        if accion == 'guardar_configuracion':
+            # El usuario enseña al sistema qué campos usar
+            nombre_tienda = request.POST.get('nombre_tienda')
+            campos = request.POST.getlist('campos_seleccionados')
+            BillingService.guardar_configuracion_tienda(nombre_tienda, campos)
+            messages.success(request, f"Configuración guardada para {nombre_tienda}.")
+            return redirect('revisar_factura', ticket_id=ticket_id)
+            
+        elif accion == 'confirmar_datos':
+            # El usuario confirma que los datos son correctos
+            messages.success(request, "Datos listos. Puedes proceder a facturar.")
+            return redirect('revisar_facturas_pendientes')
 
     return render(request, 'revisar_factura.html', {'factura': contexto_facturacion})
 
+# --- VISTA 4: Acción Final ---
 @login_required
-def vista_procesamiento_facturas(request):
-    """
-    Renderiza la página de 'Procesamiento Automático' específica para Facturación.
-    Permite al usuario iniciar la sincronización de tickets para luego facturarlos.
-    """
-    # Pasamos el contexto necesario, similar a otras vistas de procesamiento
+def marcar_como_facturado(request, factura_id):
+    factura = get_object_or_404(TiendaFacturacion, id=factura_id, propietario=request.user)
+    if request.method == 'POST':
+        factura.estado = 'facturado'
+        factura.save()
+        messages.success(request, "¡Factura completada y archivada!")
+    return redirect('revisar_facturas_pendientes')
+
+
+@login_required
+def iniciar_procesamiento_facturacion(request):
+    """Inicia la sincronización de tickets pensada para facturación."""
+    try:
+        task = process_drive_for_invoices.delay(request.user.id)
+        return JsonResponse({"task_id": task.id}, status=202)
+    except Exception as e:
+        return JsonResponse({"error": f"No se pudo iniciar la tarea: {str(e)}"}, status=400)
+    
+
+def vista_procesamiento_facturacion(request):
     return render(request, 'procesamiento_facturas.html')
