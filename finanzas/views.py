@@ -960,35 +960,36 @@ def facturacion(request):
 
 @login_required
 def revisar_facturas_pendientes(request, ticket_id):
-    # 1. Obtener el ticket pendiente (Aseguramos que sea del usuario actual)
+    # 1. Obtener el ticket pendiente (asegurando propiedad del usuario)
     ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
     
-    # 2. Obtener los datos crudos que extrajo Gemini
-    datos_gemini = ticket.datos_json
+    # 2. Procesar con nuestra lógica inteligente
+    # Si la tienda ya existe, 'contexto' vendrá filtrado. Si no, vendrá completo.
+    contexto_facturacion = BillingService.procesar_datos_facturacion(ticket.datos_json)
     
-    # 3. Procesar los datos con tu servicio de Facturación
-    # Esto organiza la info y verifica si la tienda ya es conocida
-    contexto_facturacion = BillingService.procesar_datos_facturacion(datos_gemini)
-    
-    # 4. Manejar el POST (Cuando el usuario guarda la configuración o confirma)
     if request.method == 'POST':
         accion = request.POST.get('accion')
         
+        # --- FLUJO DE APRENDIZAJE (Guardar Configuración) ---
         if accion == 'guardar_configuracion':
-            # Guardar qué campos pide esta tienda (ej. solo Folio y RFC)
             nombre_tienda = request.POST.get('nombre_tienda')
-            campos = request.POST.getlist('campos_seleccionados')
-            BillingService.guardar_configuracion_tienda(nombre_tienda, campos)
-            messages.success(request, f"Configuración guardada para {nombre_tienda}. Ahora confirma los datos.")
-            # Recargamos la página para que ahora aparezca como 'Conocida'
+            # Obtenemos la lista de checkboxes que el usuario marcó
+            campos_seleccionados = request.POST.getlist('campos_seleccionados')
+            
+            if campos_seleccionados:
+                BillingService.guardar_configuracion_tienda(nombre_tienda, campos_seleccionados)
+                messages.success(request, f"¡Entendido! Para {nombre_tienda} solo necesitamos: {', '.join(campos_seleccionados)}.")
+            else:
+                messages.warning(request, "No seleccionaste ningún campo. La configuración no se guardó.")
+            
+            # Recargamos la misma página. Ahora el servicio detectará que la tienda es 'conocida'
             return redirect('revisar_factura', ticket_id=ticket_id)
             
+        # --- FLUJO DE CONFIRMACIÓN (Datos Correctos) ---
         elif accion == 'confirmar_datos':
-            # Aquí iría la lógica para GENERAR la factura o guardar el registro final
-            # Por ahora, podemos marcar el ticket como 'aprobado' o moverlo a un modelo de 'Facturas'
-            ticket.estado = 'aprobada'
-            ticket.save()
-            messages.success(request, "Información de facturación confirmada.")
+            # Aquí finalizas el proceso (ej. marcar como 'listo para facturar' o borrar de pendientes)
+            # ticket.estado = 'aprobada' ... etc
+            messages.success(request, "Datos de facturación confirmados correctamente.")
             return redirect('facturacion')
 
     return render(request, 'revisar_factura.html', {'factura': contexto_facturacion})
