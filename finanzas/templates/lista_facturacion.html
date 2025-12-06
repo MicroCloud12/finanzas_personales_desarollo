@@ -115,10 +115,8 @@
               <p class="text-gray-900 whitespace-no-wrap">{{ transaccion.fecha|date:"d M, Y" }}</p>
             </td>
             <td class="px-5 py-5 border-b border-gray-200 text-sm">
-              <a href="{% url 'editar_transaccion' transaccion.id %}"
-                class="text-indigo-600 hover:text-indigo-900 mr-4">Editar</a>
-              <a href="{% url 'eliminar_transaccion' transaccion.id %}"
-                class="text-red-600 hover:text-red-900">Eliminar</a>
+              <a href="" class="text-indigo-600 hover:text-indigo-900 mr-4">Editar</a>
+              <a href="" class="text-red-600 hover:text-red-900">Eliminar</a>
             </td>
           </tr>
           {% empty %}
@@ -146,10 +144,8 @@
       <div class="mt-4 flex justify-between items-center">
         <p class="text-sm text-gray-500">{{ transaccion.fecha|date:"d M, Y" }}</p>
         <div>
-          <a href="{% url 'editar_transaccion' transaccion.id %}"
-            class="text-indigo-600 hover:text-indigo-900 text-sm font-medium mr-3">Editar</a>
-          <a href="{% url 'eliminar_transaccion' transaccion.id %}"
-            class="text-red-600 hover:text-red-900 text-sm font-medium">Eliminar</a>
+          <a href="" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium mr-3">Editar</a>
+          <a href="" class="text-red-600 hover:text-red-900 text-sm font-medium">Eliminar</a>
         </div>
       </div>
     </div>
