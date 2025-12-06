@@ -28,6 +28,9 @@ class registro_transacciones(models.Model):
     ]
     # LA LÍNEA CLAVE ES AÑADIR default='MENSUALIDAD'
     tipo_pago = models.CharField(max_length=15, choices=TIPO_PAGO_CHOICES, default='MENSUALIDAD')
+    
+    # Campo para guardar metadatos extra (como RFC, Folio de factura, etc.)
+    datos_extra = models.JSONField(null=True, blank=True)
 
 
     def __str__(self):

@@ -388,6 +388,7 @@ class TransactionService:
                 tipo=tipo_transaccion,
                 cuenta_origen=cuenta,
                 cuenta_destino=cuenta_destino,
+                datos_extra=datos  # Guardamos TODOS los datos originales (RFC, Folio, etc.)
             )
             
             ticket.estado = 'aprobada'
