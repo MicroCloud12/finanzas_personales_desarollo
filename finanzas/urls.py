@@ -76,4 +76,5 @@ urlpatterns = [
     # OPCIONAL: Si decides hacer el procesamiento de facturas por separado de los gastos normales
     # path('facturacion/procesar-ticket/', views.procesar_ticket_factura, name='procesar_ticket_factura'),
     path('facturacion/eliminar/<int:ticket_id>/', views.eliminar_factura_pendiente, name='eliminar_factura'),
+    path('facturacion/marcar-facturado/<int:ticket_id>/', views.marcar_ticket_facturado, name='marcar_ticket_facturado'),
 ]
