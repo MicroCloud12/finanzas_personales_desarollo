@@ -326,3 +326,33 @@ class TiendaFacturacion(models.Model):
 
     def __str__(self):
         return f"Configuración para {self.tienda}"
+
+
+class Factura(models.Model):
+    """
+    Almacena las facturas/comprobantes independientes de las transacciones.
+    Permite gestionar el historial de facturación por separado.
+    """
+    ESTADOS = (
+        ('pendiente', 'Pendiente de Facturar'),
+        ('facturado', 'Facturado'),
+    )
+    
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE)
+    tienda = models.CharField(max_length=150, help_text="Nombre del establecimiento")
+    fecha_emision = models.DateField(help_text="Fecha del ticket/comprobante")
+    total = models.DecimalField(max_digits=12, decimal_places=2, help_text="Monto total")
+    
+    # Datos extraídos para facturación (RFC, Folio, etc.)
+    datos_facturacion = models.JSONField(default=dict, help_text="Datos extraídos para generar la factura")
+    
+    estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-fecha_emision']
+        verbose_name = 'Factura'
+        verbose_name_plural = 'Facturas'
+    
+    def __str__(self):
+        return f"Factura de {self.tienda} - ${self.total} ({self.fecha_emision})"

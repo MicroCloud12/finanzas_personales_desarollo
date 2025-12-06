@@ -947,19 +947,16 @@ def mi_perfil(request):
 @login_required
 def facturacion(request):
     """
-    Muestra el historial de facturación o tickets listos para facturar.
+    Muestra el historial de facturas registradas.
     """
+    from .models import Factura
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     
-    # Filtramos las transacciones que probablemente requieran factura (Gasto)
-    # O podrías crear un modelo específico 'Factura' si lo prefieres en el futuro.
-    facturas = registro_transacciones.objects.filter(
-        propietario=request.user,
-        tipo='GASTO' 
-    ).order_by('-fecha')
+    # Ahora consultamos el modelo Factura en lugar de registro_transacciones
+    facturas = Factura.objects.filter(propietario=request.user).order_by('-fecha_emision')
 
     context = {
-        'transacciones': facturas, # El template espera 'transacciones'
+        'facturas': facturas,
         'es_usuario_premium': suscripcion.is_active()
     }
     return render(request, 'lista_facturacion.html', context)
@@ -1055,16 +1052,24 @@ def revisar_factura_detalle(request, ticket_id):
         # --- FLUJO DE CONFIRMACIÓN (Datos Correctos) ---
 
         elif accion == 'confirmar_datos':
-            # Confirmamos y creamos la transacción
-            TransactionService.approve_pending_transaction(
-                ticket_id=ticket.id,
-                user=request.user,
-                cuenta="Banco",
-                categoria="Facturación",
-                tipo_transaccion="GASTO",
-                cuenta_destino=""
+            # Creamos un registro de Factura independiente
+            from .models import Factura
+            from decimal import Decimal
+            
+            Factura.objects.create(
+                propietario=request.user,
+                tienda=contexto_facturacion.get('tienda', 'Desconocido'),
+                fecha_emision=parse_date_safely(contexto_facturacion.get('fecha_emision')),
+                total=Decimal(str(contexto_facturacion.get('total_pagado') or 0)),
+                datos_facturacion=contexto_facturacion.get('datos_para_cliente', {}),
+                estado='pendiente'
             )
-            messages.success(request, "Datos listos. Factura registrada correctamente.")
+            
+            # Marcamos el ticket pendiente como procesado
+            ticket.estado = 'aprobada'
+            ticket.save()
+            
+            messages.success(request, "Factura guardada correctamente.")
             return redirect('facturacion')
         
     return render(
@@ -1174,3 +1179,41 @@ def marcar_ticket_facturado(request, ticket_id):
         
     return redirect('revisar_facturas_pendientes')
 
+
+# --- VISTAS CRUD PARA FACTURAS GUARDADAS ---
+@login_required
+def editar_factura_registro(request, factura_id):
+    """
+    Vista para editar una factura guardada.
+    """
+    from .models import Factura
+    factura = get_object_or_404(Factura, id=factura_id, propietario=request.user)
+    
+    if request.method == 'POST':
+        # Actualizamos los campos desde el formulario
+        factura.tienda = request.POST.get('tienda', factura.tienda)
+        factura.total = request.POST.get('total', factura.total)
+        factura.estado = request.POST.get('estado', factura.estado)
+        factura.save()
+        messages.success(request, "Factura actualizada correctamente.")
+        return redirect('facturacion')
+    
+    context = {'factura': factura}
+    return render(request, 'editar_factura.html', context)
+
+
+@login_required
+def eliminar_factura_registro(request, factura_id):
+    """
+    Vista para eliminar una factura guardada.
+    """
+    from .models import Factura
+    factura = get_object_or_404(Factura, id=factura_id, propietario=request.user)
+    
+    if request.method == 'POST':
+        factura.delete()
+        messages.success(request, "Factura eliminada correctamente.")
+        return redirect('facturacion')
+    
+    context = {'factura': factura}
+    return render(request, 'confirmar_eliminar_factura.html', context)
