@@ -236,35 +236,49 @@ class GeminiService:
             Ahora, analiza la siguiente imagen y extrae todas las filas de la tabla de amortización:
         """,
         "facturacion": """
-            Eres un asistente experto en facturación electrónica en México (CFDI).
-            Tu tarea es analizar la imagen de un ticket de compra y extraer TODOS los datos técnicos posibles que podrían servir para facturar.
+            Eres un experto en facturación electrónica mexicana (CFDI) y OCR de alta precisión.
+            Tu misión es extraer TODOS los datos necesarios para generar una factura a partir de la imagen de un ticket de compra.
             
-            ### OBJETIVO:
-            No filtres información. Extrae cualquier código alfanumérico, folio, referencia, número de autorización, ID web, número de ticket, etc.
-            Identifica también el nombre de la tienda con precisión.
-
+            ### OBJETIVO PRINCIPAL:
+            Encontrar los datos de identificación única del ticket que los portales de facturación (como el de OXXO, Walmart, etc.) solicitan.
+            
+            ### QUÉ BUSCAR (Prioridad Alta):
+            1. **Tienda/Emisor**: Nombre comercial exacto.
+               - **CASO ESPECIAL OXXO**: Si detectas "CADENA COMERCIAL OXXO", busca en el pie de página (final del ticket) los códigos importantes.
+            2. **RFC del Emisor**: (Clave de 13 caracteres, ej. CCO8605231N4).
+            3. **Códigos de Facturación**: Busca etiquetas como:
+               - "Folio", "Folio Fiscal", "Folio De Venta"
+               - "Ticket", "Transacción", "Nota"
+               - "ID", "Web ID", "Código de Facturación", "Referencia"
+               - "#Cajero", "#Tienda", "#Caja"
+               - **OXXO Específico**: Busca valores numéricos largos al final del ticket que suelen etiquetarse como "Folio de Venta" o "ID".
+            
+            4. **Fecha y Monto**:
+               - Fecha de emisión (DD/MM/AAAA o YYYY-MM-DD).
+               - Total pagado (con centavos).
+            
             ### FORMATO DE SALIDA (JSON):
             {
-              "tienda": "Nombre Oficial de la Tienda (ej. CADENA COMERCIAL OXXO, WALMART)",
+              "tienda": "Nombre estandarizado (ej. CADENA COMERCIAL OXXO)",
               "fecha_emision": "YYYY-MM-DD",
               "total_pagado": 0.00,
               "datos_candidatos": {
-                "Folio": "valor encontrado",
-                "Ticket": "valor encontrado",
-                "Referencia": "valor encontrado",
-                "Autorizacion": "valor encontrado",
-                "WebID": "valor encontrado",
-                "Caja": "valor encontrado",
-                "Transaccion": "valor encontrado"
+                 "RFC_Emisor": "Valor encontrado",
+                 "Sucursal": "Valor encontrado",
+                 // Incluye aquí CUALQUIER otro par Clave-Valor que parezca un código de rastreo.
+                 // Ejemplos:
+                 "Folio": "123456",
+                 "WebID": "ABCD-1234",
+                 "TicketID": "859203"
               }
             }
-
-            ### INSTRUCCIONES CLAVE:
-            1. En "datos_candidatos", usa como CLAVE (key) el texto exacto que aparece en el ticket antes del valor (ej. si dice "Folio Vta: 123", la clave es "Folio Vta").
-            2. Si no hay etiqueta clara, usa una genérica como "Codigo_1", "Codigo_Inferior".
-            3. Sé exhaustivo. Es mejor que sobren datos a que falten.
             
-            Analiza la siguiente imagen:
+            ### REGLAS DE ORO:
+            - **No inventes datos**. Si no ves un campo, no lo pongas.
+            - **Literalidad**: Copia los caracteres tal cual (ceros vs letras O, unos vs letras I/l).
+            - **Exhaustividad**: Si ves varios números largos, extráelos todos en `datos_candidatos` con claves descriptivas.
+            
+            Analiza la imagen cuidadosamente:
         """
         }
         
@@ -357,10 +371,12 @@ class TransactionService:
                 descripcion_final = datos.get("establecimiento", "Compra sin establecimiento")
             
             # --- FIN DE LA LÓGICA ---
-            # --- CAMBIO IMPORTANTE AQUÍ ---
             # Usamos nuestra función segura para procesar la fecha.
             # Ya no hay riesgo de que el programa se rompa por un formato incorrecto.
-            fecha_segura = parse_date_safely(datos.get("fecha"))
+            fecha_segura = parse_date_safely(datos.get("fecha") or datos.get("fecha_emision"))
+
+            # Validamos el monto (puede venir como 'total' o 'total_pagado')
+            monto_str = str(datos.get("total") or datos.get("total_pagado") or 0.0)
 
             registro_transacciones.objects.create(
                 propietario=user,
@@ -368,7 +384,7 @@ class TransactionService:
                 #descripcion=datos.get("descripcion_corta", datos.get("establecimiento", "Sin descripción")),
                 descripcion=descripcion_final.upper(),
                 categoria=categoria,
-                monto=Decimal(str(datos.get("total", 0.0))), # Convertir a string primero para mayor precisión con Decimal
+                monto=Decimal(monto_str), # Convertir a string primero para mayor precisión con Decimal
                 tipo=tipo_transaccion,
                 cuenta_origen=cuenta,
                 cuenta_destino=cuenta_destino,
