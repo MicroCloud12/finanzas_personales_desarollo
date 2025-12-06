@@ -256,7 +256,6 @@ class GeminiService:
                 "WebID": "valor encontrado",
                 "Caja": "valor encontrado",
                 "Transaccion": "valor encontrado"
-                // Añade cualquier otro par clave-valor que veas en el ticket y parezca un identificador único
               }
             }
 
@@ -300,7 +299,14 @@ class GeminiService:
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Genera la respuesta de Gemini y devuelve el JSON parseado."""
         response = self.model.generate_content([prompt, content])
-        cleaned_response = response.text.strip().replace("```json", "").replace("```", "").strip()
+        cleaned_response = response.text.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+        cleaned_response = cleaned_response.strip()
         
         try:
             return json.loads(cleaned_response)
