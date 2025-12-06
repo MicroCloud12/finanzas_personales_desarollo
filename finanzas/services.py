@@ -681,10 +681,13 @@ class BillingService:
         datos_candidatos = data_gemini.get("datos_candidatos", {})
         
         # Estructura base del resultado
+        fecha_emision_raw = data_gemini.get('fecha_emision') or data_gemini.get('fecha')
+        total_pagado_raw = data_gemini.get('total_pagado') or data_gemini.get('total')
+
         resultado = {
             'tienda': nombre_tienda,
-            'fecha_emision': data_gemini.get('fecha_emision'),
-            'total_pagado': data_gemini.get('total_pagado'),
+            'fecha_emision': fecha_emision_raw,
+            'total_pagado': total_pagado_raw,
             'es_conocida': False,
             'datos_para_cliente': {},     # Aquí pondremos solo lo necesario
             'todos_los_datos': datos_candidatos # Respaldo completo

@@ -977,6 +977,29 @@ def iniciar_procesamiento_facturacion(request):
 def revisar_facturas_pendientes(request):
     """Lista los tickets pendientes para facturación."""
     tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    
+    # Normalizamos los datos JSON en memoria para evitar errores en el template
+    # si faltan keys como 'fecha' o 'total'
+    for ticket in tickets_pendientes:
+        datos = ticket.datos_json
+        # Asegurar fecha
+        if 'fecha' not in datos and 'fecha_emision' in datos:
+            datos['fecha'] = datos['fecha_emision']
+        elif 'fecha_emision' not in datos and 'fecha' in datos:
+            datos['fecha_emision'] = datos['fecha']
+            
+        # Asegurar total
+        if 'total' not in datos and 'total_pagado' in datos:
+            datos['total'] = datos['total_pagado']
+        elif 'total_pagado' not in datos and 'total' in datos:
+             datos['total_pagado'] = datos['total']
+
+        # Asegurar establecimiento (facturas usan 'tienda')
+        if 'establecimiento' not in datos and 'tienda' in datos:
+            datos['establecimiento'] = datos['tienda']
+        elif 'tienda' not in datos and 'establecimiento' in datos:
+            datos['tienda'] = datos['establecimiento']
+
     return render(request, 'revisar_factura.html', {'tickets': tickets_pendientes})
 
 
