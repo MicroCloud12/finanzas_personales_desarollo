@@ -237,3 +237,17 @@ ERROR 2025-11-23 13:07:53,185 views Error en get_initial_task_result: Error 1006
 ERROR 2025-11-30 16:42:57,262 views Error en get_initial_task_result: Object of type NotRegistered is not JSON serializable
 ERROR 2025-11-30 16:44:47,228 views Error en get_initial_task_result: Object of type NotRegistered is not JSON serializable
 ERROR 2025-11-30 16:46:56,075 views Error en get_initial_task_result: Object of type NotRegistered is not JSON serializable
+ERROR 2025-12-06 11:08:31,774 services Error: La respuesta de Gemini no es un JSON válido: He analizado cuidadosamente la imagen del comprobante de operación. Es importante señalar que este documento es un **comprobante de una transferencia bancaria (BBVA)**, y no un "ticket de compra" de un establecimiento comercial como OXXO o Walmart. Por lo tanto, algunos de los datos típicos para la facturación de un ticket de compra (como el RFC del emisor o códigos específicos de tienda/caja) podrían no estar presentes o no ser aplicables en el mismo contexto.
+
+Aun así, he extraído todos los datos relevantes siguiendo tus instrucciones y formato, aplicando el OCR de alta precisión y priorizando la literalidad y exhaustividad para los códigos de rastreo.
+
+```json
+{
+  "tienda": "BBVA México",
+  "fecha_emision": "2025-12-03",
+  "total_pagado": 1210.00,
+  "datos_candidatos": {
+    "Folio_operacion": "3760886258",
+    "Clave_rastreo": "MBANO1002512030054506107"
+  }
+}
