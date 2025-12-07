@@ -251,3 +251,22 @@ Aun así, he extraído todos los datos relevantes siguiendo tus instrucciones y fo
     "Clave_rastreo": "MBANO1002512030054506107"
   }
 }
+ERROR 2025-12-06 13:25:54,366 services Error: La respuesta de Gemini no es un JSON válido: Aquí tienes la extracción de datos solicitada en formato JSON, basada en el análisis detallado del ticket de compra de OXXO:
+
+```json
+{
+  "tienda": "CADENA COMERCIAL OXXO",
+  "fecha_emision": "2025-06-27",
+  "total_pagado": 83.50,
+  "datos_candidatos": {
+    "RFC_Emisor": "CCO-860523-1N4",
+    "Sucursal": "4024489",
+    "Caja": "1",
+    "VendedorID": "7",
+    "Referencia": "041397",
+    "Autorizacion": "051397",
+    "ARQC": "6821C89E1E53540",
+    "AID": "A0000000041010",
+    "No_TNS": "1"
+  }
+}
