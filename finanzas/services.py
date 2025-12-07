@@ -255,7 +255,7 @@ class GeminiService:
             
             4. **Fecha y Monto**:
                - Fecha de emisión (DD/MM/AAAA o YYYY-MM-DD).
-               - Total pagado (con centavos).
+               - Total pagado (con centavos). SI NO ENCUENTRAS EL TOTAL, BUSCA EL SUBTOTAL Y ÚSALO COMO TOTAL.
             
             ### FORMATO DE SALIDA (JSON):
             {
