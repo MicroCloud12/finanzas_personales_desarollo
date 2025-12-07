@@ -270,3 +270,15 @@ ERROR 2025-12-06 13:25:54,366 services Error: La respuesta de Gemini no es un JS
     "No_TNS": "1"
   }
 }
+ERROR 2025-12-07 16:31:53,106 services Error: La respuesta de Gemini no es un JSON válido: A partir del análisis de la imagen del "COMPROBANTE DE LA OPERACION" de BBVA, he extraído los siguientes datos siguiendo tus instrucciones y reglas de oro:
+
+```json
+{
+  "tienda": "BBVA",
+  "fecha_emision": "2025-12-03",
+  "total_pagado": 1210.00,
+  "datos_candidatos": {
+    "Folio": "3760886258",
+    "Clave_de_rastreo": "MBANO1002512030054506107"
+  }
+}
