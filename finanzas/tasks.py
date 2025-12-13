@@ -1,4 +1,5 @@
 import time
+import json
 import logging
 from PIL import Image
 from io import BytesIO
@@ -318,10 +319,19 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         file_content = gdrive_service.get_file_content(file_id)
         file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
 
+        # --- NUEVO: Construir contexto de tiendas conocidas ---
+        try:
+            tiendas_conocidas = TiendaFacturacion.objects.all().values('tienda', 'campos_requeridos')
+            lista_tiendas = list(tiendas_conocidas)
+            contexto_str = json.dumps(lista_tiendas, ensure_ascii=False) if lista_tiendas else ""
+        except Exception:
+            contexto_str = "" # Fallback seguro
+
         extracted_data = gemini_service.extract_data(
             prompt_name="facturacion",
             file_data=file_data,
-            mime_type=mime_type
+            mime_type=mime_type,
+            context=contexto_str
         )
 
         if extracted_data.get("error"):
