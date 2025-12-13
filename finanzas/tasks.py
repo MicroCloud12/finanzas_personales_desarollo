@@ -307,6 +307,7 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
 def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
     """
     Procesa una factura/ticket con el prompt de facturación y la deja como pendiente.
+    Solo procesa TICKET_COMPRA, omite las transferencias.
     """
     try:
         user = User.objects.get(id=user_id)
@@ -325,6 +326,11 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
 
         if extracted_data.get("error"):
             return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['raw_response']}
+
+        # Filtrar: solo procesar tickets de compra, omitir transferencias
+        tipo_documento = extracted_data.get("tipo_documento", "").upper()
+        if tipo_documento == "TRANSFERENCIA":
+            return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Es una transferencia, no un ticket de compra'}
 
         transaction_service.create_pending_transaction(user, extracted_data)
         return {'status': 'SUCCESS', 'file_name': file_name}

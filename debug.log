@@ -282,3 +282,258 @@ ERROR 2025-12-07 16:31:53,106 services Error: La respuesta de Gemini no es un JS
     "Clave_de_rastreo": "MBANO1002512030054506107"
   }
 }
+ERROR 2025-12-11 21:28:30,490 services Error: La respuesta de Gemini no es un JSON válido: Este comprobante corresponde a una transferencia bancaria, no a un ticket de compra de una tienda física o servicio con un emisor claro para facturación bajo el esquema tradicional de CFDI que suelen solicitar los portales de OXXO, Walmart, etc.
+
+Por lo tanto, muchos de los datos solicitados para generar una factura (como el RFC del emisor del servicio "Parquímetro" o un folio de venta de un comercio) no se encuentran presentes. Procederé a extraer la información que sí es visible y relevante, siguiendo las reglas de oro.
+
+```json
+{
+  "tienda": "No disponible (este es un comprobante de transferencia bancaria, no un ticket de compra de un comercio)",
+  "fecha_emision": "2025-12-10",
+  "total_pagado": 115.00,
+  "datos_candidatos": {
+    "RFC_Emisor": "No disponible (el RFC presente es el del cliente que realiza la transferencia)",
+    "Ref_SuperMovil": "9912143",
+    "RFC_Cliente_Santander": "AELM9508074V1"
+  }
+}
+ERROR 2025-12-11 21:28:33,850 services Error: La respuesta de Gemini no es un JSON válido: He analizado la imagen proporcionada, la cual corresponde a un comprobante de transferencia bancaria, no a un ticket de compra tradicional de una tienda. Sin embargo, he procedido a extraer los datos siguiendo las instrucciones y el formato solicitado, interpretando los campos de la manera más cercana posible al objetivo de facturación, y priorizando la información disponible sobre la ausencia de un "ticket de compra" literal.
+
+A continuación, la extracción de datos en formato JSON:
+
+```json
+{
+  "tienda": "Santander",
+  "fecha_emision": "2025-12-10",
+  "total_pagado": 50.00,
+  "datos_candidatos": {
+    "RFC_Emisor": "AELM9508074V1",
+    "Ref_SuperMovil": "9714365"
+  }
+}
+ERROR 2025-12-11 21:28:43,168 services Error: La respuesta de Gemini no es un JSON válido: Este documento es un "Comprobante" de una transferencia bancaria, no un "ticket de compra" de un establecimiento comercial para un bien o servicio. Por lo tanto, carece de algunos de los datos típicos de facturación que se encuentran en un ticket de compra (como el RFC del emisor del servicio de parquímetro). Sin embargo, he extraído los datos presentes según las reglas y el formato solicitado.
+
+El "Emisor" de este *comprobante* es Santander (por el logo y la referencia a "RFC cliente Santander"), y la cuenta de origen es de "NU MEXICO". El "Emisor" del servicio adquirido (Parquímetro) y su RFC no se encuentran en este documento. El RFC encontrado ("AELM9508074V1") se etiqueta como "RFC cliente Santander", lo que indica que es el RFC del *pagador* (el cliente), no del emisor del servicio o de la institución bancaria misma.
+
+```json
+{
+  "tienda": "Santander",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 50.00,
+  "datos_candidatos": {
+    "Ref_SuperMovil": "1705452",
+    "RFC_Cliente_Santander": "AELM9508074V1",
+    "Banco_Origen": "NU MEXICO",
+    "Concepto_Pago": "Parquímetro",
+    "Tipo_Operacion": "SPEI"
+  }
+}
+ERROR 2025-12-11 21:28:47,153 services Error: La respuesta de Gemini no es un JSON válido: A continuación, la extracción de datos solicitada en formato JSON, basada en el análisis del "Comprobante de transferencia" proporcionado.
+
+```json
+{
+  "tienda": "Nu México Financiera, S.A. de C.V.",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 287.91,
+  "datos_candidatos": {
+    "RFC_Emisor": null,
+    "Numero_de_referencia": "91225",
+    "Clave_de_rastreo": "NU3972BTRL2T8NCOJECS1M2A1V6Q",
+    "Referencia_interna": "693897dd-4a2f-46e1-97d5-366411cf86c2"
+  }
+}
+ERROR 2025-12-11 21:28:56,493 services Error: La respuesta de Gemini no es un JSON válido: Como experto en facturación electrónica mexicana y OCR, he analizado la imagen proporcionada. Es importante señalar que la imagen no es un "ticket de compra" tradicional de una tienda minorista, sino un "Comprobante" de una transferencia bancaria (Santander). Esto significa que algunos de los campos que normalmente se encuentran en un ticket de compra para facturación (como RFC del emisor de la tienda, número de sucursal, etc.) no están presentes o no son aplicables directamente en este contexto.
+
+Sin embargo, aplicando las reglas de extracción y priorizando los datos disponibles para identificar la transacción, he logrado extraer la siguiente información:
+
+**Análisis Detallado:**
+
+1.  **Tienda/Emisor**:
+    *   La transferencia es **a** "GBMSMARTCASH" por el concepto de "NuevoCarro". En un escenario de facturación para una compra, GBMSMARTCASH sería el emisor de la factura por el bien o servicio adquirido. Por lo tanto, lo he identificado como la "tienda" en este contexto.
+    *   El comprobante en sí es emitido por Santander (logo visible).
+
+2.  **RFC del Emisor**:
+    *   No se encuentra el RFC de "GBMSMARTCASH" en el comprobante.
+    *   Se encuentra "RFC cliente Santander AELM9508074V1", que es el RFC del cliente que realizó la transferencia, no el RFC del emisor (Santander o GBMSMARTCASH). Siguiendo la regla de "no inventar datos" y priorizando el "RFC del Emisor", no lo incluyo como campo principal. Sin embargo, lo añado a `datos_candidatos` por ser un RFC presente en el documento y potencialmente útil.
+
+3.  **Códigos de Facturación**:
+    *   "Ref. SuperMóvil": **5649212** es una clara referencia de la transacción y es un candidato principal.
+
+4.  **Fecha y Monto**:
+    *   Fecha de emisión: "09/Dic/2025". Se convierte a formato **2025-12-09**.
+    *   Total pagado: "$1,000.00 MXN". Se extrae como **1000.00**.
+
+**Resultado en formato JSON:**
+
+```json
+{
+  "tienda": "GBMSMARTCASH",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 1000.00,
+  "datos_candidatos": {
+    "Ref_SuperMovil": "5649212",
+    "RFC_Cliente_Santander": "AELM9508074V1"
+  }
+}
+ERROR 2025-12-11 21:29:17,986 services Error: La respuesta de Gemini no es un JSON válido: He analizado la imagen proporcionada, la cual corresponde a un comprobante de transferencia bancaria, no a un ticket de compra de un comercio minorista. A pesar de la diferencia en el tipo de documento, he aplicado las reglas de extracción de datos solicitadas, priorizando la literalidad y la no invención de datos.
+
+Aquí están los datos extraídos en formato JSON:
+
+```json
+{
+  "tienda": "Santander",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 4500.00,
+  "datos_candidatos": {
+    "RFC_Emisor": "AELM9508074V1",
+    "Referencia_SuperMovil": "3830948"
+  }
+}
+ERROR 2025-12-11 21:29:51,983 services Error: La respuesta de Gemini no es un JSON válido: Analizando la imagen proporcionada, se observa que no corresponde a un ticket de compra ni a una factura, sino a la pantalla principal de una aplicación de banca móvil (Santander).
+
+Por lo tanto, la imagen no contiene ninguno de los datos requeridos para generar una factura electrónica (CFDI), como el nombre de una tienda/emisor, RFC del emisor, códigos de facturación (Folio, Ticket, Transacción, etc.), ni un monto total pagado por una transacción de compra. El monto de $27,883.25 MXN visible es un saldo de cuenta, no el total de una compra.
+
+Siguiendo las reglas de oro de **no inventar datos** y **literalidad**:
+
+```json
+{
+  "tienda": null,
+  "fecha_emision": null,
+  "total_pagado": null,
+  "datos_candidatos": {}
+}
+ERROR 2025-12-11 21:29:55,652 services Error: La respuesta de Gemini no es un JSON válido: Analizando la imagen, se observa que no se trata de un "ticket de compra" de una tienda, sino de un "Comprobante" de una transferencia bancaria (SPEI). Por lo tanto, muchos de los datos específicos para la facturación de compras en portales de tiendas (como Folio de Venta, ID de Tienda, Caja, etc.) no están presentes.
+
+Sin embargo, procederé a extraer los datos que sí se encuentran en el comprobante, adhiriéndome a las reglas de no inventar información y de exhaustividad para los datos candidatos.
+
+*   **Tienda/Emisor**: El comprobante proviene de una operación realizada a través de Santander (evidente por el logo y "RFC cliente Santander"). Lo identificaré como Santander, aunque no sea una "tienda" en el sentido tradicional.
+*   **RFC del Emisor**: Se identifica "RFC cliente Santander: AELM9508074V1". Este es el RFC del emisor de la transferencia.
+*   **Códigos de Facturación**: Solo se encuentra la "Ref. SuperMóvil". No hay otros folios o IDs típicos de facturación de compras.
+*   **Fecha y Monto**: Claramente visibles.
+
+```json
+{
+  "tienda": "Santander",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 57.00,
+  "datos_candidatos": {
+    "RFC_Emisor": "AELM9508074V1",
+    "Ref_SuperMovil": "1297831"
+  }
+}
+ERROR 2025-12-12 19:39:53,640 services Error: La respuesta de Gemini no es un JSON válido: He analizado la imagen proporcionada, que corresponde a un "Comprobante de transferencia" de Nu, no a un "ticket de compra" de una tienda minorista como OXXO o Walmart. Por lo tanto, muchos de los campos típicamente presentes en un ticket de compra para facturación (como el RFC de una tienda comercial, números de caja, sucursal, folios de venta específicos de retail) no están presentes.
+
+He extraído la información siguiendo estrictamente las "Reglas de Oro":
+- No inventar datos.
+- Copiar caracteres tal cual (literalidad).
+- Ser exhaustivo con los códigos de rastreo encontrados.
+
+Aquí está el JSON con los datos extraídos:
+
+```json
+{
+  "tienda": "Nu México Financiera, S.A. de C.V., Sociedad Financiera Popular",
+  "fecha_emision": "2025-12-10",
+  "total_pagado": 1729.00,
+  "datos_candidatos": {
+    "Numero_de_referencia": "101225",
+    "Clave_de_rastreo": "NU3977QN2DER8PR9D4EQAH0SJASA",
+    "Referencia_interna": "6939f571-694b-44cc-ac72-37a0118ac671"
+  }
+}
+ERROR 2025-12-12 19:39:55,367 services Error: La respuesta de Gemini no es un JSON válido: Aquí tienes la extracción de datos basada en la imagen proporcionada, siguiendo las reglas de oro y el formato JSON solicitado. Es importante notar que la imagen corresponde a un comprobante de transferencia bancaria, no a un ticket de compra tradicional de un establecimiento, por lo que algunos datos típicos de facturación de un comercio podrían no estar presentes.
+
+```json
+{
+  "tienda": "NU MEXICO",
+  "fecha_emision": "2025-12-10",
+  "total_pagado": 115.00,
+  "datos_candidatos": {
+    "RFC_Emisor": "No encontrado",
+    "Sucursal": "No encontrado",
+    "Ref_SuperMovil": "9912143"
+  }
+}
+ERROR 2025-12-12 19:40:02,159 services Error: La respuesta de Gemini no es un JSON válido: Este documento es un "Comprobante" de una transferencia bancaria, no un "ticket de compra" de una tienda tradicional. Por lo tanto, algunos de los datos solicitados, como el RFC del emisor comercial o códigos específicos de facturación de tiendas, no se encuentran presentes en el formato esperado para una factura de compra de bienes/servicios.
+
+Procederé a extraer la información disponible bajo las "Reglas de Oro":
+
+*   **Tienda/Emisor**: El documento es un comprobante de transferencia, emitido implícitamente por el banco Santander (según el logo y el contexto). Lo identifico como el emisor de este *comprobante*.
+*   **RFC del Emisor**: El documento muestra "RFC cliente Santander: AELM9508074V1". Este es el RFC del *cliente* que realiza la transferencia, no el RFC del banco Santander (el emisor del comprobante) ni del proveedor del servicio de "parquímetro". Dado que el RFC del emisor del *comprobante* (Santander) o del *servicio* (parquímetro) no está presente, no se incluirá un campo "RFC_Emisor" genérico, pero el RFC del cliente sí se registrará con su etiqueta literal.
+*   **Códigos de Facturación**: Se identifica "Ref. SuperMóvil" como un código de rastreo.
+*   **Fecha y Monto**: Claramente visibles.
+
+```json
+{
+  "tienda": "Santander",
+  "fecha_emision": "2025-12-10",
+  "total_pagado": 50.00,
+  "datos_candidatos": {
+    "RFC_cliente_Santander": "AELM9508074V1",
+    "RefSuperMovil": "9714365"
+  }
+}
+ERROR 2025-12-12 19:40:06,746 services Error: La respuesta de Gemini no es un JSON válido: Este documento es un comprobante de transferencia bancaria, no un ticket de compra de una tienda. Por lo tanto, algunos de los campos que suelen encontrarse en un ticket de compra para facturación (como "Folio de Venta" o el RFC del comercio emisor) no están presentes o no son directamente aplicables en este contexto.
+
+Aun así, he extraído los datos siguiendo tus reglas de oro y el formato de salida, interpretando "Tienda/Emisor" como la entidad que generó este comprobante de transferencia y extrayendo cualquier dato de identificación o referencia visible.
+
+```json
+{
+  "tienda": "NU MEXICO",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 50.00,
+  "datos_candidatos": {
+    "Ref_SuperMovil": "1705452",
+    "RFC_cliente_Santander": "AELM9508074V1"
+  }
+}
+ERROR 2025-12-12 19:40:17,224 services Error: La respuesta de Gemini no es un JSON válido: Analizando la imagen, se trata de un comprobante de transferencia bancaria, no un ticket de compra de una tienda. Por lo tanto, muchos de los datos que se solicitan para una factura de compra (como "Folio de Venta", "ID de Ticket", "Número de Caja", etc., de una tienda minorista) no están presentes en el contexto esperado.
+
+Sin embargo, procederé a extraer la información disponible que se ajuste a las categorías solicitadas, aplicando estrictamente las reglas de oro de no inventar datos y copiar literalmente.
+
+*   **Tienda/Emisor**: El comprobante es emitido por un banco, identificado por el logo de Santander y la etiqueta "RFC cliente Santander". Consideraré "SANTANDER" como el emisor de este comprobante.
+*   **RFC del Emisor**: El RFC "AELM9508074V1" está etiquetado como "RFC cliente Santander", que es el RFC del cliente que realizó la transferencia, no el RFC del banco emisor (Santander). Dado que no se proporciona el RFC de Santander y no debo inventar datos, este campo para el "RFC del Emisor" (Santander) no se incluirá.
+*   **Códigos de Facturación**: El campo "Ref. SuperMóvil: 1297831" es el identificador de la operación de transferencia y el mejor candidato para un código de rastreo.
+*   **Fecha y Monto**: La fecha es "09/Dic/2025" y el monto transferido es "$57.00 MXN".
+
+```json
+{
+  "tienda": "SANTANDER",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 57.00,
+  "datos_candidatos": {
+    "Ref. SuperMóvil": "1297831"
+  }
+}
+ERROR 2025-12-12 19:40:20,406 services Error: La respuesta de Gemini no es un JSON válido: A pesar de que la imagen no corresponde a un "ticket de compra" tradicional de un comercio, sino a un comprobante de transferencia bancaria, he extraído los datos siguiendo tus instrucciones, priorizando la identificación de quién sería el emisor de la factura por el concepto de la transferencia ("NuevoCarro") y los detalles de la transacción.
+
+```json
+{
+  "tienda": "GBMSMARTCASH",
+  "fecha_emision": "2025-12-09",
+  "total_pagado": 1000.00,
+  "datos_candidatos": {
+    "RFC_Emisor": null,
+    "Sucursal": null,
+    "Ref. SuperMóvil": "5649212",
+    "RFC_Cliente_Santander": "AELM9508074V1",
+    "Banco_Origen_Comprobante": "Santander",
+    "Banco_Destino_Pago": "GBM",
+    "Concepto_Transferencia": "NuevoCarro"
+  }
+}
+ERROR 2025-12-12 19:49:00,267 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis experto de la imagen del ticket para la facturación electrónica.
+
+```json
+{
+  "tienda": "FARMACIA GUADALAJARA, S.A. DE C.V.",
+  "fecha_emision": "2025-12-07",
+  "total_pagado": 65.49,
+  "datos_candidatos": {
+    "RFC_Emisor": "FGU830530P93",
+    "Sucursal": "SUC AV HOMERO CDMX MEXICO",
+    "Folio_Factura": "567127-570534-611313",
+    "No_Ticket": "142613",
+    "Caja": "6"
+  }
+}
