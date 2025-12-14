@@ -32,7 +32,7 @@ from .services import TransactionService, MercadoPagoService, StockPriceService,
 from .models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
     inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente
+    PagoAmortizacion, AmortizacionPendiente, Factura
 )
 from django.http import JsonResponse
 from .models import TiendaFacturacion # Asegúrate de tener los modelos importados
@@ -237,6 +237,7 @@ def rechazar_ticket(request, ticket_id):
     ticket.estado = 'rechazada'
     ticket.save()
     return redirect('revisar_tickets')
+
 '''
 Vista para procesar automáticamente los tickets de Drive.
 '''
@@ -528,7 +529,6 @@ def mercadopago_webhook(request):
 
     # Devolvemos un 200 OK para que Mercado Pago sepa que recibimos la notificación
     return HttpResponse(status=200)
-
 
 '''
 Inversiones
@@ -999,7 +999,6 @@ def revisar_facturas_pendientes(request):
 
     return render(request, 'revisar_factura.html', {'tickets': tickets_pendientes})
 
-
 @login_required
 def revisar_factura_detalle(request, ticket_id):
     """Procesa y muestra los datos de facturación de un ticket concreto."""
@@ -1079,10 +1078,10 @@ def revisar_factura_detalle(request, ticket_id):
             'factura': contexto_facturacion,
             'tickets': tickets_pendientes,
             'ticket_seleccionado': ticket,
+            'factura_json': json.dumps(contexto_facturacion.get('datos_para_cliente', {})),
         }
     )
 
-# --- VISTA 3: Detalle y Aprendizaje (Lógica del Schema Registry) ---
 @login_required
 def revisar_factura_individual(request, ticket_id):
     # Obtener el ticket pendiente
@@ -1120,7 +1119,6 @@ def revisar_factura_individual(request, ticket_id):
 
     return render(request, 'revisar_factura.html', {'factura': contexto_facturacion})
 
-# --- VISTA 4: Acción Final ---
 @login_required
 def marcar_como_facturado(request, factura_id):
     factura = get_object_or_404(TiendaFacturacion, id=factura_id, propietario=request.user)
@@ -1129,7 +1127,6 @@ def marcar_como_facturado(request, factura_id):
         factura.save()
         messages.success(request, "¡Factura completada y archivada!")
     return redirect('revisar_facturas_pendientes')
-
 
 @login_required
 def iniciar_procesamiento_facturacion(request):
@@ -1140,7 +1137,6 @@ def iniciar_procesamiento_facturacion(request):
     except Exception as e:
         return JsonResponse({"error": f"No se pudo iniciar la tarea: {str(e)}"}, status=400)
     
-
 def vista_procesamiento_facturacion(request):
     return render(request, 'procesamiento_facturas.html')
 
@@ -1160,27 +1156,40 @@ def eliminar_factura_pendiente(request, ticket_id):
 @login_required
 def marcar_ticket_facturado(request, ticket_id):
     """
-    Marca un ticket pendiente como 'aprobado' (facturado) y CREA la transacción correspondiente.
+    Marca un ticket pendiente como 'aprobado' y crea la FACTURA en la tabla Factura.
     """
     ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
     
     if request.method == 'POST':
-        # Usamos defaults para facturas rápidas.
-        # Idealmente, pediríamos estos datos, pero para un botón rápido, esto funciona.
-        TransactionService.approve_pending_transaction(
-            ticket_id=ticket.id,
-            user=request.user,
-            cuenta="Banco",          # Default seguro
-            categoria="Facturación", # Default claro
-            tipo_transaccion="GASTO",
-            cuenta_destino=""
+        # Extraer datos básicos del JSON para crear la Factura
+        datos = ticket.datos_json
+        tienda = datos.get('tienda') or datos.get('establecimiento') or 'Desconocido'
+        
+        # Manejo seguro de fecha
+        fecha_str = datos.get('fecha_emision') or datos.get('fecha')
+        fecha_emision = parse_date_safely(fecha_str)
+        
+        # Manejo seguro de total
+        total_val = datos.get('total_pagado') or datos.get('total') or 0
+        
+        # Crear el objeto Factura
+        Factura.objects.create(
+            propietario=request.user,
+            tienda=tienda,
+            fecha_emision=fecha_emision,
+            total=Decimal(str(total_val)),
+            datos_facturacion=datos, # Guardamos todo el JSON original
+            estado='pendiente' # Se guarda como pendiente de facturar en el SAT/Portal
         )
-        messages.success(request, "Ticket facturado y registrado como gasto.")
+        
+        # Marcar ticket como aprobado/procesado para que salga de la lista de pendientes
+        ticket.estado = 'aprobada'
+        ticket.save()
+        
+        messages.success(request, "Ticket enviado a la lista de facturación.")
         
     return redirect('revisar_facturas_pendientes')
 
-
-# --- VISTAS CRUD PARA FACTURAS GUARDADAS ---
 @login_required
 def editar_factura_registro(request, factura_id):
     """
@@ -1201,7 +1210,6 @@ def editar_factura_registro(request, factura_id):
     context = {'factura': factura}
     return render(request, 'editar_factura.html', context)
 
-
 @login_required
 def eliminar_factura_registro(request, factura_id):
     """
@@ -1217,3 +1225,81 @@ def eliminar_factura_registro(request, factura_id):
     
     context = {'factura': factura}
     return render(request, 'confirmar_eliminar_factura.html', context)
+
+@csrf_exempt
+def guardar_configuracion_tienda(request):
+    """
+    BOTÓN 1: ENSEÑAR (Guardar Configuración)
+    Guarda qué campos son requeridos para una tienda específica.
+    """
+    try:
+        data = json.loads(request.body)
+        nombre_tienda = data.get('tienda', '').strip().upper()
+        campos_seleccionados = data.get('campos_seleccionados', []) # Ej: ['folio', 'sucursal']
+        url_portal = data.get('url_portal', '')
+
+        if not nombre_tienda:
+            return JsonResponse({'status': 'error', 'message': 'El nombre de la tienda es obligatorio'}, status=400)
+
+        # Actualizamos o creamos la configuración "maestra"
+        tienda_obj, created = TiendaFacturacion.objects.update_or_create(
+            tienda=nombre_tienda,
+            defaults={
+                'campos_requeridos': campos_seleccionados,
+                'url_portal': url_portal
+            }
+        )
+
+        accion = "creada" if created else "actualizada"
+        return JsonResponse({'status': 'success', 'message': f'Configuración de {nombre_tienda} {accion} correctamente.'})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@csrf_exempt
+def confirmar_datos_factura(request):
+    """
+    BOTÓN 2: LA PALOMA (Confirmar Transacción)
+    Guarda/Actualiza los datos del ticket específico en la tabla Factura.
+    """
+    try:
+        data = json.loads(request.body)
+        # Identificadores para encontrar o crear la factura
+        archivo_id = data.get('archivo_id') # ID de Drive
+        
+        # Datos extraídos y validados por el usuario en el frontend
+        tienda = data.get('tienda', 'DESCONOCIDO').upper()
+        total = data.get('total', 0)
+        fecha = data.get('fecha')
+        datos_json = data.get('datos_facturacion', {}) # El JSON completo con folio, rfc, etc.
+
+        if not request.user.is_authenticated:
+             return JsonResponse({'status': 'error', 'message': 'Usuario no autenticado'}, status=403)
+
+        defaults = {
+            'propietario': request.user,
+            'tienda': tienda,
+            'total': Decimal(str(total)),
+            'fecha_emision': parse_date_safely(fecha),
+            'datos_facturacion': datos_json,
+            'estado': 'pendiente'
+        }
+
+        if archivo_id:
+            # Si hay un archivo de Drive asociado, intentamos no duplicarlo
+            factura_obj, created = Factura.objects.update_or_create(
+                archivo_drive_id=archivo_id,
+                defaults=defaults
+            )
+        else:
+            # Si no hay archivo ID (manual o subida directa), CREAMOS uno nuevo siempre
+            factura_obj = Factura.objects.create(
+                archivo_drive_id=None,
+                **defaults
+            )
+            created = True
+
+        return JsonResponse({'status': 'success', 'message': 'Factura guardada y lista para procesar.'})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

@@ -80,4 +80,7 @@ urlpatterns = [
     # --- URLs para gestionar facturas guardadas ---
     path('facturacion/editar/<int:factura_id>/', views.editar_factura_registro, name='editar_factura_registro'),
     path('facturacion/eliminar-registro/<int:factura_id>/', views.eliminar_factura_registro, name='eliminar_factura_registro'),
+    # ... tus otras urls ...
+    path('api/guardar-config-tienda/', views.guardar_configuracion_tienda, name='guardar_config_tienda'),
+    path('api/confirmar-factura/', views.confirmar_datos_factura, name='confirmar_factura'),
 ]

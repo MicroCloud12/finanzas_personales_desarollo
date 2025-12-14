@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const progressBar = document.getElementById('progress-bar');
     let pollingInterval;
 
-    startBtn.addEventListener('click', async function() {
+    startBtn.addEventListener('click', async function () {
         startBtn.disabled = true;
         progressContainer.classList.remove('hidden');
         updateProgress(0, "Iniciando...", 'bg-blue-500');
@@ -84,3 +84,104 @@ document.addEventListener('DOMContentLoaded', function () {
         startBtn.disabled = false;
     }
 });
+
+// finanzas/static/js/procesamiento.js
+
+// 1. Obtener el token CSRF (Necesario para seguridad en Django)
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 2. Función para el botón "Guardar Configuración" (Disquete)
+async function guardarConfiguracion(btn) {
+    console.log("guardarConfiguracion function triggered");
+    // Obtenemos los datos desde los atributos data- del botón HTML
+    const tienda = btn.dataset.tienda;
+    // Buscamos los checkboxes marcados dentro de la tarjeta de esta tienda
+    const card = btn.closest('.card'); // Asumiendo que tu ticket está en un div con clase 'card'
+    const inputs = card.querySelectorAll('input[type="checkbox"]:checked');
+    const campos = Array.from(inputs).map(input => input.value);
+
+    // Removed prompt as requested
+    const urlPortal = "";
+
+    if (!confirm(`¿Guardar configuración para ${tienda} con ${campos.length} campos?`)) return;
+
+    try {
+        const response = await fetch('/api/guardar-config-tienda/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                tienda: tienda,
+                campos_seleccionados: campos,
+                url_portal: urlPortal
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server returned ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            alert(data.message);
+        } else {
+            alert('Error del servidor: ' + data.message);
+        }
+
+    } catch (error) {
+        console.error('Error al guardar configuración:', error);
+        alert('Hubo un error al guardar la configuración. Revisa la consola para más detalles.');
+    }
+}
+
+// 3. Función para el botón "Confirmar Factura" (Paloma)
+async function confirmarFactura(btn) {
+    // Leemos TODOS los datos que pusimos en el botón en el HTML
+    const payload = {
+        archivo_id: btn.dataset.archivoId,
+        tienda: btn.dataset.tienda,
+        total: btn.dataset.total,
+        fecha: btn.dataset.fecha,
+        // El JSON completo de datos extraídos lo pasamos como string en el HTML y aquí lo parseamos de vuelta
+        datos_facturacion: JSON.parse(btn.dataset.jsonCompleto)
+    };
+
+    try {
+        const response = await fetch('/api/confirmar-factura/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            alert("¡Factura guardada! Ya puedes verla en tu lista.");
+            // Opcional: Ocultar la tarjeta del ticket procesado visualmente
+            btn.closest('.card').remove();
+        } else {
+            alert("Error: " + data.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión.');
+    }
+}
