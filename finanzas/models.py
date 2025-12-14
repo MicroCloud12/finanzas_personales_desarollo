@@ -315,14 +315,32 @@ class AmortizacionPendiente(models.Model):
     
 class TiendaFacturacion(models.Model):
     """
-    Guarda la configuración específica de cada tienda.
+    TABLA 1: CONFIGURACIÓN (El Cerebro)
+    Define qué datos necesitamos pedirle a la IA para cada tienda.
     Ejemplo:
-    tienda: "CADENA COMERCIAL OXXO"
-    campos_requeridos: ["Folio de Venta", "Fecha", "Total"]
+      - Tienda: "WALMART"
+      - Campos: ["Ticket #", "TR #", "Fecha"]
+      - URL: "https://facturacion.walmartmexico.com.mx/"
     """
-    tienda = models.CharField(max_length=150, unique=True, help_text="Nombre normalizado de la tienda")
-    # Usamos JSONField para guardar una lista flexible de strings
-    campos_requeridos = models.JSONField(default=list, help_text="Lista de llaves que necesitamos extraer para esta tienda")
+    tienda = models.CharField(
+        max_length=150, 
+        unique=True, 
+        help_text="Nombre normalizado de la tienda (ej. WALMART, OXXO)"
+    )
+    
+    # Lista de campos que Gemini debe buscar obligatoriamente
+    campos_requeridos = models.JSONField(
+        default=list, 
+        help_text="Lista de llaves que necesitamos extraer (ej. ['Folio', 'RFC', 'Código'])"
+    )
+    
+    # Campo NUEVO: Para que el usuario sepa dónde facturar
+    url_portal = models.URLField(
+        max_length=500, 
+        blank=True, 
+        null=True, 
+        help_text="Link directo al portal de facturación de esta tienda"
+    )
 
     def __str__(self):
         return f"Configuración para {self.tienda}"
@@ -330,24 +348,48 @@ class TiendaFacturacion(models.Model):
 
 class Factura(models.Model):
     """
-    Almacena las facturas/comprobantes independientes de las transacciones.
-    Permite gestionar el historial de facturación por separado.
+    TABLA 2: RESULTADOS (La Memoria)
+    Guarda los datos extraídos de un ticket específico listos para usarse.
     """
     ESTADOS = (
         ('pendiente', 'Pendiente de Facturar'),
         ('facturado', 'Facturado'),
+        ('imposible', 'Datos insuficientes/Error'),
     )
     
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    tienda = models.CharField(max_length=150, help_text="Nombre del establecimiento")
-    fecha_emision = models.DateField(help_text="Fecha del ticket/comprobante")
-    total = models.DecimalField(max_digits=12, decimal_places=2, help_text="Monto total")
     
-    # Datos extraídos para facturación (RFC, Folio, etc.)
-    datos_facturacion = models.JSONField(default=dict, help_text="Datos extraídos para generar la factura")
+    # Relación opcional con la configuración (si existe)
+    configuracion_tienda = models.ForeignKey(
+        TiendaFacturacion, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='facturas_generadas'
+    )
+    
+    tienda = models.CharField(max_length=150, help_text="Nombre extraído del establecimiento")
+    fecha_emision = models.DateField(help_text="Fecha detectada en el ticket", null=True, blank=True)
+    total = models.DecimalField(max_digits=12, decimal_places=2, help_text="Monto total del consumo")
+    
+    # Aquí vive la magia: El JSON con los campos específicos que pidió la Tabla 1
+    # Ej: { "folio": "12345", "ticket_id": "ABC", "rfc_tienda": "..." }
+    datos_facturacion = models.JSONField(
+        default=dict, 
+        help_text="Datos técnicos extraídos para el portal de facturación"
+    )
+    
+    # Campo NUEVO: Referencia al archivo original en Drive para auditoría
+    archivo_drive_id = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        help_text="ID del archivo en Google Drive para ver la imagen original"
+    )
     
     estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-fecha_emision']
@@ -355,4 +397,4 @@ class Factura(models.Model):
         verbose_name_plural = 'Facturas'
     
     def __str__(self):
-        return f"Factura de {self.tienda} - ${self.total} ({self.fecha_emision})"
+        return f"Factura {self.tienda} - ${self.total} ({self.estado})"

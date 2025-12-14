@@ -12,35 +12,35 @@
 
             {# Manejo de errores generales #}
             {% if form.non_field_errors %}
-                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
                 {% for error in form.non_field_errors %}
-                    <p>{{ error }}</p>
+                <p>{{ error }}</p>
                 {% endfor %}
-                </div>
+            </div>
             {% endif %}
 
             {# --- BUCLE CORREGIDO Y FINAL --- #}
             {% for field in form %}
-                <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        {{ field.label }}
-                    </label>
-                    <div class="mt-1">
-                        <input type="{{ field.field.widget.input_type }}"
-                               name="{{ field.name }}"
-                               id="{{ field.id_for_label }}"
-                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                               required>
-                    </div>
-                     {% for error in field.errors %}
-                        <p class="mt-2 text-xs text-red-600">{{ error }}</p>
-                    {% endfor %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    {{ field.label }}
+                </label>
+                <div class="mt-1">
+                    <input type="{{ field.field.widget.input_type }}" name="{{ field.name }}"
+                        id="{{ field.id_for_label }}"
+                        class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        required>
                 </div>
+                {% for error in field.errors %}
+                <p class="mt-2 text-xs text-red-600">{{ error }}</p>
+                {% endfor %}
+            </div>
             {% endfor %}
             {# --- FIN DEL BUCLE --- #}
 
 
-            <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <button type="submit"
+                class="w-full flex justify-center items-center bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 Iniciar Sesión
             </button>
         </form>
@@ -52,14 +52,17 @@
         </div>
 
         <div class="mt-6">
-            <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}" class="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm">
-                <img class="h-6 w-6 mr-2" src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo">
+            <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}"
+                class="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm">
+                <img class="h-6 w-6 mr-2"
+                    src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo">
                 <span>Continuar con Google</span>
             </a>
         </div>
 
         <p class="mt-6 text-center text-sm">
-            ¿No tienes una cuenta? <a href="{% url 'registro_usuarios' %}" class="font-medium text-indigo-600 hover:text-indigo-500">Regístrate aquí</a>
+            ¿No tienes una cuenta? <a href="{% url 'registro_usuarios' %}"
+                class="font-medium text-indigo-600 hover:text-indigo-500">Regístrate aquí</a>
         </p>
     </div>
 </div>
