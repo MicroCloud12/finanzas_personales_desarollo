@@ -398,3 +398,7 @@ class Factura(models.Model):
     
     def __str__(self):
         return f"Factura {self.tienda} - ${self.total} ({self.estado})"
+
+    @property
+    def get_script_id(self):
+        return f"factura-json-{self.id}"

@@ -15,10 +15,14 @@
         <div class="sm:flex sm:items-start">
           <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
             <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-              Datos de Facturación (Raw)
+              Detalles de Facturación
             </h3>
-            <div class="mt-2">
-              <pre id="jsonContent" class="bg-gray-100 p-4 rounded text-xs overflow-auto h-64 text-left"></pre>
+            <div class="mt-4 border-t border-gray-200 pt-4">
+              <dl id="formattedContent" class="divide-y divide-gray-200 space-y-3">
+                <!-- JS inserts content here -->
+              </dl>
+              <pre id="jsonContent"
+                class="hidden bg-gray-50 p-2 rounded text-xs overflow-auto mt-4 text-gray-500"></pre>
             </div>
           </div>
         </div>
@@ -37,39 +41,53 @@
 <script>
   function openModal(jsonData) {
     try {
-      // jsonData viene como string de Python, intentamos parsear si es necesario
-      // Pero como usamos |escapejs, es un string JS. 
-      // Si es un objeto JSON válido en string, lo parseamos para pretty print.
-      // Si ya es un objeto (porque Django a veces serializa), lo usamos directo.
-
-      // En este contexto, jsonData entra como string con comillas escapadas.
-      // Vamos a intentar parsearlo dos veces por si acaso viene con doble encoding,
-      // o simplemente formatearlo.
-
-      let obj = jsonData;
-      if (typeof jsonData === 'string') {
-        // Reemplazar comillas simples por dobles para JSON válido si es necesario
-        try {
-          obj = JSON.parse(jsonData.replace(/'/g, '"'));
-        } catch (e) {
-          // Si falla, mostramos como vino
-          console.warn("No se pudo parsear JSON:", e);
+      try {
+        const scriptTag = document.getElementById(jsonData); // jsonData es ahora el ID
+        let obj = null;
+        if (scriptTag) {
+          obj = JSON.parse(scriptTag.textContent);
+        } else {
+          console.error("No se encontró script con ID:", jsonData);
+          return;
         }
-      }
 
-      const formatted = JSON.stringify(obj, null, 2);
-      document.getElementById('jsonContent').textContent = formatted;
-      document.getElementById('jsonModal').classList.remove('hidden');
-    } catch (e) {
-      console.error("Error al abrir modal", e);
-      document.getElementById('jsonContent').textContent = jsonData;
-      document.getElementById('jsonModal').classList.remove('hidden');
+        const container = document.getElementById('formattedContent');
+        container.innerHTML = ''; // Limpiar previo
+
+        if (obj && typeof obj === 'object') {
+          for (const [key, value] of Object.entries(obj)) {
+            // Ignorar campos vacíos o internos si se desea
+            if (!value) continue;
+
+            const div = document.createElement('div');
+            div.className = "flex justify-between md:grid md:grid-cols-3 gap-4 pb-2";
+
+            const dt = document.createElement('dt');
+            dt.className = "text-sm font-medium text-gray-500 capitalize md:col-span-1";
+            dt.textContent = key.replace(/_/g, ' ');
+
+            const dd = document.createElement('dd');
+            dd.className = "text-sm text-gray-900 font-semibold md:col-span-2 break-all text-right md:text-left";
+            dd.textContent = value;
+
+            div.appendChild(dt);
+            div.appendChild(dd);
+            container.appendChild(div);
+          }
+        } else {
+          container.innerHTML = '<p class="text-sm text-gray-500">No hay datos estructurados disponibles.</p>';
+        }
+
+        // Keep raw JSON hidden but available if needed for debug
+        document.getElementById('jsonModal').classList.remove('hidden');
+      } catch (e) {
+        console.error("Error modal:", e);
+      }
     }
-  }
 
   function closeModal() {
-    document.getElementById('jsonModal').classList.add('hidden');
-  }
+      document.getElementById('jsonModal').classList.add('hidden');
+    }
 </script>
 {% endblock %}
 {% block content %}
@@ -201,7 +219,7 @@
                 </svg>
                 Eliminar
               </a>
-              <button onclick="openModal('{{ factura.datos_facturacion|escapejs }}')"
+              <button onclick="openModal('{{ factura.get_script_id }}')"
                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -209,6 +227,7 @@
                 </svg>
                 Ver Datos
               </button>
+              {{ factura.datos_facturacion|json_script:factura.get_script_id }}
             </td>
           </tr>
           {% empty %}
@@ -260,7 +279,7 @@
             </svg>
             Eliminar
           </a>
-          <button onclick="openModal('{{ factura.datos_facturacion|escapejs }}')"
+          <button onclick="openModal('{{ factura.get_script_id }}')"
             class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 shadow-sm">
             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -268,6 +287,7 @@
             </svg>
             Ver Datos
           </button>
+          {{ factura.datos_facturacion|json_script:factura.get_script_id }}
         </div>
       </div>
     </div>
