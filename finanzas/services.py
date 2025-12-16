@@ -84,7 +84,7 @@ class GeminiService:
     """
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-2.5-flash")
+        self.model = genai.GenerativeModel("gemini-2.5-pro")
         
         # --- CAMBIO EN EL PROMPT ---
         # Reforzamos la instrucción de la fecha.
@@ -235,64 +235,78 @@ class GeminiService:
 
             Ahora, analiza la siguiente imagen y extrae todas las filas de la tabla de amortización:
         """,
-        "facturacion": """
-            Eres un asistente experto en facturación electrónica en México (CFDI).
-            Tu tarea es analizar la imagen de un ticket de compra y extraer TODOS los datos técnicos posibles que podrían servir para facturar.
+            "facturacion": """
+            Eres un asistente obsesivo con la precisión para la FACTURACIÓN FISCAL en México (CFDI 4.0).
+            Tu único propósito es extraer los datos EXACTOS que el usuario necesita para generar su factura en el portal del comercio.
+
+            ### CONTEXTO DINÁMICO (TIENDAS CONOCIDAS):
+            {context_str}
+
+            ### INSTRUCCIONES:
+            1.  Analiza la imagen e IDENTIFICA LA TIENDA.
+            2.  **REVISA EL CONTEXTO DINÁMICO**:
+                - Si la tienda está en la lista de "tiendas conocidas", **BUSCA SOLAMENTE LOS CAMPOS LISTADOS** en "campos_requeridos" para esa tienda.
+                - Prioriza la extracción de esos campos específicos sobre cualquier otro.
+            3.  Si la tienda NO está en la lista (o la lista está vacía):
+                - Extrae TODOS los posibles datos de facturación estándar (Folio, Ticket ID, Transacción, Terminal, Código Web, Monto, RFC, Fecha, Código Postal).
             
-            ### OBJETIVO:
-            No filtres información. Extrae cualquier código alfanumérico, folio, referencia, número de autorización, ID web, número de ticket, etc.
-            Identifica también el nombre de la tienda con precisión.
+            ### REGLAS DE ORO:
+            - **Tienda**: Devuelve el nombre comercial limpio (ej. "WALMART", "OXXO", "STARBUCKS"). MAYÚSCULAS.
+            - **Campos Específicos**: Si el contexto pide "Ticket ID", búscalo exhaustivamente aunque esté borroso.
+            - **Valores**: Extrae los números tal cual aparecen (con guiones o sin ellos, según sea común en esa tienda, pero prefiere limpio).
+            - **Distinción**: Diferencia entre "Ticket" y "Transferencia". Si es transferencia, márcalo.
 
             ### FORMATO DE SALIDA (JSON):
             {
-              "tienda": "Nombre Oficial de la Tienda (ej. CADENA COMERCIAL OXXO, WALMART)",
-              "fecha_emision": "YYYY-MM-DD",
-              "total_pagado": 0.00,
-              "datos_candidatos": {
-                "Folio": "valor encontrado",
-                "Ticket": "valor encontrado",
-                "Referencia": "valor encontrado",
-                "Autorizacion": "valor encontrado",
-                "WebID": "valor encontrado",
-                "Caja": "valor encontrado",
-                "Transaccion": "valor encontrado"
-                // Añade cualquier otro par clave-valor que veas en el ticket y parezca un identificador único
-              }
+            "tienda": "NOMBRE DE LA TIENDA",
+            "fecha_emision": "YYYY-MM-DD",
+            "total_pagado": 0.0,
+            "tipo_documento": "TICKET_COMPRA | TRANSFERENCIA",
+            # Campos flexibles extraídos (claves sugeridas: folio, ticket_id, sucursal, transaccion, codigo_facturacion, rfc_emisor, uso_cfdi, etc.)
+            "folio": "...",
+            "ticket_id": "...",
+            "sucursal": "...",
+            # ... otros campos encontrados ...
             }
-
-            ### INSTRUCCIONES CLAVE:
-            1. En "datos_candidatos", usa como CLAVE (key) el texto exacto que aparece en el ticket antes del valor (ej. si dice "Folio Vta: 123", la clave es "Folio Vta").
-            2. Si no hay etiqueta clara, usa una genérica como "Codigo_1", "Codigo_Inferior".
-            3. Sé exhaustivo. Es mejor que sobren datos a que falten.
-            
-            Analiza la siguiente imagen:
-        """
+            """
         }
-        
-    def _prepare_content(self, file_data, mime_type):
-        """
-        Prepara el contenido del archivo (imagen o PDF) para la API de Gemini.
-        """
-        if "pdf" in mime_type:
-            return {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(file_data).decode("utf-8"),
-                }
-            }
-        elif "image" in mime_type:
-            return file_data # El SDK puede manejar objetos PIL.Image directamente
-        
-        raise ValueError(f"Tipo de MIME no soportado: {mime_type}")
+        # Preconfiguramos configs opcionales de generación
+        self.generation_config = genai.types.GenerationConfig(
+            temperature=0.1, # Muy bajo para máxima precisión literal
+            max_output_tokens=1024,
+        )
 
-    def extract_data(self, prompt_name: str, file_data, mime_type: str) -> dict:
+    def _prepare_content(self, file_data, mime_type: str):
+        """Prepara el contenido para enviarlo a Gemini (Imagen o PDF)."""
+        if mime_type == 'application/pdf':
+            return {
+                "mime_type": "application/pdf",
+                "data": file_data 
+            }
+        else:
+            # Asumimos que es una imagen (bytes)
+            return {
+                "mime_type": mime_type, # ej. "image/jpeg"
+                "data": file_data
+            }
+
+    def extract_data(self, prompt_name: str, file_data, mime_type: str, context: str = "") -> dict:
         """
         Extrae datos de una imagen o PDF utilizando un prompt específico.
+        Permite inyectar contexto dinámico (como lista de tiendas conocidas) en el prompt.
         """
         if prompt_name not in self.prompts:
             raise ValueError(f"El prompt '{prompt_name}' no existe.")
 
-        prompt = self.prompts[prompt_name]
+        raw_prompt = self.prompts[prompt_name]
+        
+        # Inyectamos el contexto si el prompt tiene el placeholder {context_str}
+        try:
+            prompt = raw_prompt.format(context_str=context)
+        except KeyError:
+            # Si el prompt no tiene el placeholder, usamos el prompt tal cual (para compatibilidad)
+            prompt = raw_prompt
+
         prepared_content = self._prepare_content(file_data, mime_type)
         
         return self._generate_and_parse(prompt, prepared_content)
@@ -300,7 +314,14 @@ class GeminiService:
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Genera la respuesta de Gemini y devuelve el JSON parseado."""
         response = self.model.generate_content([prompt, content])
-        cleaned_response = response.text.strip().replace("```json", "").replace("```", "").strip()
+        cleaned_response = response.text.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+        cleaned_response = cleaned_response.strip()
         
         try:
             return json.loads(cleaned_response)
@@ -351,10 +372,12 @@ class TransactionService:
                 descripcion_final = datos.get("establecimiento", "Compra sin establecimiento")
             
             # --- FIN DE LA LÓGICA ---
-            # --- CAMBIO IMPORTANTE AQUÍ ---
             # Usamos nuestra función segura para procesar la fecha.
             # Ya no hay riesgo de que el programa se rompa por un formato incorrecto.
-            fecha_segura = parse_date_safely(datos.get("fecha"))
+            fecha_segura = parse_date_safely(datos.get("fecha") or datos.get("fecha_emision"))
+
+            # Validamos el monto (puede venir como 'total' o 'total_pagado')
+            monto_str = str(datos.get("total") or datos.get("total_pagado") or 0.0)
 
             registro_transacciones.objects.create(
                 propietario=user,
@@ -362,10 +385,11 @@ class TransactionService:
                 #descripcion=datos.get("descripcion_corta", datos.get("establecimiento", "Sin descripción")),
                 descripcion=descripcion_final.upper(),
                 categoria=categoria,
-                monto=Decimal(str(datos.get("total", 0.0))), # Convertir a string primero para mayor precisión con Decimal
+                monto=Decimal(monto_str), # Convertir a string primero para mayor precisión con Decimal
                 tipo=tipo_transaccion,
                 cuenta_origen=cuenta,
                 cuenta_destino=cuenta_destino,
+                datos_extra=datos  # Guardamos TODOS los datos originales (RFC, Folio, etc.)
             )
             
             ticket.estado = 'aprobada'
@@ -655,16 +679,27 @@ class BillingService:
         # 2. Buscar si ya tenemos configuración para esta tienda
         config_tienda = TiendaFacturacion.objects.filter(tienda=nombre_tienda).first()
         
-        datos_candidatos = data_gemini.get("datos_candidatos", {})
+        # --- CORRRECCIÓN ESTRUCTURA PLANA ---
+        # El nuevo prompt devuelve todo en la raíz. Separamos los datos "estándar" de los "candidatos".
+        campos_estandar = ['tienda', 'fecha_emision', 'fecha', 'total_pagado', 'total', 'tipo_documento']
         
+        datos_candidatos = {}
+        # Iteramos sobre todas las llaves que nos dio Gemini
+        for k, v in data_gemini.items():
+            if k.lower() not in campos_estandar and v: # Ignoramos nulos
+                datos_candidatos[k] = v
+
         # Estructura base del resultado
+        fecha_emision_raw = data_gemini.get('fecha_emision') or data_gemini.get('fecha')
+        total_pagado_raw = data_gemini.get('total_pagado') or data_gemini.get('total')
+
         resultado = {
             'tienda': nombre_tienda,
-            'fecha_emision': data_gemini.get('fecha_emision'),
-            'total_pagado': data_gemini.get('total_pagado'),
+            'fecha_emision': fecha_emision_raw,
+            'total_pagado': total_pagado_raw,
             'es_conocida': False,
             'datos_para_cliente': {},     # Aquí pondremos solo lo necesario
-            'todos_los_datos': datos_candidatos # Respaldo completo
+            'todos_los_datos': datos_candidatos # Respaldo completo para que el usuario elija
         }
 
         # --- CASO A: TIENDA CONOCIDA (Ya sabemos qué pedir) ---
@@ -673,13 +708,19 @@ class BillingService:
             campos_necesarios = config_tienda.campos_requeridos # Ej: ["Folio", "RFC"]
             
             for campo in campos_necesarios:
-                # Buscamos el valor exacto en lo que trajo Gemini
+                # 1. Busqueda exacta
                 valor = datos_candidatos.get(campo)
                 
-                # Lógica Difusa: Si Gemini cambió un poco el nombre (ej. "Folio:" vs "Folio")
+                # 2. Busqueda difusa (case insensitive)
                 if not valor:
                     for k, v in datos_candidatos.items():
-                        # Si la llave guardada está contenida en la llave detectada
+                        if campo.lower() == k.lower():
+                            valor = v
+                            break
+                
+                # 3. Busqueda contenida (por si Gemini devolvió "Folio de Venta" y buscamos "Folio")
+                if not valor:
+                     for k, v in datos_candidatos.items():
                         if campo.lower() in k.lower():
                             valor = v
                             break
@@ -689,7 +730,6 @@ class BillingService:
         # --- CASO B: TIENDA NUEVA (Aprendizaje) ---
         else:
             # Si no la conocemos, le mostramos TODO al usuario para que él elija
-            # qué campos son los importantes y guardemos la configuración.
             resultado['es_conocida'] = False
             resultado['datos_para_cliente'] = datos_candidatos
 

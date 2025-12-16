@@ -23,21 +23,22 @@
 
                 {# --- ESTA ES LA PARTE CLAVE PARA ESTILIZAR LA AYUDA DE LA CONTRASEÑA --- #}
                 {% if field.help_text %}
-                    <div class="mt-2 text-xs text-gray-500 space-y-1">
-                        {# El filtro |safe es crucial porque el texto de ayuda es HTML (una lista <ul>) #}
+                <div class="mt-2 text-xs text-gray-500 space-y-1">
+                    {# El filtro |safe es crucial porque el texto de ayuda es HTML (una lista <ul>) #}
                         {{ field.help_text|safe }}
-                    </div>
+                </div>
                 {% endif %}
 
                 {# Muestra los errores de cada campo con estilo #}
                 {% for error in field.errors %}
-                    <p class="mt-2 text-xs text-red-600">{{ error }}</p>
+                <p class="mt-2 text-xs text-red-600">{{ error }}</p>
                 {% endfor %}
             </div>
             {% endfor %}
 
             <div class="pt-4">
-                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <button type="submit"
+                    class="w-full flex justify-center items-center bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Registrarse
                 </button>
             </div>
@@ -52,14 +53,17 @@
         </div>
 
         <div class="mt-6">
-            <a href="{% provider_login_url 'google' process='signup' auth_params='access_type=offline&prompt=consent' %}" class="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm">
-                <img class="h-6 w-6 mr-2" src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo">
+            <a href="{% provider_login_url 'google' process='signup' auth_params='access_type=offline&prompt=consent' %}"
+                class="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm">
+                <img class="h-6 w-6 mr-2"
+                    src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo">
                 <span>Registrarse con Google</span>
             </a>
         </div>
 
         <p class="mt-6 text-center text-sm">
-            ¿Ya tienes una cuenta? <a href="{% url 'login' %}" class="font-medium text-indigo-600 hover:text-indigo-500">Inicia sesión aquí</a>
+            ¿Ya tienes una cuenta? <a href="{% url 'login' %}"
+                class="font-medium text-indigo-600 hover:text-indigo-500">Inicia sesión aquí</a>
         </p>
     </div>
 </div>

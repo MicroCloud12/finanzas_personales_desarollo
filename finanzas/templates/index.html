@@ -2,70 +2,97 @@
 {% load static %}
 
 {# ================================================================= #}
-{#      SOBRESCRIBIMOS EL BLOQUE DEL HEADER CON LA VERSIÓN HERO      #}
+{# SOBRESCRIBIMOS EL BLOQUE DEL HEADER CON LA VERSIÓN HERO #}
 {# ================================================================= #}
 {% block header %}
-  <header class="absolute top-0 left-0 w-full z-30 text-white">
-    <div class="max-w-7xl mx-auto px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20 border-b border-white/20">
-        <div class="flex-shrink-0">
-            <a href="{% if user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'home' %}{% endif %}" class="flex items-center space-x-2">
-              <img src="{% static 'img/Prisma2.svg' %}" alt="Logo de FinanzasApp" class="h-18 w-auto">
-            </a>
+<header class="absolute top-0 left-0 w-full z-30 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16 sm:h-20 border-b border-white/20">
+            <div class="flex-shrink-0">
+                <a href="{% if user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'home' %}{% endif %}"
+                    class="flex items-center space-x-2">
+                    <img src="{% static 'img/Prisma2.svg' %}" alt="Logo de FinanzasApp" class="h-12 sm:h-18 w-auto">
+                </a>
+            </div>
+            <!-- Navegación de escritorio -->
+            <nav class="hidden md:flex">
+                <a href="{% url 'login' %}"
+                    class="bg-white/90 text-gray-900 hover:bg-white font-semibold px-4 py-2 rounded-md text-sm shadow-md transition-all duration-200">Iniciar
+                    Sesión</a>
+            </nav>
+            <!-- Botón de menú móvil -->
+            <div class="md:hidden">
+                <a href="{% url 'login' %}"
+                    class="bg-white/90 text-gray-900 hover:bg-white font-semibold px-3 py-1.5 rounded-md text-xs shadow-md transition-all duration-200">Iniciar
+                    Sesión</a>
+            </div>
         </div>
-        <nav class="hidden md:flex">
-            <a href="{% url 'login' %}" class="bg-white/90 text-gray-900 hover:bg-white font-semibold px-4 py-2 rounded-md text-sm shadow-md transition-all duration-200">Iniciar Sesión</a> 
-        </nav>
-      </div>
     </div>
-  </header>
+</header>
 {% endblock header %}
 
 
 {# ================================================================ #}
-{#      EL CONTENIDO PRINCIPAL DE LA PÁGINA DE INICIO (HERO)       #}
+{# EL CONTENIDO PRINCIPAL DE LA PÁGINA DE INICIO (HERO) #}
 {# ================================================================ #}
 {% block content %}
-<section class="relative min-h-screen flex items-center bg-gray-900">
-    <div class="absolute inset-0 w-full h-full bg-cover bg-center" alt="Vista panorámica de una ciudad con rascacielos al atardecer" style="background-image: url('{% static 'img/hero-background.jpg' %}');"></div>
+<section class="relative min-h-screen flex items-center bg-gray-900 pt-20 sm:pt-0">
+    <div class="absolute inset-0 w-full h-full bg-cover bg-center"
+        alt="Vista panorámica de una ciudad con rascacielos al atardecer"
+        style="background-image: url('{% static 'img/hero-background.jpg' %}');"></div>
     <div class="absolute inset-0 w-full h-full bg-black/60"></div>
 
-    <div class="relative w-full max-w-7xl mx-auto px-6 lg:px-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+    <div class="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-0">
+        <div class="flex flex-col-reverse md:grid md:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
             <div class="text-white text-center md:text-left">
-                <h1 class="text-4xl lg:text-5xl font-extrabold tracking-tight uppercase">
+                <h1
+                    class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight uppercase leading-tight">
                     Toma el control de tu ecosistema financiero
                 </h1>
-                <p class="mt-6 text-lg text-gray-300 max-w-lg mx-auto md:mx-0">
-                    Conecta tus cuentas, procesa tickets automáticamente y obtén una visión clara de tus finanzas personales o de tu negocio.
+                <p class="mt-4 sm:mt-6 text-base sm:text-lg text-gray-300 max-w-lg mx-auto md:mx-0">
+                    Conecta tus cuentas, procesa tickets automáticamente y obtén una visión clara de tus finanzas
+                    personales o de tu negocio.
                 </p>
-                <div class="mt-8">
-                    <a href="{% url 'registro_usuarios' %}" class="inline-block bg-white text-gray-900 font-bold py-3 px-8 rounded-md shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300">
+                <div class="mt-6 sm:mt-8">
+                    <a href="{% url 'registro_usuarios' %}"
+                        class="inline-block bg-white text-gray-900 font-bold py-2.5 sm:py-3 px-6 sm:px-8 rounded-md shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300 text-sm sm:text-base">
                         COMENZAR AHORA
                     </a>
                 </div>
             </div>
 
-            <div class="flex justify-center">
-                <div class="w-full max-w-sm bg-white/10 backdrop-blur-md p-8 rounded-lg border border-white/20">
-                    <h2 class="text-white text-2xl font-bold text-center">Acceso Rápido</h2>
-                    <p class="text-gray-300 text-sm text-center mt-2 mb-6">¿Ya tienes una cuenta?</p>
-                    
+            <div class="flex justify-center w-full">
+                <div class="w-full max-w-sm bg-white/10 backdrop-blur-md p-5 sm:p-8 rounded-lg border border-white/20">
+                    <h2 class="text-white text-xl sm:text-2xl font-bold text-center">Acceso Rápido</h2>
+                    <p class="text-gray-300 text-xs sm:text-sm text-center mt-2 mb-4 sm:mb-6">¿Ya tienes una cuenta?</p>
+
                     <form action="{% url 'login' %}" method="post">
                         {% csrf_token %}
-                        <div class="space-y-4">
+                        <div class="space-y-3 sm:space-y-4">
                             <div>
-                                <label for="username" class="block text-sm font-medium text-gray-300">Usuario</label>
-                                <input type="text" name="username" id="username" class="mt-1 block w-full bg-white/20 border-transparent rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-white" required>
+                                <label for="username"
+                                    class="block text-xs sm:text-sm font-medium text-gray-300">Usuario</label>
+                                <input type="text" name="username" id="username"
+                                    class="mt-1 block w-full bg-white/20 border-transparent rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white placeholder:text-gray-400"
+                                    placeholder="Ingresa tu usuario" required>
                             </div>
                             <div>
-                                <label for="password" class="block text-sm font-medium text-gray-300">Contraseña</label>
-                                <input type="password" name="password" id="password" class="mt-1 block w-full bg-white/20 border-transparent rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-white" required>
+                                <label for="password"
+                                    class="block text-xs sm:text-sm font-medium text-gray-300">Contraseña</label>
+                                <input type="password" name="password" id="password"
+                                    class="mt-1 block w-full bg-white/20 border-transparent rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white placeholder:text-gray-400"
+                                    placeholder="Ingresa tu contraseña" required>
                             </div>
                         </div>
-                        <div class="mt-6">
-                            <button type="submit" class="w-full flex justify-center items-center bg-gray-800 text-white font-semibold py-3 px-4 rounded-md hover:bg-gray-700 transition-colors duration-300">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <div class="mt-4 sm:mt-6">
+                            <button type="submit"
+                                class="w-full flex justify-center items-center bg-gray-800 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-md hover:bg-gray-700 transition-colors duration-300 text-sm sm:text-base">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                    </path>
+                                </svg>
                                 LOGIN
                             </button>
                         </div>
@@ -75,50 +102,84 @@
         </div>
     </div>
 </section>
-<div class="py-20 bg-gray-50 dark:bg-gray-900">
-    <div class="container mx-auto px-6">
-        <div class="js-scroll-container grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="js-scroll fade-in-up bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                <div class="bg-indigo-100 dark:bg-indigo-900/40 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
-                    <svg class="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                </div>
-                <h2 class="mt-6 text-xl font-semibold text-gray-800 dark:text-white">Magia Automática</h2>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">Olvídate de teclear. Saca una foto a tu ticket y nuestra IA se encarga del resto. Es así de simple.</p>
-            </div>
-            <div class="js-scroll fade-in-up bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300" style="transition-delay: 150ms;">
-                <div class="bg-indigo-100 dark:bg-indigo-900/40 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
-                   <svg class="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 13V11a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6M3 17h18"></path></svg>
-                </div>
-                <h2 class="mt-6 text-xl font-semibold text-gray-800 dark:text-white">Claridad Visual</h2>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">Tus datos financieros transformados en gráficos que entiendes de un vistazo. Toma decisiones informadas.</p>
-            </div>
-            <div class="js-scroll fade-in-up bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300" style="transition-delay: 300ms;">
-                <div class="bg-indigo-100 dark:bg-indigo-900/40 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6 text-indigo-600 dark:text-indigo-400">
-                        <path fill-rule="evenodd" d="M12.516 2.17a.75.75 0 0 0-1.032 0 11.209 11.209 0 0 1-7.877 3.08.75.75 0 0 0-.722.515A12.74 12.74 0 0 0 2.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 0 0 .374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 0 0-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08Zm3.094 8.016a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+<div class="py-12 sm:py-16 lg:py-20 bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 sm:px-6">
+        <div class="js-scroll-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+            <div
+                class="js-scroll fade-in-up bg-white dark:bg-gray-800 p-5 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                <div
+                    class="bg-indigo-100 dark:bg-indigo-900/40 rounded-full w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex items-center justify-center mx-auto">
+                    <svg class="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-indigo-600 dark:text-indigo-400" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                     </svg>
                 </div>
-                <h2 class="mt-6 text-xl font-semibold text-gray-800 dark:text-white">Tu Fortaleza Digital</h2>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">La seguridad no es una opción. Tus datos se quedan en tu Google Drive, bajo tu control total y absoluto.</p>
+                <h2
+                    class="mt-4 sm:mt-5 lg:mt-6 text-lg sm:text-xl font-semibold text-gray-800 dark:text-white text-center">
+                    Magia Automática</h2>
+                <p class="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400 text-center">Olvídate de teclear.
+                    Saca una foto a tu ticket y nuestra IA se encarga del resto. Es así de simple.</p>
+            </div>
+            <div class="js-scroll fade-in-up bg-white dark:bg-gray-800 p-5 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
+                style="transition-delay: 150ms;">
+                <div
+                    class="bg-indigo-100 dark:bg-indigo-900/40 rounded-full w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex items-center justify-center mx-auto">
+                    <svg class="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-indigo-600 dark:text-indigo-400" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 13V11a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6M3 17h18">
+                        </path>
+                    </svg>
+                </div>
+                <h2
+                    class="mt-4 sm:mt-5 lg:mt-6 text-lg sm:text-xl font-semibold text-gray-800 dark:text-white text-center">
+                    Claridad Visual</h2>
+                <p class="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400 text-center">Tus datos financieros
+                    transformados en gráficos que entiendes de un vistazo. Toma decisiones informadas.</p>
+            </div>
+            <div class="js-scroll fade-in-up bg-white dark:bg-gray-800 p-5 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 sm:col-span-2 lg:col-span-1"
+                style="transition-delay: 300ms;">
+                <div
+                    class="bg-indigo-100 dark:bg-indigo-900/40 rounded-full w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex items-center justify-center mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                        class="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-indigo-600 dark:text-indigo-400">
+                        <path fill-rule="evenodd"
+                            d="M12.516 2.17a.75.75 0 0 0-1.032 0 11.209 11.209 0 0 1-7.877 3.08.75.75 0 0 0-.722.515A12.74 12.74 0 0 0 2.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 0 0 .374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 0 0-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08Zm3.094 8.016a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h2
+                    class="mt-4 sm:mt-5 lg:mt-6 text-lg sm:text-xl font-semibold text-gray-800 dark:text-white text-center">
+                    Tu Fortaleza Digital</h2>
+                <p class="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400 text-center">La seguridad no es una
+                    opción. Tus datos se quedan en tu Google Drive, bajo tu control total y absoluto.</p>
             </div>
         </div>
     </div>
 </div>
-<div class="py-20 bg-gray-100 dark:bg-gray-800">
-    <div class="container mx-auto px-6 text-center">
-        <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">Lo que dicen nuestros usuarios</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg">
-                <p class="text-gray-600 dark:text-gray-400">"Esta app ha transformado mi manera de ver el dinero. La función de escanear tickets me ahorra horas al mes."</p>
-                <p class="mt-4 font-semibold text-gray-800 dark:text-white">- Ana G., Emprendedora</p>
+<div class="py-12 sm:py-16 lg:py-20 bg-gray-100 dark:bg-gray-800">
+    <div class="container mx-auto px-4 sm:px-6 text-center">
+        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-6 sm:mb-8">Lo que dicen nuestros
+            usuarios</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+            <div class="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-lg shadow-lg">
+                <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">"Esta app ha transformado mi manera de
+                    ver el dinero. La función de escanear tickets me ahorra horas al mes."</p>
+                <p class="mt-3 sm:mt-4 font-semibold text-sm sm:text-base text-gray-800 dark:text-white">- Ana G.,
+                    Emprendedora</p>
             </div>
-            <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg">
-                <p class="text-gray-600 dark:text-gray-400">"Finalmente entiendo a dónde se va mi dinero. Los gráficos son increíblemente claros y fáciles de usar."</p>
-                <p class="mt-4 font-semibold text-gray-800 dark:text-white">- Carlos R., Desarrollador</p>
+            <div class="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-lg shadow-lg">
+                <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">"Finalmente entiendo a dónde se va mi
+                    dinero. Los gráficos son increíblemente claros y fáciles de usar."</p>
+                <p class="mt-3 sm:mt-4 font-semibold text-sm sm:text-base text-gray-800 dark:text-white">- Carlos R.,
+                    Desarrollador</p>
             </div>
-            <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg">
-                <p class="text-gray-600 dark:text-gray-400">"La mejor herramienta para llevar un control de mis inversiones y gastos en un solo lugar. ¡Totalmente recomendada!"</p>
-                <p class="mt-4 font-semibold text-gray-800 dark:text-white">- Sofía L., Freelancer</p>
+            <div class="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-lg shadow-lg sm:col-span-2 lg:col-span-1">
+                <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">"La mejor herramienta para llevar un
+                    control de mis inversiones y gastos en un solo lugar. ¡Totalmente recomendada!"</p>
+                <p class="mt-3 sm:mt-4 font-semibold text-sm sm:text-base text-gray-800 dark:text-white">- Sofía L.,
+                    Freelancer</p>
             </div>
         </div>
     </div>
@@ -127,16 +188,21 @@
 {% endblock %}
 
 {% block footer %}
-<footer class="bg-gray-900 text-gray-100 py-10">
-    <div class="max-w-7xl mx-auto px-6">
-        <h3 class="text-xl font-semibold text-center mb-6">¿Tienes preguntas?</h3>
-            <form action="{% url 'enviar_pregunta' %}" method="post" class="max-w-xl mx-auto">
+<footer class="bg-gray-900 text-gray-100 py-8 sm:py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <h3 class="text-lg sm:text-xl font-semibold text-center mb-4 sm:mb-6">¿Tienes preguntas?</h3>
+        <form action="{% url 'enviar_pregunta' %}" method="post" class="max-w-xl mx-auto">
             {% csrf_token %}
-            <div class="grid grid-cols-1 gap-4">
-                <input type="email" name="email" placeholder="Tu correo" required class="p-3 rounded-md bg-white border border-gray-300 text-gray-900 placeholder-gray-500" />
-                <textarea name="message" rows="4" placeholder="Tu mensaje" required class="p-3 rounded-md bg-white border border-gray-300 text-gray-900 placeholder-gray-500"></textarea>
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Enviar</button>
-                <a href="{% url 'privacy_policy' %}" class="text-sm"> Politica de Privacidad</a>
+            <div class="grid grid-cols-1 gap-3 sm:gap-4">
+                <input type="email" name="email" placeholder="Tu correo" required
+                    class="p-2.5 sm:p-3 rounded-md bg-white border border-gray-300 text-gray-900 placeholder-gray-500 text-sm sm:text-base" />
+                <textarea name="message" rows="3" placeholder="Tu mensaje" required
+                    class="p-2.5 sm:p-3 rounded-md bg-white border border-gray-300 text-gray-900 placeholder-gray-500 text-sm sm:text-base"></textarea>
+                <button type="submit"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 sm:py-2.5 px-4 rounded-md text-sm sm:text-base transition-colors duration-200">Enviar</button>
+                <a href="{% url 'privacy_policy' %}"
+                    class="text-xs sm:text-sm text-center hover:text-indigo-400 transition-colors duration-200">Política
+                    de Privacidad</a>
             </div>
         </form>
     </div>

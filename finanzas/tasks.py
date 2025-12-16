@@ -1,4 +1,5 @@
 import time
+import json
 import logging
 from PIL import Image
 from io import BytesIO
@@ -11,7 +12,7 @@ from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFactur
 
 logger = logging.getLogger(__name__)
 
-def load_and_optimize_image(file_content, max_width: int = 1024, quality: int = 80) -> Image.Image:
+def load_and_optimize_image(file_content, max_width: int = 1024, quality: int = 80) -> bytes:
     """Reduce el tamaño y comprime la imagen para agilizar la llamada a la IA."""
     image = Image.open(file_content).convert("RGB")
     if image.width > max_width:
@@ -20,8 +21,7 @@ def load_and_optimize_image(file_content, max_width: int = 1024, quality: int = 
         image = image.resize((max_width, new_height))
     buffer = BytesIO()
     image.save(buffer, format="JPEG", quality=quality)
-    buffer.seek(0)
-    return Image.open(buffer)
+    return buffer.getvalue()
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime_type: str):
@@ -87,7 +87,6 @@ def process_drive_tickets(user_id: int):
     except Exception as e:
         # Manejo de errores
         return {'status': 'ERROR', 'message': str(e)}
-
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_inversion(self, user_id: int, file_id: str, file_name: str, mime_type: str):
@@ -169,7 +168,6 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 
-
 @shared_task
 def process_drive_investments(user_id):
     """
@@ -201,7 +199,6 @@ def process_drive_investments(user_id):
     except Exception as e:
         # Manejo de errores
         return {'status': 'ERROR', 'message': str(e)}
-
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_amortization(self, user_id: int, file_id: str, file_name: str, mime_type: str, deuda_id: int):
@@ -306,33 +303,85 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
     """
-    Procesa una factura/ticket con el prompt de facturación y la deja como pendiente.
+    Procesa un ticket para fines de FACTURACIÓN.
+    1. Obtiene tiendas conocidas (Tabla 1).
+    2. Envía a Gemini con ese contexto.
+    3. Guarda en el modelo Factura (Tabla 2).
     """
     try:
         user = User.objects.get(id=user_id)
         gdrive_service = GoogleDriveService(user)
         gemini_service = get_gemini_service()
-        transaction_service = TransactionService()
-
+        
+        # Obtenemos el contenido del archivo
         file_content = gdrive_service.get_file_content(file_id)
+        
+        # Preparamos los datos (usando la función corregida que devuelve bytes)
         file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
 
+        # --- PASO 1: Contexto de Tiendas Conocidas (Tabla 1) ---
+        # Consultamos qué tiendas ya tenemos configuradas para decirle a Gemini qué buscar.
+        try:
+            tiendas_conocidas = TiendaFacturacion.objects.all().values('tienda', 'campos_requeridos')
+            lista_tiendas = list(tiendas_conocidas)
+            contexto_str = json.dumps(lista_tiendas, ensure_ascii=False) if lista_tiendas else ""
+        except Exception:
+            contexto_str = "" 
+
+        # --- PASO 2: Extracción con Gemini ---
         extracted_data = gemini_service.extract_data(
             prompt_name="facturacion",
             file_data=file_data,
-            mime_type=mime_type
+            mime_type=mime_type,
+            context=contexto_str
         )
 
         if extracted_data.get("error"):
             return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['raw_response']}
 
-        transaction_service.create_pending_transaction(user, extracted_data)
-        return {'status': 'SUCCESS', 'file_name': file_name}
+        # Validamos que sea un ticket y no una transferencia
+        tipo_documento = extracted_data.get("tipo_documento", "").upper()
+        if tipo_documento == "TRANSFERENCIA":
+            return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Es una transferencia, no aplica para facturación'}
+
+        # --- PASO 3: Guardar en Tabla de Resultados (Tabla 2: Factura) ---
+        
+        # Intentamos vincular con la configuración existente
+        nombre_tienda = extracted_data.get("tienda", "DESCONOCIDO").upper()
+        config_tienda = TiendaFacturacion.objects.filter(tienda=nombre_tienda).first()
+
+        # Limpiamos y convertimos datos básicos
+        fecha_str = extracted_data.get("fecha_emision") or extracted_data.get("fecha")
+        fecha_obj = parse_date_safely(fecha_str)
+        
+        total_str = str(extracted_data.get("total_pagado") or extracted_data.get("total") or 0)
+        
+        # Creamos el registro de Factura
+        Factura.objects.create(
+            propietario=user,
+            tienda=nombre_tienda,
+            fecha_emision=fecha_obj,
+            total=Decimal(total_str),
+            
+            # Aquí guardamos TODO el JSON que nos dio Gemini.
+            # Esto permite que si Gemini encontró "Folio" y "RFC", se guarden aquí
+            # para mostrarlos luego en el frontend.
+            datos_facturacion=extracted_data, 
+            
+            # Guardamos el ID de Drive para que el usuario pueda ver la imagen original
+            archivo_drive_id=file_id,
+            
+            # Vinculamos la configuración si la encontramos (para saber la URL del portal, etc.)
+            configuracion_tienda=config_tienda,
+            
+            estado='pendiente'
+        )
+
+        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': nombre_tienda}
 
     except Exception as e:
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
-
 
 @shared_task
 def process_drive_for_invoices(user_id: int):
