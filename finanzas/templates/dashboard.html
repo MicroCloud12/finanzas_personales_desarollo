@@ -11,29 +11,41 @@
 
     {# --- Filtros --- #}
     {# La clase 'mb-8' (margin-bottom) controla el espacio hacia la siguiente sección #}
-    <div class="bg-white p-4 rounded-lg shadow-md mb-8">
+    <div class="bg-white p-4 rounded-lg shadow-md mt-6">
         <form method="GET" action="" class="grid grid-cols-1 sm:grid-cols-3 items-end gap-4">
+
+            {# Columna para el selector de Mes #}
             <div class="sm:col-span-1">
                 <label for="month" class="block text-sm font-medium text-gray-700">Mes:</label>
-                <select name="month" id="month" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <select name="month" id="month"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     {% for m in months %}
-                        <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+                    {# Fíjate en los espacios: m (espacio) == (espacio) selected_month #}
+                    <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
                     {% endfor %}
                 </select>
             </div>
+
+            {# Columna para el selector de Año #}
             <div class="sm:col-span-1">
                 <label for="year" class="block text-sm font-medium text-gray-700">Año:</label>
-                <select name="year" id="year" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <select name="year" id="year"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     {% for y in years %}
-                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                    {# Fíjate en los espacios: y (espacio) == (espacio) selected_year #}
+                    <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
                 </select>
             </div>
+
+            {# Columna para el botón de Filtrar #}
             <div class="sm:col-span-1">
-                <button type="submit" class="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <button type="submit"
+                    class="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Filtrar
                 </button>
             </div>
+
         </form>
     </div>
 
@@ -57,19 +69,21 @@
             <p class="mt-2 text-3xl font-semibold text-gray-900">${{ balance|floatformat:2 | intcomma }}</p>
         </div>
     </div>
-    
+
     {# --- Gráficas --- #}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
         <div class="bg-white p-6 rounded-lg shadow-md">
             <h3 class="font-semibold text-lg text-gray-700 mb-4">Gastos por Categoría (Mes)</h3>
             <div class="relative h-150">
-                <canvas id="gastosPorCategoriaChart" data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
+                <canvas id="gastosPorCategoriaChart"
+                    data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>
         </div>
         <div class="bg-white p-6 rounded-lg shadow-md">
             <h3 class="font-semibold text-lg text-gray-700 mb-4">Ingresos vs. Gastos (Mes)</h3>
             <div class="relative h-150">
-                <canvas id="flujoDeDineroChart" data-url="{% url 'api_flujo_dinero' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
+                <canvas id="flujoDeDineroChart"
+                    data-url="{% url 'api_flujo_dinero' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>
         </div>
     </div>
@@ -100,6 +114,6 @@
 </div>
 
 {% block javascript %}
-    <script src="{% static 'js/dashboard_charts.js' %}"></script>
+<script src="{% static 'js/dashboard_charts.js' %}"></script>
 {% endblock javascript %}
 {% endblock %}
