@@ -303,77 +303,56 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
     """
-    Procesa un ticket para fines de FACTURACIÓN.
-    1. Obtiene tiendas conocidas (Tabla 1).
-    2. Envía a Gemini con ese contexto.
-    3. Guarda en el modelo Factura (Tabla 2).
+    Procesa un ticket para FACTURACIÓN usando MISTRAL OCR + OPENCV.
     """
     try:
         user = User.objects.get(id=user_id)
         gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service()
         
-        # Obtenemos el contenido del archivo
+        # 1. Instanciamos el servicio de Mistral
+        mistral_service = MistralOCRService()
+        
+        # 2. Obtenemos contenido (bytes)
         file_content = gdrive_service.get_file_content(file_id)
-        
-        # Preparamos los datos (usando la función corregida que devuelve bytes)
-        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
+        file_bytes = file_content.getvalue() # Obtenemos los bytes crudos
 
-        # --- PASO 1: Contexto de Tiendas Conocidas (Tabla 1) ---
-        # Consultamos qué tiendas ya tenemos configuradas para decirle a Gemini qué buscar.
-        try:
-            tiendas_conocidas = TiendaFacturacion.objects.all().values('tienda', 'campos_requeridos')
-            lista_tiendas = list(tiendas_conocidas)
-            contexto_str = json.dumps(lista_tiendas, ensure_ascii=False) if lista_tiendas else ""
-        except Exception:
-            contexto_str = "" 
-
-        # --- PASO 2: Extracción con Gemini ---
-        extracted_data = gemini_service.extract_data(
-            prompt_name="facturacion",
-            file_data=file_data,
-            mime_type=mime_type,
-            context=contexto_str
-        )
+        # 3. Procesamiento (OpenCV + Mistral)
+        # Esto devuelve: { 'raw_json': ..., 'text_content': ..., 'extracted_fields': ... }
+        extracted_data = mistral_service.process_ticket(file_bytes, mime_type)
 
         if extracted_data.get("error"):
-            return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['raw_response']}
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['error']}
 
-        # Validamos que sea un ticket y no una transferencia
-        tipo_documento = extracted_data.get("tipo_documento", "").upper()
-        if tipo_documento == "TRANSFERENCIA":
-            return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Es una transferencia, no aplica para facturación'}
+        # 4. Validar Transferencia vs Ticket
+        # Buscamos la palabra "Transferencia" en el texto extraído
+        texto_completo = extracted_data.get("text_content", "").upper()
+        if "TRANSFERENCIA" in texto_completo and "TICKET" not in texto_completo:
+             return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia'}
 
-        # --- PASO 3: Guardar en Tabla de Resultados (Tabla 2: Factura) ---
-        
-        # Intentamos vincular con la configuración existente
-        nombre_tienda = extracted_data.get("tienda", "DESCONOCIDO").upper()
+        # 5. Mapeo a Modelo Factura
+        campos_basicos = extracted_data.get("extracted_fields", {})
+        nombre_tienda = campos_basicos.get("tienda", "DESCONOCIDO").upper()
         config_tienda = TiendaFacturacion.objects.filter(tienda=nombre_tienda).first()
+        
+        # Fecha y Total (Convertidos de forma segura)
+        fecha_obj = parse_date_safely(campos_basicos.get("fecha"))
+        try:
+            total_val = Decimal(str(campos_basicos.get("total", 0)))
+        except:
+            total_val = Decimal("0.00")
 
-        # Limpiamos y convertimos datos básicos
-        fecha_str = extracted_data.get("fecha_emision") or extracted_data.get("fecha")
-        fecha_obj = parse_date_safely(fecha_str)
-        
-        total_str = str(extracted_data.get("total_pagado") or extracted_data.get("total") or 0)
-        
-        # Creamos el registro de Factura
+        # Creamos la Factura
         Factura.objects.create(
             propietario=user,
             tienda=nombre_tienda,
             fecha_emision=fecha_obj,
-            total=Decimal(total_str),
+            total=total_val,
             
-            # Aquí guardamos TODO el JSON que nos dio Gemini.
-            # Esto permite que si Gemini encontró "Folio" y "RFC", se guarden aquí
-            # para mostrarlos luego en el frontend.
+            # Guardamos TODO el resultado de Mistral para búsquedas futuras
             datos_facturacion=extracted_data, 
             
-            # Guardamos el ID de Drive para que el usuario pueda ver la imagen original
             archivo_drive_id=file_id,
-            
-            # Vinculamos la configuración si la encontramos (para saber la URL del portal, etc.)
             configuracion_tienda=config_tienda,
-            
             estado='pendiente'
         )
 
