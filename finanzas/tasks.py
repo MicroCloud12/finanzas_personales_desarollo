@@ -8,7 +8,7 @@ from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService
-from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion
+from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura
 
 logger = logging.getLogger(__name__)
 
