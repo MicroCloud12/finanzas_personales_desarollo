@@ -1,5 +1,6 @@
 # finanzas/services.py
 import os
+import re
 import json
 import jwt
 import base64
@@ -13,7 +14,11 @@ from twelvedata import TDClient
 from jwt import PyJWKClient
 from cachetools import TTLCache
 from django.conf import settings
+from django.conf import settings
 import google.generativeai as genai
+from mistralai import Mistral
+import numpy as np
+import cv2
 from django.http import JsonResponse
 from .utils import parse_date_safely
 from allauth.socialaccount.models import SocialAccount

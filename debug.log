@@ -537,3 +537,23 @@ ERROR 2025-12-12 19:49:00,267 services Error: La respuesta de Gemini no es un JS
     "Caja": "6"
   }
 }
+ERROR 2025-12-17 07:41:52,960 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:04,622 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:04,836 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:05,099 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:05,957 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:12,871 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:16,213 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:21,122 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:26,946 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:34,331 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:34,870 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:35,100 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:46,814 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:50,313 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:57,299 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:02,584 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:04,968 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:08,316 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:10,797 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:18,968 services Error Mistral API: name 're' is not defined
