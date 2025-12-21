@@ -273,6 +273,58 @@ class GeminiService:
             "sucursal": "...",
             # ... otros campos encontrados ...
             }
+            """,
+            "facturacion_from_text": """
+            Eres un experto en extracción de datos de facturación.
+            Analiza el siguiente TEXTO CRUDO obtenido de un OCR (Mistral) de un ticket de compra.
+            
+            Tu objetivo es extraer:
+            1. **tienda**: El nombre comercial del establecimiento. (Ej. "STARBUCKS", "COSTCO", "OXXO"). Importante: Si no es claro, infiérelo por el contexto del texto.
+            2. **fecha**: Fecha de la compra en formato YYYY-MM-DD.
+            3. **total**: El monto total pagado (numérico).
+            
+            Devuelve un JSON con esta estructura:
+            {
+                "tienda": "NOMBRE",
+                "fecha": "YYYY-MM-DD",
+                "total": 0.0
+            }
+            
+            Texto OCR:
+            {text_content}
+            """,
+            "facturacion_from_text_with_context": """
+            Eres un experto en extracción de datos de facturación en México.
+            Analiza el siguiente TEXTO CRUDO obtenido de un OCR (Mistral) de un ticket de compra.
+
+            ### CONTEXTO DE TIENDAS CONOCIDAS:
+            {context_str}
+
+            ### INSTRUCCIONES:
+            1.  **Identificar Tienda**: Busca el nombre del establecimiento en el texto.
+            2.  **Verificar Requisitos**: Si el nombre de la tienda coincide (o es muy similar) a una de las "Tiendas Conocidas", **DEBES** buscar obligatoriamente los campos listados para esa tienda (ej. "Ticket ID", "Sucursal", etc.).
+            3.  **Regla Especial 'Sucursal'**: 
+                - Si se pide "Sucursal", busca el **NÚMERO** o **CÓDIGO** de la sucursal (ej. "Suc: 402", "Store# 3920").
+                - EVITA devolver el nombre de la calle o colonia (ej. "Polanco", "Centro") salvo que no exista ningún número.
+            4.  **Extracción General**:
+                - **tienda**: Nombre comercial (MAYÚSCULAS).
+                - **fecha**: Formato YYYY-MM-DD.
+                - **total**: Monto total pagado (numérico).
+                - **campos_adicionales**: Aquí DEBES poner todos los campos específicos encontrados (Folio, Sucursal, Ticket ID, etc.).
+
+            Devuelve un JSON con esta estructura:
+            {
+                "tienda": "NOMBRE",
+                "fecha": "YYYY-MM-DD",
+                "total": 0.0,
+                "campos_adicionales": {
+                    "Sucursal": "3940",
+                    "Ticket ID": "..."
+                }
+            }
+
+            Texto OCR:
+            {text_content}
             """
         }
         # Preconfiguramos configs opcionales de generación
@@ -315,6 +367,47 @@ class GeminiService:
         prepared_content = self._prepare_content(file_data, mime_type)
         
         return self._generate_and_parse(prompt, prepared_content)
+
+    def extract_from_text(self, prompt_name: str, text: str, context: str = "") -> dict:
+        """
+        Extrae datos de un texto crudo utilizando un prompt específico.
+        Permite contexto dinámico.
+        """
+        if prompt_name not in self.prompts:
+            raise ValueError(f"El prompt '{prompt_name}' no existe.")
+            
+        raw_prompt = self.prompts[prompt_name]
+        
+        # Inyectamos el texto (y contexto si existe) en el prompt
+        try:
+            # Intentamos formatear con ambos
+            prompt = raw_prompt.format(text_content=text, context_str=context)
+        except KeyError:
+             # Si falla (ej. el prompt viejo no tiene context_str), probamos solo con text_content
+            try:
+                prompt = raw_prompt.format(text_content=text)
+            except KeyError:
+                # Fallback final
+                prompt = raw_prompt + "\n\n" + text
+
+        # Para texto, enviamos solo el prompt string. Gemini lo maneja bien.
+        
+        response = self.model.generate_content(prompt)
+        # Reutilizamos la lógica de limpieza de JSON
+        cleaned_response = response.text.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+        cleaned_response = cleaned_response.strip()
+        
+        try:
+            return json.loads(cleaned_response)
+        except json.JSONDecodeError:
+            logger.error(f"Error: La respuesta de Gemini no es un JSON válido: {cleaned_response}")
+            return {}
 
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Genera la respuesta de Gemini y devuelve el JSON parseado."""
@@ -677,6 +770,12 @@ class BillingService:
         Toma los datos crudos de Gemini y aplica la 'máscara' de configuración
         si la tienda ya es conocida en la base de datos.
         """
+        # --- NUEVA LÓGICA DE COMPATIBILIDAD ---
+        # Si 'data_gemini' viene de MistralOCRService, los datos reales están anidados.
+        if "extracted_fields" in data_gemini:
+            # Aplanamos para que el resto de la función trabaje igual
+            data_gemini = data_gemini["extracted_fields"]
+
         # 1. Normalizar el nombre de la tienda (Mayúsculas y sin espacios extra)
         nombre_tienda_raw = data_gemini.get("tienda", "DESCONOCIDO")
         nombre_tienda = nombre_tienda_raw.strip().upper() if nombre_tienda_raw else "DESCONOCIDO"
@@ -906,9 +1005,33 @@ class MistralOCRService:
                         page["markdown"] = cleaned # Actualizamos el JSON original
                         full_markdown += cleaned + "\n"
 
-            # 4. Extracción "Dummy" de campos clave para llenar el modelo Factura
-            # (El usuario configurará el parseo real después, pero necesitamos una base)
-            extracted_fields = self._extract_basic_fields_regex(full_markdown)
+            # 4. Extracción INTELIGENTE con Gemini (Text-to-JSON)
+            # Usamos el texto markdown generado por Mistral para extraer la tienda, fecha y total
+            # Esto es mucho más potente que el regex.
+            gemini = get_gemini_service()
+            
+            # --- NUEVA LÓGICA DE CONTEXTO ---
+            # 1. Recuperamos todas las configuraciones de tiendas
+            tiendas_config = TiendaFacturacion.objects.all()
+            contexto_str = ""
+            if tiendas_config.exists():
+                contexto_str = "LISTA DE TIENDAS Y CAMPOS REQUERIDOS:\n"
+                for t in tiendas_config:
+                    lista_campos = ", ".join(t.campos_requeridos) if t.campos_requeridos else "Estándar"
+                    contexto_str += f"- {t.tienda}: [{lista_campos}]\n"
+            
+            # 2. Llamamos al nuevo prompt con contexto
+            extracted_fields = gemini.extract_from_text(
+                "facturacion_from_text_with_context", 
+                full_markdown, 
+                context=contexto_str
+            )
+
+            # Si el nuevo prompt devuelve "campos_adicionales", los aplanamos para mantener compatibilidad
+            if "campos_adicionales" in extracted_fields:
+                extras = extracted_fields.pop("campos_adicionales")
+                if isinstance(extras, dict):
+                    extracted_fields.update(extras)
 
             return {
                 "raw_json": json_data,      # El JSON estructura completo de Mistral

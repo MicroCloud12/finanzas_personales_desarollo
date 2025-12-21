@@ -557,3 +557,66 @@ ERROR 2025-12-17 07:43:04,968 services Error Mistral API: name 're' is not defin
 ERROR 2025-12-17 07:43:08,316 services Error Mistral API: name 're' is not defined
 ERROR 2025-12-17 07:43:10,797 services Error Mistral API: name 're' is not defined
 ERROR 2025-12-17 07:43:18,968 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 22:03:13,873 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos del ticket en formato JSON.
+
+```json
+{
+    "tienda": "Cinemex",
+    "fecha": "2025-12-06",
+    "total": 430.00
+}
+ERROR 2025-12-17 22:03:18,794 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis del texto del ticket y la extracción de datos en formato JSON.
+
+```json
+{
+    "tienda": "Walmart",
+    "fecha": "2025-12-06",
+    "total": 129.00
+}
+ERROR 2025-12-17 22:12:44,944 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos en formato JSON.
+
+```json
+{
+    "tienda": "OXXO",
+    "fecha": "2025-12-07",
+    "total": 48.00
+}
+ERROR 2025-12-17 22:12:45,479 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos en formato JSON.
+
+```json
+{
+    "tienda": "Walmart",
+    "fecha": "2025-12-06",
+    "total": 129.00
+}
+ERROR 2025-12-20 16:59:36,914 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos del texto proporcionado.
+
+```json
+{
+    "tienda": "NU MEXICO",
+    "fecha": "2025-12-18",
+    "total": 10000.00,
+    "campos_adicionales": {
+        "tipo_documento": "Comprobante de Transferencia SPEI",
+        "concepto": "Ahorros",
+        "referencia_supermovil": "388701",
+        "estatus_operacion": "Exitosa",
+        "rfc_cliente": "AELM9508074V1"
+    }
+}
+ERROR 2025-12-20 17:00:55,808 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos del ticket en el formato JSON solicitado.
+
+```json
+{
+    "tienda": "FARMACIAS GUADALAJARA",
+    "fecha": "2025-12-07",
+    "total": 65.49,
+    "campos_adicionales": {
+        "rfc": "FGU030930P93",
+        "folio_factura": "567127-570934-811313",
+        "no_ticket": "142613",
+        "sucursal": "AV HOMERO CDMX MEXICO",
+        "caja": "6"
+    }
+}
+ERROR 2025-12-20 17:12:20,090 services Error Mistral API: [WinError 10053] Se ha anulado una conexión establecida por el software en su equipo host
