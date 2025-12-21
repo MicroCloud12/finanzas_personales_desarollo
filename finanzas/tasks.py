@@ -362,9 +362,21 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         
         from decimal import Decimal
         
+        # --- NORMALIZACIÓN DE NOMBRE DE TIENDA ---
+        nombre_raw = datos_extraidos.get("tienda") or datos_extraidos.get("establecimiento") or "DESCONOCIDO"
+        nombre_raw = nombre_raw.upper().strip()
+        
+        tienda_final = nombre_raw
+        
+        # Intentamos encontrar la tienda oficial en la BD
+        tienda_obj = BillingService.buscar_tienda_fuzzy(nombre_raw)
+        if tienda_obj:
+            tienda_final = tienda_obj.tienda
+            logger.info(f"Tienda normalizada: {nombre_raw} -> {tienda_final}")
+        
         Factura.objects.create(
             propietario=user,
-            tienda=datos_extraidos.get("tienda", "DESCONOCIDO"),
+            tienda=tienda_final, # Guardamos el nombre normalizado
             fecha_emision=parse_date_safely(datos_extraidos.get("fecha")),
             total=Decimal(str(datos_extraidos.get("total", 0))),
             datos_facturacion=datos_extraidos.get("campos_adicionales", {}), # Guardamos el JSON con los detalles
@@ -372,7 +384,7 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
             estado='pendiente' 
         )
 
-        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': datos_extraidos.get("tienda", "DESCONOCIDO")}
+        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': tienda_final}
 
     except Exception as e:
         logger.error(f"Error fatal procesando {file_name}: {e}")

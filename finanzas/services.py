@@ -864,21 +864,58 @@ class BillingService:
         if not nombre_detectado:
             return None
             
-        nombre_detectado = nombre_detectado.upper().strip()
+        nombre_detectado = nombre_detectado.strip().upper()
         
-        # 1. Intento exacto
+        # 1. Intento exacto rápido
         try:
             return TiendaFacturacion.objects.get(tienda=nombre_detectado)
         except TiendaFacturacion.DoesNotExist:
             pass
             
-        # 2. Intento difuso (Similitud > 80%)
-        todas_las_tiendas = list(TiendaFacturacion.objects.values_list('tienda', flat=True))
-        coincidencias = get_close_matches(nombre_detectado, todas_las_tiendas, n=1, cutoff=0.7) # 70% de similitud
+        # 2. Diccionario de correcciones manuales conocidas (Hardcoded fixes)
+        # Esto soluciona errores OCR comunes y recurrentes que el fuzzy no capta o confunde
+        correcciones = {
+            "SIMITLA": "FARMACIAS SIMILARES",
+            "SIMILARES": "FARMACIAS SIMILARES",
+            "FARMACIAS SIMITLA": "FARMACIAS SIMILARES",
+            "MCDONALDS": "MCDONALD'S",
+            "MCDONALD´S": "MCDONALD'S",
+            "0XX0": "OXXO",
+            "WAL MART": "WALMART",
+            "WAL-MART": "WALMART",
+            "STARBUCKS COFFEE": "STARBUCKS",
+        }
+        
+        if nombre_detectado in correcciones:
+            nombre_corregido = correcciones[nombre_detectado]
+            try:
+                # Intentamos buscar el nombre corregido
+                return TiendaFacturacion.objects.get(tienda=nombre_corregido)
+            except TiendaFacturacion.DoesNotExist:
+                # Si no existe la tienda "oficial" corregida, intentamos buscarla fuzzy con el nombre corregido
+                nombre_detectado = nombre_corregido
+                
+        # 3. Limpieza de ruido para mejorar el Match
+        # Quitamos palabras genéricas que ensucian la comparación
+        palabras_ruido = ["FARMACIAS", "TIENDA", "SUPERMERCADO", "RESTAURANTE", "S.A. DE C.V.", "SA DE CV", "SUCURSAL"]
+        nombre_limpio = nombre_detectado
+        for p in palabras_ruido:
+            nombre_limpio = nombre_limpio.replace(p, "").strip()
+            
+        todas_las_tiendas_objs = list(TiendaFacturacion.objects.all())
+        nombres_tiendas = [t.tienda for t in todas_las_tiendas_objs]
+        
+        # 4. Intento difuso con umbral más permisivo (0.6)
+        coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.6)
         
         if coincidencias:
-            mejor_match = coincidencias[0]
-            return TiendaFacturacion.objects.get(tienda=mejor_match)
+            return TiendaFacturacion.objects.get(tienda=coincidencias[0])
+            
+        # 5. Intento difuso con nombre LIMPIO (si falló el completo)
+        if nombre_limpio and nombre_limpio != nombre_detectado:
+            coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.6)
+            if coincidencias_limpias:
+                 return TiendaFacturacion.objects.get(tienda=coincidencias_limpias[0])
             
         return None
 
