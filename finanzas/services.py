@@ -30,6 +30,8 @@ from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
 from allauth.socialaccount.models import SocialApp, SocialToken
 from .models import registro_transacciones, TransaccionPendiente, User, inversiones, PendingInvestment
+import re
+from difflib import get_close_matches
 
 logger = logging.getLogger(__name__)
 
@@ -764,225 +766,70 @@ class RISCService:
                 logger.warning(f"Se recibió un evento RISC para un usuario de Google con ID {user_google_id} que no existe en el sistema.")
 
 class BillingService:
+    # ... (Tus otros métodos se quedan igual) ...
+
     @staticmethod
-    def procesar_datos_facturacion(data_gemini: dict) -> dict:
+    def identificar_tienda_en_texto(text: str) -> dict:
         """
-        Toma los datos crudos de Gemini y aplica la 'máscara' de configuración
-        si la tienda ya es conocida en la base de datos.
+        Busca si el texto del ticket coincide con alguna tienda configurada en la BD.
+        Retorna la config (nombre y campos) o None.
         """
-        # --- NUEVA LÓGICA DE COMPATIBILIDAD ---
-        # Si 'data_gemini' viene de MistralOCRService, los datos reales están anidados.
-        if "extracted_fields" in data_gemini:
-            # Aplanamos para que el resto de la función trabaje igual
-            data_gemini = data_gemini["extracted_fields"]
-
-        # 1. Normalizar el nombre de la tienda (Mayúsculas y sin espacios extra)
-        nombre_tienda_raw = data_gemini.get("tienda", "DESCONOCIDO")
-        nombre_tienda = nombre_tienda_raw.strip().upper() if nombre_tienda_raw else "DESCONOCIDO"
-
-        # 2. Buscar si ya tenemos configuración para esta tienda
-        config_tienda = TiendaFacturacion.objects.filter(tienda=nombre_tienda).first()
+        text_upper = text.upper()
+        # Traemos solo lo necesario de la BD para ser rápidos
+        tiendas_configs = TiendaFacturacion.objects.values('tienda', 'campos_requeridos')
         
-        # --- CORRRECCIÓN ESTRUCTURA PLANA ---
-        # El nuevo prompt devuelve todo en la raíz. Separamos los datos "estándar" de los "candidatos".
-        campos_estandar = ['tienda', 'fecha_emision', 'fecha', 'total_pagado', 'total', 'tipo_documento']
+        mejores_matches = []
         
-        datos_candidatos = {}
-        # Iteramos sobre todas las llaves que nos dio Gemini
-        for k, v in data_gemini.items():
-            if k.lower() not in campos_estandar and v: # Ignoramos nulos
-                datos_candidatos[k] = v
-
-        # Estructura base del resultado
-        fecha_emision_raw = data_gemini.get('fecha_emision') or data_gemini.get('fecha')
-        total_pagado_raw = data_gemini.get('total_pagado') or data_gemini.get('total')
-
-        resultado = {
-            'tienda': nombre_tienda,
-            'fecha_emision': fecha_emision_raw,
-            'total_pagado': total_pagado_raw,
-            'es_conocida': False,
-            'datos_para_cliente': {},     # Aquí pondremos solo lo necesario
-            'todos_los_datos': datos_candidatos # Respaldo completo para que el usuario elija
-        }
-
-        # --- CASO A: TIENDA CONOCIDA (Ya sabemos qué pedir) ---
-        if config_tienda:
-            resultado['es_conocida'] = True
-            campos_necesarios = config_tienda.campos_requeridos # Ej: ["Folio", "RFC"]
+        for config in tiendas_configs:
+            nombre = config['tienda'].upper()
+            # 1. Búsqueda exacta rápida
+            if nombre in text_upper:
+                return config
             
-            for campo in campos_necesarios:
-                # 1. Busqueda exacta
-                valor = datos_candidatos.get(campo)
-                
-                # 2. Busqueda difusa (case insensitive)
-                if not valor:
-                    for k, v in datos_candidatos.items():
-                        if campo.lower() == k.lower():
-                            valor = v
-                            break
-                
-                # 3. Busqueda contenida (por si Gemini devolvió "Folio de Venta" y buscamos "Folio")
-                if not valor:
-                     for k, v in datos_candidatos.items():
-                        if campo.lower() in k.lower():
-                            valor = v
-                            break
-                
-                resultado['datos_para_cliente'][campo] = valor or "NO DETECTADO (Revisar Ticket)"
-
-        # --- CASO B: TIENDA NUEVA (Aprendizaje) ---
-        else:
-            # Si no la conocemos, le mostramos TODO al usuario para que él elija
-            resultado['es_conocida'] = False
-            resultado['datos_para_cliente'] = datos_candidatos
-
-        return resultado
-
-    @staticmethod
-    def guardar_configuracion_tienda(nombre_tienda: str, campos_seleccionados: list):
-        """
-        Guarda o actualiza la configuración de una tienda basada en la selección del usuario.
-        """
-        tienda_obj, created = TiendaFacturacion.objects.get_or_create(
-            tienda=nombre_tienda.strip().upper()
-        )
-        # Guardamos la lista de campos que el usuario marcó como útiles
-        tienda_obj.campos_requeridos = campos_seleccionados
-        tienda_obj.save()
-        return tienda_obj
+            # 2. Preparamos para búsqueda difusa si falla la exacta
+            mejores_matches.append(nombre)
+        
+        # 3. Búsqueda difusa (si no hubo exacta)
+        # Busca palabras en el texto que se parezcan mucho a los nombres de las tiendas
+        # (Esto ayuda si el OCR leyó "W4LMART")
+        posibles = get_close_matches(text_upper, mejores_matches, n=1, cutoff=0.85)
+        
+        if posibles:
+            nombre_encontrado = posibles[0]
+            # Retornamos la config completa de la tienda encontrada
+            for config in tiendas_configs:
+                if config['tienda'].upper() == nombre_encontrado:
+                    return config
+                    
+        return None
 
 class MistralOCRService:
+    """
+    Servicio dedicado EXCLUSIVAMENTE a obtener el texto crudo de la imagen con máxima fidelidad.
+    """
     def __init__(self):
-        # Asegúrate de poner MISTRAL_API_KEY en tu .env
         self.api_key = os.getenv("MISTRAL_API_KEY") 
-        if not self.api_key:
-            logger.error("MISTRAL_API_KEY no configurada.")
         self.client = Mistral(api_key=self.api_key) if self.api_key else None
 
-    # --- Funciones Auxiliares de OpenCV (Tu lógica) ---
-    def order_points(self, pts):
-        rect = np.zeros((4, 2), dtype="float32")
-        s = pts.sum(axis=1)
-        rect[0] = pts[np.argmin(s)]
-        rect[2] = pts[np.argmax(s)]
-        diff = np.diff(pts, axis=1)
-        rect[1] = pts[np.argmin(diff)]
-        rect[3] = pts[np.argmax(diff)]
-        return rect
+    # ... (Mantén tus métodos preprocess_image_bytes, order_points, etc. IGUALES) ...
 
-    def four_point_transform(self, image, pts):
-        rect = self.order_points(pts)
-        (tl, tr, br, bl) = rect
-        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-        maxWidth = max(int(widthA), int(widthB))
-        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-        maxHeight = max(int(heightA), int(heightB))
-        dst = np.array([[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]], dtype="float32")
-        M = cv2.getPerspectiveTransform(rect, dst)
-        return cv2.warpPerspective(image, M, (maxWidth, maxHeight))
-
-    def preprocess_image_bytes(self, image_bytes):
-        """Versión adaptada de tu preprocess_image para trabajar con bytes en memoria."""
-        try:
-            # Convertir bytes a numpy array para OpenCV
-            nparr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
-            if img is None: return None
-
-            # 1. PREPARACIÓN
-            detect_h = 800.0
-            ratio = img.shape[0] / detect_h
-            orig = img.copy()
-            if img.shape[0] > detect_h:
-                image_resized = cv2.resize(img, (int(img.shape[1] / ratio), int(detect_h)))
-            else:
-                image_resized = img.copy()
-                ratio = 1.0
-
-            # 2. DETECCIÓN (OTSU)
-            gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
-            blur = cv2.GaussianBlur(gray, (5, 5), 0)
-            _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
-            thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
-
-            # 3. CONTORNOS
-            cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cnts = sorted(cnts[0] if len(cnts) == 2 else cnts[1], key=cv2.contourArea, reverse=True)[:5]
-            pts_for_transform = None
-            if len(cnts) > 0:
-                c = cnts[0]
-                peri = cv2.arcLength(c, True)
-                approx = cv2.approxPolyDP(c, 0.04 * peri, True)
-                if len(approx) == 4:
-                    pts_for_transform = approx.reshape(4, 2) * ratio
-                else:
-                    rect = cv2.minAreaRect(c)
-                    box = cv2.boxPoints(rect)
-                    pts_for_transform = np.int32(box).astype("float32") * ratio
-
-            # 4. RECORTAR
-            if pts_for_transform is not None:
-                warped = self.four_point_transform(orig, pts_for_transform)
-            else:
-                warped = orig
-
-            # 5. FILTROS
-            if len(warped.shape) == 3: warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-            else: warped_gray = warped
-            
-            denoised = cv2.fastNlMeansDenoising(warped_gray, None, 10, 7, 21)
-            processed_img = cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 10)
-
-            # 6. RELLENADO
-            fill_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-            processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_CLOSE, fill_kernel, iterations=2)
-            processed_img = cv2.dilate(processed_img, fill_kernel, iterations=1)
-
-            # Convertir de vuelta a base64 para Mistral
-            _, buffer = cv2.imencode('.jpg', processed_img)
-            return base64.b64encode(buffer).decode('utf-8')
-        except Exception as e:
-            logger.error(f"Error en preprocessing OpenCV: {e}")
-            return None
-
-    def post_process_text(self, text):
-        """Tu lógica de regex para limpiar el texto."""
-        if not text: return ""
-        text = re.sub(r'\b0XX0\b', 'OXXO', text, flags=re.IGNORECASE)
-        text = re.sub(r'\b0xxo\b', 'OXXO', text, flags=re.IGNORECASE)
-        text = re.sub(r'PE50S', 'PESOS', text, flags=re.IGNORECASE)
-        text = re.sub(r'PE5OS', 'PESOS', text, flags=re.IGNORECASE)
-        text = re.sub(r'202S', '2025', text)
-        text = re.sub(r'202Z', '2025', text)
-        text = text.replace("Cadena Conercial", "Cadena Comercial")
-        return text
-
-    def process_ticket(self, file_content_bytes, mime_type="image/jpeg"):
+    def get_text_from_image(self, file_content_bytes, mime_type="image/jpeg"):
         """
-        Orquesta todo el proceso: Imagen -> OpenCV -> Mistral OCR -> JSON Limpio
+        Paso 1: Convierte Imagen -> Texto Markdown usando Mistral OCR.
         """
         if not self.client:
             return {"error": "Mistral API Key missing"}
 
-        # 1. Preprocesar (Solo si es imagen, si es PDF pasamos directo o convertimos)
+        # Preparación de imagen (Tu lógica existente)
         if 'pdf' in mime_type:
-             # Para PDF, codificamos directo los bytes originales
              base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
         else:
-             # Para imágenes, aplicamos tu filtro OpenCV
              base64_image = self.preprocess_image_bytes(file_content_bytes)
              if not base64_image:
-                 # Fallback: usar original si falla OpenCV
                  base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
 
-        # 2. Llamada a Mistral OCR
         try:
+            # Llamada a Mistral
             ocr_response = self.client.ocr.process(
                 model="mistral-ocr-latest",
                 document={
@@ -992,73 +839,19 @@ class MistralOCRService:
                 include_image_base64=False
             )
             
-            # 3. Procesar Respuesta
-            # Convertimos la respuesta pydantic a dict
             json_data = json.loads(ocr_response.model_dump_json())
             
-            # Extraemos y limpiamos el Markdown de todas las páginas
+            # Unificar todo el texto de las páginas
             full_markdown = ""
             if "pages" in json_data:
                 for page in json_data["pages"]:
                     if "markdown" in page:
-                        cleaned = self.post_process_text(page["markdown"])
-                        page["markdown"] = cleaned # Actualizamos el JSON original
-                        full_markdown += cleaned + "\n"
+                        # Limpieza básica de caracteres basura
+                        clean_text = page["markdown"].replace("0XX0", "OXXO").replace("0xx0", "OXXO")
+                        full_markdown += clean_text + "\n"
 
-            # 4. Extracción INTELIGENTE con Gemini (Text-to-JSON)
-            # Usamos el texto markdown generado por Mistral para extraer la tienda, fecha y total
-            # Esto es mucho más potente que el regex.
-            gemini = get_gemini_service()
-            
-            # --- NUEVA LÓGICA DE CONTEXTO ---
-            # 1. Recuperamos todas las configuraciones de tiendas
-            tiendas_config = TiendaFacturacion.objects.all()
-            contexto_str = ""
-            if tiendas_config.exists():
-                contexto_str = "LISTA DE TIENDAS Y CAMPOS REQUERIDOS:\n"
-                for t in tiendas_config:
-                    lista_campos = ", ".join(t.campos_requeridos) if t.campos_requeridos else "Estándar"
-                    contexto_str += f"- {t.tienda}: [{lista_campos}]\n"
-            
-            # 2. Llamamos al nuevo prompt con contexto
-            extracted_fields = gemini.extract_from_text(
-                "facturacion_from_text_with_context", 
-                full_markdown, 
-                context=contexto_str
-            )
-
-            # Si el nuevo prompt devuelve "campos_adicionales", los aplanamos para mantener compatibilidad
-            if "campos_adicionales" in extracted_fields:
-                extras = extracted_fields.pop("campos_adicionales")
-                if isinstance(extras, dict):
-                    extracted_fields.update(extras)
-
-            return {
-                "raw_json": json_data,      # El JSON estructura completo de Mistral
-                "text_content": full_markdown, # El texto plano para búsquedas simples
-                "extracted_fields": extracted_fields # Fecha, Total, Tienda (intentos)
-            }
+            return {"text_content": full_markdown, "raw_json": json_data}
 
         except Exception as e:
             logger.error(f"Error Mistral API: {e}")
             return {"error": str(e)}
-
-    def _extract_basic_fields_regex(self, text):
-        """Intenta extraer Fecha y Total con Regex simple para pre-llenar la Factura."""
-        data = {}
-        # Intento de Total (busca formato $ 123.00 o 123.00 al final de linea)
-        total_match = re.search(r'[\$]?\s?(\d{1,3}(?:,\d{3})*\.\d{2})', text)
-        if total_match:
-            try: data['total'] = float(total_match.group(1).replace(',', ''))
-            except: data['total'] = 0.0
-        
-        # Intento de Fecha (YYYY-MM-DD o DD/MM/YYYY)
-        date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(\d{2}/\d{2}/\d{4})', text)
-        if date_match:
-            data['fecha'] = date_match.group(0)
-            
-        # Tienda (muy difícil con regex genérico, se deja vacío o se busca OXXO explícito)
-        if "OXXO" in text.upper(): data['tienda'] = "OXXO"
-        elif "WALMART" in text.upper(): data['tienda'] = "WALMART"
-        
-        return data

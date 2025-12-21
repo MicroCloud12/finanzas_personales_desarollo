@@ -303,62 +303,83 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
     """
-    Procesa un ticket para FACTURACIÓN usando MISTRAL OCR + OPENCV.
+    Flujo Maestro de Facturación:
+    1. Drive -> 2. Mistral (Ojos) -> 3. Lógica (Cerebro Básico) -> 4. Gemini (Cerebro Avanzado) -> 5. DB
     """
     try:
         user = User.objects.get(id=user_id)
+        
+        # --- PASO 1: Descargar de Drive ---
         gdrive_service = GoogleDriveService(user)
-        
-        # 1. Instanciamos el servicio de Mistral
-        mistral_service = MistralOCRService()
-        
-        # 2. Obtenemos contenido (bytes)
         file_content = gdrive_service.get_file_content(file_id)
-        file_bytes = file_content.getvalue() # Obtenemos los bytes crudos
+        file_bytes = file_content.getvalue()
 
-        # 3. Procesamiento (OpenCV + Mistral)
-        # Esto devuelve: { 'raw_json': ..., 'text_content': ..., 'extracted_fields': ... }
-        extracted_data = mistral_service.process_ticket(file_bytes, mime_type)
+        # --- PASO 2: Mistral OCR (Obtener Texto) ---
+        mistral_service = MistralOCRService()
+        ocr_result = mistral_service.get_text_from_image(file_bytes, mime_type)
+        
+        if "error" in ocr_result:
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': ocr_result['error']}
+            
+        texto_ticket = ocr_result['text_content']
 
-        if extracted_data.get("error"):
-            return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['error']}
-
-        # 4. Validar Transferencia vs Ticket
-        # Buscamos la palabra "Transferencia" en el texto extraído
-        texto_completo = extracted_data.get("text_content", "").upper()
-        if "TRANSFERENCIA" in texto_completo and "TICKET" not in texto_completo:
+        # --- Validación Rápida: ¿Es Transferencia? ---
+        if "TRANSFERENCIA" in texto_ticket.upper() and "TICKET" not in texto_ticket.upper():
              return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia'}
 
-        # 5. Mapeo a Modelo Factura
-        campos_basicos = extracted_data.get("extracted_fields", {})
-        nombre_tienda = campos_basicos.get("tienda", "DESCONOCIDO").upper()
-        config_tienda = TiendaFacturacion.objects.filter(tienda=nombre_tienda).first()
+        # --- PASO 3: Identificar Tienda (Contexto) ---
+        # Buscamos en la BD si conocemos esta tienda para saber qué pedirle a Gemini
+        config_tienda = BillingService.identificar_tienda_en_texto(texto_ticket)
         
-        # Fecha y Total (Convertidos de forma segura)
-        fecha_obj = parse_date_safely(campos_basicos.get("fecha"))
-        try:
-            total_val = Decimal(str(campos_basicos.get("total", 0)))
-        except:
-            total_val = Decimal("0.00")
+        tienda_nombre = None
+        campos_req = None
+        
+        if config_tienda:
+            tienda_nombre = config_tienda['tienda']
+            campos_req = config_tienda['campos_requeridos']
+            logger.info(f"Tienda identificada: {tienda_nombre}. Campos a buscar: {campos_req}")
 
-        # Creamos la Factura
-        Factura.objects.create(
+        # --- PASO 4: Gemini (Extracción Estructurada) ---
+        gemini_service = get_gemini_service()
+        datos_extraidos = gemini_service.extract_billing_data(
+            ocr_text=texto_ticket,
+            tienda_detectada=tienda_nombre,
+            campos_requeridos=campos_req
+        )
+
+        if "error" in datos_extraidos:
+             return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Fallo en extracción IA'}
+
+        # --- PASO 5: Guardar como Pendiente de Revisión ---
+        # Preparamos el JSON final unificado
+        datos_finales = {
+            "tipo_documento": "TICKET_PARA_FACTURA",
+            "tienda": datos_extraidos.get("tienda", "DESCONOCIDO"),
+            "fecha_emision": datos_extraidos.get("fecha_emision"),
+            "total_pagado": datos_extraidos.get("total_pagado"),
+            "datos_facturacion": datos_extraidos.get("datos_facturacion", {}), # Aquí vienen folio, ticket_id, etc.
+            "confianza_ia": datos_extraidos.get("confianza", "BAJA"),
+            "es_tienda_conocida": bool(config_tienda),
+            "texto_ocr_preview": texto_ticket[:200], # Guardamos un cachito por si acaso
+            "archivo_drive_id": file_id,
+            "nombre_archivo": file_name
+        }
+
+        TransaccionPendiente.objects.create(
             propietario=user,
-            tienda=nombre_tienda,
-            fecha_emision=fecha_obj,
-            total=total_val,
-            
-            # Guardamos TODO el resultado de Mistral para búsquedas futuras
-            datos_facturacion=extracted_data, 
-            
-            archivo_drive_id=file_id,
-            configuracion_tienda=config_tienda,
+            datos_json=datos_finales,
             estado='pendiente'
         )
 
-        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': nombre_tienda}
+        return {
+            'status': 'SUCCESS', 
+            'file_name': file_name, 
+            'tienda': datos_finales['tienda'],
+            'confianza': datos_finales['confianza_ia']
+        }
 
     except Exception as e:
+        logger.error(f"Error procesando factura {file_name}: {e}")
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 
