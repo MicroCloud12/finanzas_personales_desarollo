@@ -856,22 +856,52 @@ class BillingService:
         return obj
 
     @staticmethod
+    def buscar_tienda_fuzzy(nombre_detectado):
+        """
+        Busca una tienda en la base de datos que coincida similitud con el nombre detectado.
+        Retorna el objeto TiendaFacturacion o None.
+        """
+        if not nombre_detectado:
+            return None
+            
+        nombre_detectado = nombre_detectado.upper().strip()
+        
+        # 1. Intento exacto
+        try:
+            return TiendaFacturacion.objects.get(tienda=nombre_detectado)
+        except TiendaFacturacion.DoesNotExist:
+            pass
+            
+        # 2. Intento difuso (Similitud > 80%)
+        todas_las_tiendas = list(TiendaFacturacion.objects.values_list('tienda', flat=True))
+        coincidencias = get_close_matches(nombre_detectado, todas_las_tiendas, n=1, cutoff=0.7) # 70% de similitud
+        
+        if coincidencias:
+            mejor_match = coincidencias[0]
+            return TiendaFacturacion.objects.get(tienda=mejor_match)
+            
+        return None
+
+    @staticmethod
     def procesar_datos_facturacion(datos_json: dict) -> dict:
         """
         Analiza los datos extraídos por la IA y los cruza con la configuración de la tienda.
         Devuelve un contexto listo para el template.
         """
-        tienda_nombre = datos_json.get('tienda') or datos_json.get('establecimiento') or 'DESCONOCIDO'
-        tienda_nombre = tienda_nombre.upper()
+        tienda_detectada = datos_json.get('tienda') or datos_json.get('establecimiento') or 'DESCONOCIDO'
+        tienda_detectada = tienda_detectada.upper()
         
-        # 1. Buscamos si ya conocemos esta tienda
-        try:
-            config_tienda = TiendaFacturacion.objects.get(tienda=tienda_nombre)
+        # Usamos la búsqueda inteligente
+        config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
+        
+        if config_tienda:
             es_conocida = True
+            tienda_nombre = config_tienda.tienda # Usamos el nombre OFICIAL de la DB
             campos_requeridos = config_tienda.campos_requeridos
             url_portal = config_tienda.url_portal
-        except TiendaFacturacion.DoesNotExist:
+        else:
             es_conocida = False
+            tienda_nombre = tienda_detectada # Usamos lo que encontró la IA
             campos_requeridos = []
             url_portal = None
 
@@ -893,7 +923,11 @@ class BillingService:
         if es_conocida and campos_requeridos:
             # Si sabemos qué buscar, filtramos y validamos
             for campo in campos_requeridos:
-                valor = campos_encontrados.get(campo) or campos_encontrados.get(campo.lower()) or campos_encontrados.get(campo.replace(' ', '_').lower())
+                # Buscamos el campo con varias estrategias (exacto, lowercase, espacios->guiones)
+                valor = (campos_encontrados.get(campo) or 
+                         campos_encontrados.get(campo.lower()) or 
+                         campos_encontrados.get(campo.replace(' ', '_').lower()) or
+                         campos_encontrados.get(campo.upper()))
                 
                 if valor:
                     datos_para_cliente[campo] = valor
@@ -912,7 +946,8 @@ class BillingService:
         claves_sugeridas = [k for k in campos_encontrados.keys() if k not in ['tienda', 'fecha', 'total', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'campos_adicionales']]
 
         return {
-            'tienda': tienda_nombre,
+            'tienda': tienda_nombre, # Nombre normalizado si se encontró, o el original
+            'tienda_original': tienda_detectada if tienda_detectada != tienda_nombre else None, # Para avisar al usuario si hubo corrección
             'es_conocida': es_conocida,
             'url_portal': url_portal,
             'datos_para_cliente': datos_para_cliente, # Lo que se guardará en la Factura final
