@@ -973,111 +973,72 @@ def iniciar_procesamiento_facturacion(request):
 # --- VISTA 2: Listado de Pendientes (La redirección) ---
 def revisar_facturas_pendientes(request):
     """Lista los tickets pendientes para facturación."""
-    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    # Ahora consultamos directamente la tabla Factura con estado 'pendiente'
+    facturas_pendientes = Factura.objects.filter(propietario=request.user, estado='pendiente').order_by('-fecha_emision')
     
-    # Normalizamos los datos JSON en memoria para evitar errores en el template
-    # si faltan keys como 'fecha' o 'total'
-    for ticket in tickets_pendientes:
-        datos = ticket.datos_json
-        # Asegurar fecha
-        if 'fecha' not in datos and 'fecha_emision' in datos:
-            datos['fecha'] = datos['fecha_emision']
-        elif 'fecha_emision' not in datos and 'fecha' in datos:
-            datos['fecha_emision'] = datos['fecha']
-            
-        # Asegurar total
-        if 'total' not in datos and 'total_pagado' in datos:
-            datos['total'] = datos['total_pagado']
-        elif 'total_pagado' not in datos and 'total' in datos:
-             datos['total_pagado'] = datos['total']
-
-        # Asegurar establecimiento (facturas usan 'tienda')
-        if 'establecimiento' not in datos and 'tienda' in datos:
-            datos['establecimiento'] = datos['tienda']
-        elif 'tienda' not in datos and 'establecimiento' in datos:
-            datos['tienda'] = datos['establecimiento']
-
-    return render(request, 'revisar_factura.html', {'tickets': tickets_pendientes})
+    return render(request, 'revisar_factura.html', {'tickets': facturas_pendientes})
 
 @login_required
 def revisar_factura_detalle(request, ticket_id):
-    """Procesa y muestra los datos de facturación de un ticket concreto."""
-    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    """Procesa y muestra los datos de facturación de un ticket concreto (ahora objeto Factura)."""
     
-    # Normalizamos los datos JSON en memoria para evitar errores en el template
-    for ticket in tickets_pendientes:
-        datos = ticket.datos_json
-        # Asegurar fecha
-        if 'fecha' not in datos and 'fecha_emision' in datos:
-            datos['fecha'] = datos['fecha_emision']
-        elif 'fecha_emision' not in datos and 'fecha' in datos:
-            datos['fecha_emision'] = datos['fecha']
-        # Asegurar total
-        if 'total' not in datos and 'total_pagado' in datos:
-            datos['total'] = datos['total_pagado']
-        elif 'total_pagado' not in datos and 'total' in datos:
-            datos['total_pagado'] = datos['total']
-        # Asegurar establecimiento (facturas usan 'tienda')
-        if 'establecimiento' not in datos and 'tienda' in datos:
-            datos['establecimiento'] = datos['tienda']
-        elif 'tienda' not in datos and 'establecimiento' in datos:
-            datos['tienda'] = datos['establecimiento']
-
-    ticket = get_object_or_404(tickets_pendientes, id=ticket_id)
-    contexto_facturacion = BillingService.procesar_datos_facturacion(ticket.datos_json)
+    # Buscamos la Factura pendiente por ID
+    factura_obj = get_object_or_404(Factura, id=ticket_id, propietario=request.user)
     
+    # Usamos el servicio para procesar/refinar los datos que ya tenemos guardados
+    # Nota: BillingService espera un dict. Le pasamos 'datos_facturacion'
+    contexto_facturacion = BillingService.procesar_datos_facturacion(factura_obj.datos_facturacion)
+    
+    # Aseguramos que el contexto tenga los datos 'meta' del modelo si no vienen en el JSON
+    if not contexto_facturacion.get('tienda') or contexto_facturacion.get('tienda') == 'DESCONOCIDO':
+        contexto_facturacion['tienda'] = factura_obj.tienda
+        
+    contexto_facturacion['fecha_emision'] = factura_obj.fecha_emision
+    contexto_facturacion['total_pagado'] = factura_obj.total
+    contexto_facturacion['archivo_id'] = factura_obj.archivo_drive_id
 
     if request.method == 'POST':
         accion = request.POST.get('accion')
         
         # --- FLUJO DE APRENDIZAJE (Guardar Configuración) ---
-
         if accion == 'guardar_configuracion':
             nombre_tienda = request.POST.get('nombre_tienda')
-            # Obtenemos la lista de checkboxes que el usuario marcó
             campos_seleccionados = request.POST.getlist('campos_seleccionados')
             
-
             if campos_seleccionados:
                 BillingService.guardar_configuracion_tienda(nombre_tienda, campos_seleccionados)
                 messages.success(request, f"¡Entendido! Para {nombre_tienda} solo necesitamos: {', '.join(campos_seleccionados)}.")
             else:
                 messages.warning(request, "No seleccionaste ningún campo. La configuración no se guardó.")
             
-            # Recargamos la misma página. Ahora el servicio detectará que la tienda es 'conocida'
-
             return redirect('revisar_factura', ticket_id=ticket_id)
             
         # --- FLUJO DE CONFIRMACIÓN (Datos Correctos) ---
-
         elif accion == 'confirmar_datos':
-            # Creamos un registro de Factura independiente
-            from .models import Factura
-            from decimal import Decimal
+            # ACTUALIZAMOS el objeto Factura existente
+            # Y lo marcamos como 'listo_para_facturar' o 'facturado' (según tu flujo)
+            # Vamos a usar 'facturado' para que salga de pendientes y vaya al historial.
             
-            Factura.objects.create(
-                propietario=request.user,
-                tienda=contexto_facturacion.get('tienda', 'Desconocido'),
-                fecha_emision=parse_date_safely(contexto_facturacion.get('fecha_emision')),
-                total=Decimal(str(contexto_facturacion.get('total_pagado') or 0)),
-                datos_facturacion=contexto_facturacion.get('datos_para_cliente', {}),
-                estado='pendiente'
-            )
+            factura_obj.estado = 'facturado' # O el estado que signifique "Listo"
             
-            # Marcamos el ticket pendiente como procesado
-            ticket.estado = 'aprobada'
-            ticket.save()
+            # Opcional: Actualizar datos si cambiaron en el proceso (aunque aquí solo confirmamos)
+            # factura_obj.datos_facturacion = contexto_facturacion.get('datos_para_cliente', {})
             
-            messages.success(request, "Factura guardada correctamente.")
-            return redirect('facturacion')
+            factura_obj.save()
+            
+            messages.success(request, "Factura confirmada y guardada correctamente.")
+            return redirect('facturacion') # Redirige al historial de facturas
         
+    # Obtenemos la lista lateral de otros pendientes
+    otros_pendientes = Factura.objects.filter(propietario=request.user, estado='pendiente').exclude(id=ticket_id).order_by('-fecha_emision')
+
     return render(
         request,
         'revisar_factura.html',
         {
             'factura': contexto_facturacion,
-            'tickets': tickets_pendientes,
-            'ticket_seleccionado': ticket,
+            'tickets': [factura_obj] + list(otros_pendientes), # Hack para que la lista lateral funcione si el template itera 'tickets'
+            'ticket_seleccionado': factura_obj,
             'factura_json': json.dumps(contexto_facturacion.get('datos_para_cliente', {})),
         }
     )
@@ -1143,50 +1104,31 @@ def vista_procesamiento_facturacion(request):
 @login_required
 def eliminar_factura_pendiente(request, ticket_id):
     """
-    Elimina un ticket pendiente de facturación (TransaccionPendiente).
+    Elimina un ticket pendiente de facturación (ahora objeto Factura).
     """
-    ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
+    # Buscamos por ID y estado pendiente para seguridad
+    ticket = get_object_or_404(Factura, id=ticket_id, propietario=request.user, estado='pendiente')
     
     if request.method == 'POST':
         ticket.delete()
-        messages.success(request, "Ticket eliminado correctamente.")
+        messages.success(request, "Factura pendiente eliminada correctamente.")
         
     return redirect('revisar_facturas_pendientes')
 
 @login_required
 def marcar_ticket_facturado(request, ticket_id):
     """
-    Marca un ticket pendiente como 'aprobado' y crea la FACTURA en la tabla Factura.
+    Marca un ticket pendiente como 'facturado' (mueve de pendientes al historial).
     """
-    ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
+    # Ahora trabajamos directamente con el objeto Factura que ya existe
+    factura_obj = get_object_or_404(Factura, id=ticket_id, propietario=request.user)
     
     if request.method == 'POST':
-        # Extraer datos básicos del JSON para crear la Factura
-        datos = ticket.datos_json
-        tienda = datos.get('tienda') or datos.get('establecimiento') or 'Desconocido'
+        # Simplemente cambiamos el estado
+        factura_obj.estado = 'facturado'
+        factura_obj.save()
         
-        # Manejo seguro de fecha
-        fecha_str = datos.get('fecha_emision') or datos.get('fecha')
-        fecha_emision = parse_date_safely(fecha_str)
-        
-        # Manejo seguro de total
-        total_val = datos.get('total_pagado') or datos.get('total') or 0
-        
-        # Crear el objeto Factura
-        Factura.objects.create(
-            propietario=request.user,
-            tienda=tienda,
-            fecha_emision=fecha_emision,
-            total=Decimal(str(total_val)),
-            datos_facturacion=datos, # Guardamos todo el JSON original
-            estado='pendiente' # Se guarda como pendiente de facturar en el SAT/Portal
-        )
-        
-        # Marcar ticket como aprobado/procesado para que salga de la lista de pendientes
-        ticket.estado = 'aprobada'
-        ticket.save()
-        
-        messages.success(request, "Ticket enviado a la lista de facturación.")
+        messages.success(request, "Factura archivada en el historial.")
         
     return redirect('revisar_facturas_pendientes')
 
@@ -1282,7 +1224,7 @@ def confirmar_datos_factura(request):
             'total': Decimal(str(total)),
             'fecha_emision': parse_date_safely(fecha),
             'datos_facturacion': datos_json,
-            'estado': 'pendiente'
+            'estado': 'facturado' # ¡CAMBIO CLAVE! Al confirmar, ya lo damos por bueno.
         }
 
         if archivo_id:

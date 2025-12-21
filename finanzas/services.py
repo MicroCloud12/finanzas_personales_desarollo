@@ -839,7 +839,87 @@ class MistralOCRService:
             return {"error": str(e)}
 
 class BillingService:
-    # ... (Tus métodos existentes se quedan igual) ...
+    @staticmethod
+    def guardar_configuracion_tienda(nombre_tienda, campos_seleccionados):
+        """
+        Guarda o actualiza la configuración de campos requeridos para una tienda.
+        """
+        if not nombre_tienda:
+            return
+
+        nombre_tienda = nombre_tienda.upper().strip()
+        
+        obj, created = TiendaFacturacion.objects.update_or_create(
+            tienda=nombre_tienda,
+            defaults={'campos_requeridos': campos_seleccionados}
+        )
+        return obj
+
+    @staticmethod
+    def procesar_datos_facturacion(datos_json: dict) -> dict:
+        """
+        Analiza los datos extraídos por la IA y los cruza con la configuración de la tienda.
+        Devuelve un contexto listo para el template.
+        """
+        tienda_nombre = datos_json.get('tienda') or datos_json.get('establecimiento') or 'DESCONOCIDO'
+        tienda_nombre = tienda_nombre.upper()
+        
+        # 1. Buscamos si ya conocemos esta tienda
+        try:
+            config_tienda = TiendaFacturacion.objects.get(tienda=tienda_nombre)
+            es_conocida = True
+            campos_requeridos = config_tienda.campos_requeridos
+            url_portal = config_tienda.url_portal
+        except TiendaFacturacion.DoesNotExist:
+            es_conocida = False
+            campos_requeridos = []
+            url_portal = None
+
+        # 2. Preparamos los datos base
+        # El modelo Factura guarda los datos específicos en 'datos_facturacion'
+        # Pero a veces vienen mezclados en el root del JSON si es un objeto antiguo.
+        # Asumimos que datos_json ES el 'datos_facturacion' completo.
+        
+        # Extraemos campos comunes
+        campos_encontrados = datos_json.get('campos_adicionales') or datos_json 
+        # (Si campos_adicionales no existe, usamos el propio dict, asumiendo estructura plana)
+        
+        # Datos para mostrar al usuario final (limpios)
+        datos_para_cliente = {}
+        
+        # 3. Lógica de coincidencias
+        campos_faltantes = []
+        
+        if es_conocida and campos_requeridos:
+            # Si sabemos qué buscar, filtramos y validamos
+            for campo in campos_requeridos:
+                valor = campos_encontrados.get(campo) or campos_encontrados.get(campo.lower()) or campos_encontrados.get(campo.replace(' ', '_').lower())
+                
+                if valor:
+                    datos_para_cliente[campo] = valor
+                else:
+                    campos_faltantes.append(campo)
+        else:
+            # Si NO es conocida, mostramos TODO lo que parezca útil (excluyendo basura)
+            claves_ignorar = ['tienda', 'fecha', 'total', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales']
+            
+            for k, v in campos_encontrados.items():
+                if k not in claves_ignorar and isinstance(v, (str, int, float)) and v:
+                     datos_para_cliente[k] = v
+
+        # 4. Sugerencia de campos (para el modo aprendizaje)
+        # Si no es conocida, enviamos todas las llaves encontradas como sugerencia
+        claves_sugeridas = [k for k in campos_encontrados.keys() if k not in ['tienda', 'fecha', 'total', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'campos_adicionales']]
+
+        return {
+            'tienda': tienda_nombre,
+            'es_conocida': es_conocida,
+            'url_portal': url_portal,
+            'datos_para_cliente': datos_para_cliente, # Lo que se guardará en la Factura final
+            'campos_faltantes': campos_faltantes,
+            'claves_sugeridas': claves_sugeridas,
+            'raw_json': datos_json # Para debug o fallback
+        }
 
     @staticmethod
     def preparar_contexto_para_gemini(texto_ticket: str) -> str:

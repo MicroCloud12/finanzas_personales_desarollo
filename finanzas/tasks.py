@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
-from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService
+from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
 from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura
 
 logger = logging.getLogger(__name__)
@@ -357,25 +357,22 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         if not datos_extraidos:
              return {'status': 'FAILURE', 'file_name': file_name, 'error': 'JSON vacío de Gemini'}
 
-        # 5. Guardar en TransaccionPendiente (Flujo de Revisión)
-        datos_finales = {
-            "tipo_documento": "TICKET_PARA_FACTURA",
-            "tienda": datos_extraidos.get("tienda", "DESCONOCIDO"),
-            "fecha_emision": datos_extraidos.get("fecha"),
-            "total_pagado": datos_extraidos.get("total"),
-            "datos_facturacion": datos_extraidos.get("campos_adicionales", {}),
-            "texto_ocr_preview": texto_ticket[:300], # Preview ligera
-            "archivo_drive_id": file_id,
-            "nombre_archivo": file_name
-        }
-
-        TransaccionPendiente.objects.create(
+        # 5. Guardar en Factura (Flujo de Revisión)
+        # Usamos el modelo Factura con estado 'pendiente' en lugar de TransaccionPendiente
+        
+        from decimal import Decimal
+        
+        Factura.objects.create(
             propietario=user,
-            datos_json=datos_finales,
-            estado='pendiente'
+            tienda=datos_extraidos.get("tienda", "DESCONOCIDO"),
+            fecha_emision=parse_date_safely(datos_extraidos.get("fecha")),
+            total=Decimal(str(datos_extraidos.get("total", 0))),
+            datos_facturacion=datos_extraidos.get("campos_adicionales", {}), # Guardamos el JSON con los detalles
+            archivo_drive_id=file_id,
+            estado='pendiente' 
         )
 
-        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': datos_finales['tienda']}
+        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': datos_extraidos.get("tienda", "DESCONOCIDO")}
 
     except Exception as e:
         logger.error(f"Error fatal procesando {file_name}: {e}")
