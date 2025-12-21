@@ -765,62 +765,26 @@ class RISCService:
             except SocialAccount.DoesNotExist:
                 logger.warning(f"Se recibió un evento RISC para un usuario de Google con ID {user_google_id} que no existe en el sistema.")
 
-class BillingService:
-    # ... (Tus otros métodos se quedan igual) ...
+# finanzas/services.py
 
-    @staticmethod
-    def identificar_tienda_en_texto(text: str) -> dict:
-        """
-        Busca si el texto del ticket coincide con alguna tienda configurada en la BD.
-        Retorna la config (nombre y campos) o None.
-        """
-        text_upper = text.upper()
-        # Traemos solo lo necesario de la BD para ser rápidos
-        tiendas_configs = TiendaFacturacion.objects.values('tienda', 'campos_requeridos')
-        
-        mejores_matches = []
-        
-        for config in tiendas_configs:
-            nombre = config['tienda'].upper()
-            # 1. Búsqueda exacta rápida
-            if nombre in text_upper:
-                return config
-            
-            # 2. Preparamos para búsqueda difusa si falla la exacta
-            mejores_matches.append(nombre)
-        
-        # 3. Búsqueda difusa (si no hubo exacta)
-        # Busca palabras en el texto que se parezcan mucho a los nombres de las tiendas
-        # (Esto ayuda si el OCR leyó "W4LMART")
-        posibles = get_close_matches(text_upper, mejores_matches, n=1, cutoff=0.85)
-        
-        if posibles:
-            nombre_encontrado = posibles[0]
-            # Retornamos la config completa de la tienda encontrada
-            for config in tiendas_configs:
-                if config['tienda'].upper() == nombre_encontrado:
-                    return config
-                    
-        return None
+# ... imports ...
 
 class MistralOCRService:
-    """
-    Servicio dedicado EXCLUSIVAMENTE a obtener el texto crudo de la imagen con máxima fidelidad.
-    """
     def __init__(self):
         self.api_key = os.getenv("MISTRAL_API_KEY") 
         self.client = Mistral(api_key=self.api_key) if self.api_key else None
 
-    # ... (Mantén tus métodos preprocess_image_bytes, order_points, etc. IGUALES) ...
+    # ... (Mantén preprocess_image_bytes, order_points, etc. IGUALES) ...
 
     def get_text_from_image(self, file_content_bytes, mime_type="image/jpeg"):
         """
-        Paso 1: Convierte Imagen -> Texto Markdown usando Mistral OCR.
+        SOLO VISION: Convierte Imagen -> Texto Markdown usando Mistral OCR.
+        Ya no llama a Gemini aquí dentro.
         """
         if not self.client:
             return {"error": "Mistral API Key missing"}
 
-        # Preparación de imagen (Tu lógica existente)
+        # Preparación (Tu código existente)
         if 'pdf' in mime_type:
              base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
         else:
@@ -841,17 +805,57 @@ class MistralOCRService:
             
             json_data = json.loads(ocr_response.model_dump_json())
             
-            # Unificar todo el texto de las páginas
+            # Limpieza y unión de texto
             full_markdown = ""
             if "pages" in json_data:
                 for page in json_data["pages"]:
                     if "markdown" in page:
-                        # Limpieza básica de caracteres basura
-                        clean_text = page["markdown"].replace("0XX0", "OXXO").replace("0xx0", "OXXO")
-                        full_markdown += clean_text + "\n"
+                        cleaned = self.post_process_text(page["markdown"])
+                        full_markdown += cleaned + "\n"
 
             return {"text_content": full_markdown, "raw_json": json_data}
 
         except Exception as e:
             logger.error(f"Error Mistral API: {e}")
             return {"error": str(e)}
+
+    def post_process_text(self, text):
+        # Tu lógica de limpieza existente
+        if not text: return ""
+        text = text.replace('0XX0', 'OXXO').replace('0xx0', 'OXXO')
+        # ... resto de tus remplazos ...
+        return text
+
+class BillingService:
+    # ... (Tus métodos existentes se quedan igual) ...
+
+    @staticmethod
+    def preparar_contexto_para_gemini(texto_ticket: str) -> str:
+        """
+        Genera el string {context_str} que necesita tu prompt 'facturacion_from_text_with_context'.
+        Filtra solo las tiendas relevantes o devuelve todas si no está seguro.
+        """
+        # 1. Intentamos identificar la tienda primero para no enviar TODA la base de datos
+        #    (Esto ahorra tokens y confusión a Gemini)
+        texto_upper = texto_ticket.upper()
+        tiendas = TiendaFacturacion.objects.all()
+        
+        tiendas_relevantes = []
+        for t in tiendas:
+            # Si el nombre de la tienda aparece en el ticket, es relevante
+            if t.tienda in texto_upper:
+                tiendas_relevantes.append(t)
+        
+        # Si no encontramos ninguna exacta, mandamos todas por si acaso (o las más comunes)
+        lista_final = tiendas_relevantes if tiendas_relevantes else tiendas
+
+        contexto_str = "LISTA DE TIENDAS Y CAMPOS REQUERIDOS:\n"
+        if not lista_final:
+            return "No hay tiendas conocidas configuradas."
+
+        for t in lista_final:
+            lista_campos = ", ".join(t.campos_requeridos) if t.campos_requeridos else "Estándar"
+            # Formato que tu prompt ya entiende:
+            contexto_str += f"- {t.tienda}: [{lista_campos}]\n"
+            
+        return contexto_str

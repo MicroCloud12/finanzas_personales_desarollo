@@ -303,18 +303,18 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
     """
-    Flujo Maestro de Facturación:
-    1. Drive -> 2. Mistral (Ojos) -> 3. Lógica (Cerebro Básico) -> 4. Gemini (Cerebro Avanzado) -> 5. DB
+    Flujo Optimizado:
+    Mistral (OCR) -> BillingService (Contexto) -> Gemini (Tu Prompt Existente) -> TransaccionPendiente
     """
     try:
         user = User.objects.get(id=user_id)
         
-        # --- PASO 1: Descargar de Drive ---
+        # 1. Obtener Archivo
         gdrive_service = GoogleDriveService(user)
         file_content = gdrive_service.get_file_content(file_id)
         file_bytes = file_content.getvalue()
 
-        # --- PASO 2: Mistral OCR (Obtener Texto) ---
+        # 2. Mistral: Solo obtiene el texto (sin pensar)
         mistral_service = MistralOCRService()
         ocr_result = mistral_service.get_text_from_image(file_bytes, mime_type)
         
@@ -323,44 +323,39 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
             
         texto_ticket = ocr_result['text_content']
 
-        # --- Validación Rápida: ¿Es Transferencia? ---
+        # Validación rápida: ¿Es transferencia?
         if "TRANSFERENCIA" in texto_ticket.upper() and "TICKET" not in texto_ticket.upper():
              return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia'}
 
-        # --- PASO 3: Identificar Tienda (Contexto) ---
-        # Buscamos en la BD si conocemos esta tienda para saber qué pedirle a Gemini
-        config_tienda = BillingService.identificar_tienda_en_texto(texto_ticket)
-        
-        tienda_nombre = None
-        campos_req = None
-        
-        if config_tienda:
-            tienda_nombre = config_tienda['tienda']
-            campos_req = config_tienda['campos_requeridos']
-            logger.info(f"Tienda identificada: {tienda_nombre}. Campos a buscar: {campos_req}")
+        # 3. Preparar el Contexto (Usando tu lógica de TiendaFacturacion)
+        # Esto genera el string que va en {context_str}
+        contexto_str = BillingService.preparar_contexto_para_gemini(texto_ticket)
 
-        # --- PASO 4: Gemini (Extracción Estructurada) ---
+        # 4. Gemini: Usamos TU FLUJO EXISTENTE
         gemini_service = get_gemini_service()
-        datos_extraidos = gemini_service.extract_billing_data(
-            ocr_text=texto_ticket,
-            tienda_detectada=tienda_nombre,
-            campos_requeridos=campos_req
+        
+        # Llamamos al prompt que ya tienes definido: "facturacion_from_text_with_context"
+        datos_extraidos = gemini_service.extract_from_text(
+            prompt_name="facturacion_from_text_with_context", 
+            text=texto_ticket, 
+            context=contexto_str
         )
 
-        if "error" in datos_extraidos:
-             return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Fallo en extracción IA'}
+        if not datos_extraidos:
+             return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Gemini devolvió JSON vacío'}
 
-        # --- PASO 5: Guardar como Pendiente de Revisión ---
-        # Preparamos el JSON final unificado
+        # 5. Guardar como TransaccionPendiente (El paso vital para que aparezca en "Revisar")
+        # Tu prompt devuelve: { "tienda": ..., "fecha": ..., "total": ..., "campos_adicionales": ... }
+        # Lo adaptamos para guardarlo limpio.
+        
         datos_finales = {
             "tipo_documento": "TICKET_PARA_FACTURA",
             "tienda": datos_extraidos.get("tienda", "DESCONOCIDO"),
-            "fecha_emision": datos_extraidos.get("fecha_emision"),
-            "total_pagado": datos_extraidos.get("total_pagado"),
-            "datos_facturacion": datos_extraidos.get("datos_facturacion", {}), # Aquí vienen folio, ticket_id, etc.
-            "confianza_ia": datos_extraidos.get("confianza", "BAJA"),
-            "es_tienda_conocida": bool(config_tienda),
-            "texto_ocr_preview": texto_ticket[:200], # Guardamos un cachito por si acaso
+            "fecha_emision": datos_extraidos.get("fecha"),
+            "total_pagado": datos_extraidos.get("total"),
+            # Si tu prompt devuelve 'campos_adicionales', los guardamos aquí
+            "datos_facturacion": datos_extraidos.get("campos_adicionales", {}),
+            "texto_ocr_preview": texto_ticket[:200],
             "archivo_drive_id": file_id,
             "nombre_archivo": file_name
         }
@@ -374,8 +369,7 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         return {
             'status': 'SUCCESS', 
             'file_name': file_name, 
-            'tienda': datos_finales['tienda'],
-            'confianza': datos_finales['confianza_ia']
+            'tienda': datos_finales['tienda']
         }
 
     except Exception as e:
