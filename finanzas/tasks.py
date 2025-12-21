@@ -300,62 +300,71 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
 
     # ... (código existente) ...
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=2, default_retry_delay=10)
 def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
     """
-    Flujo Optimizado:
-    Mistral (OCR) -> BillingService (Contexto) -> Gemini (Tu Prompt Existente) -> TransaccionPendiente
+    Procesa un ticket para FACTURACIÓN.
+    Optimizaciones:
+    - Usa PIL para redimensionar (rápido).
+    - Usa Gemini Flash (rápido).
+    - Maneja ResourceExhausted para no atorarse en loops infinitos.
     """
     try:
         user = User.objects.get(id=user_id)
         
-        # 1. Obtener Archivo
+        # 1. Drive: Obtener archivo
         gdrive_service = GoogleDriveService(user)
         file_content = gdrive_service.get_file_content(file_id)
         file_bytes = file_content.getvalue()
 
-        # 2. Mistral: Solo obtiene el texto (sin pensar)
+        # 2. Mistral OCR: Obtener texto (Optimizado sin OpenCV pesado)
         mistral_service = MistralOCRService()
+        # Nota: Asegúrate de que MistralOCRService tenga el método 'get_text_from_image' 
+        # con la optimización de PIL que te di en la respuesta anterior.
         ocr_result = mistral_service.get_text_from_image(file_bytes, mime_type)
         
         if "error" in ocr_result:
-            return {'status': 'FAILURE', 'file_name': file_name, 'error': ocr_result['error']}
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': f"Mistral: {ocr_result['error']}"}
             
         texto_ticket = ocr_result['text_content']
 
-        # Validación rápida: ¿Es transferencia?
+        # Validación Rápida: Ignorar transferencias
         if "TRANSFERENCIA" in texto_ticket.upper() and "TICKET" not in texto_ticket.upper():
              return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia'}
 
-        # 3. Preparar el Contexto (Usando tu lógica de TiendaFacturacion)
-        # Esto genera el string que va en {context_str}
+        # 3. Contexto: Identificar tienda localmente (Ultra rápido)
         contexto_str = BillingService.preparar_contexto_para_gemini(texto_ticket)
 
-        # 4. Gemini: Usamos TU FLUJO EXISTENTE
+        # 4. Gemini: Extracción Inteligente
         gemini_service = get_gemini_service()
         
-        # Llamamos al prompt que ya tienes definido: "facturacion_from_text_with_context"
-        datos_extraidos = gemini_service.extract_from_text(
-            prompt_name="facturacion_from_text_with_context", 
-            text=texto_ticket, 
-            context=contexto_str
-        )
+        try:
+            # Usamos tu prompt existente
+            datos_extraidos = gemini_service.extract_from_text(
+                prompt_name="facturacion_from_text_with_context", 
+                text=texto_ticket, 
+                context=contexto_str
+            )
+        except ResourceExhausted:
+            # SI GEMINI TE BLOQUEA (Error 429), devolvemos estado THROTTLED
+            # Esto evita que Celery reintente infinitamente y sature tu worker.
+            logger.warning(f"Rate Limit en Gemini para {file_name}. Pausando...")
+            # Opcional: self.retry(countdown=60) si quieres reintentar en 1 minuto
+            return {'status': 'THROTTLED', 'file_name': file_name, 'error': 'Cuota de Gemini excedida (15 RPM).'}
+        except Exception as e:
+             return {'status': 'FAILURE', 'file_name': file_name, 'error': f"Gemini Error: {str(e)}"}
 
         if not datos_extraidos:
-             return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Gemini devolvió JSON vacío'}
+             return {'status': 'FAILURE', 'file_name': file_name, 'error': 'JSON vacío de Gemini'}
 
-        # 5. Guardar como TransaccionPendiente (El paso vital para que aparezca en "Revisar")
-        # Tu prompt devuelve: { "tienda": ..., "fecha": ..., "total": ..., "campos_adicionales": ... }
-        # Lo adaptamos para guardarlo limpio.
-        
+        # 5. Guardar en TransaccionPendiente (Flujo de Revisión)
         datos_finales = {
             "tipo_documento": "TICKET_PARA_FACTURA",
             "tienda": datos_extraidos.get("tienda", "DESCONOCIDO"),
             "fecha_emision": datos_extraidos.get("fecha"),
             "total_pagado": datos_extraidos.get("total"),
-            # Si tu prompt devuelve 'campos_adicionales', los guardamos aquí
             "datos_facturacion": datos_extraidos.get("campos_adicionales", {}),
-            "texto_ocr_preview": texto_ticket[:200],
+            "texto_ocr_preview": texto_ticket[:300], # Preview ligera
             "archivo_drive_id": file_id,
             "nombre_archivo": file_name
         }
@@ -366,23 +375,22 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
             estado='pendiente'
         )
 
-        return {
-            'status': 'SUCCESS', 
-            'file_name': file_name, 
-            'tienda': datos_finales['tienda']
-        }
+        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': datos_finales['tienda']}
 
     except Exception as e:
-        logger.error(f"Error procesando factura {file_name}: {e}")
-        self.retry(exc=e)
+        logger.error(f"Error fatal procesando {file_name}: {e}")
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 
 @shared_task
 def process_drive_for_invoices(user_id: int):
-    """Busca tickets en Drive y los procesa con el prompt de facturación."""
+    """
+    Tarea Maestra: Busca archivos y lanza los workers.
+    """
     try:
         user = User.objects.get(id=user_id)
         gdrive_service = GoogleDriveService(user)
+        
+        # Listamos archivos (Asegúrate que la carpeta exista en Drive)
         files_to_process = gdrive_service.list_files_in_folder(
             folder_name="Tickets de Compra",
             mimetypes=['image/jpeg', 'image/png', 'application/pdf']
@@ -391,6 +399,9 @@ def process_drive_for_invoices(user_id: int):
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
 
+        # Lanzamos el grupo de tareas
+        # IMPORTANTE: Aquí es donde Python busca 'process_single_invoice'.
+        # Debe estar definida ARRIBA de esta línea o importada correctamente.
         job = group(
             process_single_invoice.s(user.id, item['id'], item['name'], item['mimeType'])
             for item in files_to_process

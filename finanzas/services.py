@@ -33,6 +33,7 @@ from .models import registro_transacciones, TransaccionPendiente, User, inversio
 import re
 from difflib import get_close_matches
 
+
 logger = logging.getLogger(__name__)
 
 class GoogleDriveService:
@@ -765,35 +766,50 @@ class RISCService:
             except SocialAccount.DoesNotExist:
                 logger.warning(f"Se recibió un evento RISC para un usuario de Google con ID {user_google_id} que no existe en el sistema.")
 
-# finanzas/services.py
-
-# ... imports ...
-
 class MistralOCRService:
     def __init__(self):
         self.api_key = os.getenv("MISTRAL_API_KEY") 
         self.client = Mistral(api_key=self.api_key) if self.api_key else None
 
-    # ... (Mantén preprocess_image_bytes, order_points, etc. IGUALES) ...
+    def optimize_image(self, image_bytes, max_size=1024):
+        """
+        Redimensiona y comprime la imagen en memoria usando PIL.
+        Pasa de 5MB -> 150KB en milisegundos.
+        """
+        try:
+            img = Image.open(BytesIO(image_bytes))
+            
+            # Convertir a RGB si es PNG/RGBA
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+
+            # Redimensionar si es muy grande (Cuello de botella de red)
+            if max(img.size) > max_size:
+                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            # Guardar en buffer optimizado
+            buffer = BytesIO()
+            img.save(buffer, format="JPEG", quality=85, optimize=True)
+            return base64.b64encode(buffer.getvalue()).decode('utf-8')
+        except Exception as e:
+            logger.error(f"Error optimizando imagen: {e}")
+            # Fallback: devolver original si falla PIL
+            return base64.b64encode(image_bytes).decode('utf-8')
 
     def get_text_from_image(self, file_content_bytes, mime_type="image/jpeg"):
-        """
-        SOLO VISION: Convierte Imagen -> Texto Markdown usando Mistral OCR.
-        Ya no llama a Gemini aquí dentro.
-        """
         if not self.client:
             return {"error": "Mistral API Key missing"}
 
-        # Preparación (Tu código existente)
+        # 1. Optimización (Clave para velocidad)
         if 'pdf' in mime_type:
+             # Los PDFs no se redimensionan igual, se mandan directo
              base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
         else:
-             base64_image = self.preprocess_image_bytes(file_content_bytes)
-             if not base64_image:
-                 base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
+             base64_image = self.optimize_image(file_content_bytes)
 
         try:
-            # Llamada a Mistral
+            # 2. Llamada a Mistral
+            # Mistral OCR es rápido, el cuello de botella suele ser la subida de la imagen
             ocr_response = self.client.ocr.process(
                 model="mistral-ocr-latest",
                 document={
@@ -805,26 +821,22 @@ class MistralOCRService:
             
             json_data = json.loads(ocr_response.model_dump_json())
             
-            # Limpieza y unión de texto
             full_markdown = ""
             if "pages" in json_data:
                 for page in json_data["pages"]:
                     if "markdown" in page:
-                        cleaned = self.post_process_text(page["markdown"])
-                        full_markdown += cleaned + "\n"
+                        # Limpieza ultra-rápida
+                        text = page["markdown"]
+                        # Solo correcciones críticas
+                        if "0XX0" in text or "0xx0" in text:
+                            text = text.replace("0XX0", "OXXO").replace("0xx0", "OXXO")
+                        full_markdown += text + "\n"
 
             return {"text_content": full_markdown, "raw_json": json_data}
 
         except Exception as e:
             logger.error(f"Error Mistral API: {e}")
             return {"error": str(e)}
-
-    def post_process_text(self, text):
-        # Tu lógica de limpieza existente
-        if not text: return ""
-        text = text.replace('0XX0', 'OXXO').replace('0xx0', 'OXXO')
-        # ... resto de tus remplazos ...
-        return text
 
 class BillingService:
     # ... (Tus métodos existentes se quedan igual) ...
