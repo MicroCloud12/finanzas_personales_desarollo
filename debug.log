@@ -884,3 +884,141 @@ INFO 2025-12-21 21:10:46,423 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMIT
 INFO 2025-12-21 21:10:48,190 tasks Tienda nueva detectada: TACOS DE LA SANTA FE
 INFO 2025-12-21 21:11:01,118 tasks Tienda reconocida por IA: OXXO
 INFO 2025-12-21 21:11:03,025 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:06,337 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:09,320 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:15:13,306 tasks Tienda nueva detectada: BELON
+INFO 2025-12-21 21:15:16,475 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 21:15:23,453 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:15:29,890 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:15:36,442 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:15:42,484 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:44,143 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:15:44,672 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 21:15:53,875 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:59,238 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:15:59,519 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 21:16:08,335 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 21:16:09,215 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 21:16:16,889 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMITLA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 21:16:24,144 tasks Tienda nueva detectada: TACOS DE LA SANTA FE
+INFO 2025-12-21 21:16:25,870 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:16:33,470 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:26:40,106 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:26:52,191 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:26:52,803 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 21:26:55,294 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 21:26:59,089 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:27:15,946 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:27:17,686 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:27:18,402 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 21:27:21,968 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:27:34,379 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:27:36,384 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:27:37,552 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:27:38,373 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 21:27:56,089 tasks Tienda nueva detectada: TACOS DE LA SANTA FE
+INFO 2025-12-21 21:27:56,909 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 21:27:58,545 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 21:28:00,189 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMITLA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 21:28:13,495 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:28:18,205 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:32:15,280 tasks Tienda nueva detectada: DESCONOCIDO
+ERROR 2025-12-22 10:32:15,281 tasks Error fatal procesando Screenshot_20251218_122342_Nubank.jpg: [<class 'decimal.ConversionSyntax'>]
+INFO 2025-12-22 10:32:22,980 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 10:32:26,776 tasks Tienda nueva detectada: PARQUIMETRO
+INFO 2025-12-22 10:32:30,661 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:32:41,056 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:33:04,155 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:33:05,474 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-22 10:33:08,556 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:33:12,542 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 10:33:38,150 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:33:39,562 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:33:41,221 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:34:03,234 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:34:09,279 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:34:11,927 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 10:34:26,784 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 10:34:44,500 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 10:34:56,885 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:35:00,460 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 10:35:08,564 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:35:25,185 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:35:28,322 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 10:35:35,899 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 10:35:36,836 tasks Tienda nueva detectada: TIENDA DESCONOCIDA
+INFO 2025-12-22 10:35:48,190 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:35:50,130 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:36:00,873 tasks Tienda nueva detectada: COMPROBANTE SPEI
+INFO 2025-12-22 10:36:00,961 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:36:18,487 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:36:23,296 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:36:44,288 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:36:49,820 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS
+INFO 2025-12-22 10:36:51,454 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 10:36:57,295 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 10:37:09,579 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:37:11,603 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:37:12,355 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:37:21,250 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:37:27,087 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:37:32,639 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 10:37:48,998 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 10:37:53,757 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 10:38:02,002 tasks Tienda nueva detectada: TGM TACOS
+INFO 2025-12-22 10:38:06,302 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 10:38:13,159 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:38:16,845 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:09:06,102 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:13,267 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:13,600 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:13,731 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 11:09:21,049 tasks Tienda nueva detectada: DESCONOCIDO
+INFO 2025-12-22 11:09:34,712 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:35,508 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:42,863 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:09:45,160 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:10:01,702 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-22 11:10:05,187 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:10:06,428 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:10:07,483 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 11:10:28,217 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:10:32,112 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:10:33,413 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 11:10:34,877 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:10:51,460 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:10:52,999 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:10:55,256 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 11:11:16,959 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 11:11:22,069 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 11:11:26,383 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 11:11:27,813 tasks Tienda nueva detectada: TGM PEDREGAL 26 TACOS
+INFO 2025-12-22 11:11:36,825 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:11:47,471 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:22:17,677 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:29,208 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 11:22:31,436 tasks Tienda nueva detectada: DESCONOCIDO
+ERROR 2025-12-22 11:22:31,436 tasks Error fatal procesando Screenshot_20251218_122342_Nubank.jpg: [<class 'decimal.ConversionSyntax'>]
+INFO 2025-12-22 11:22:31,582 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:38,803 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:52,256 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:56,621 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:23:08,398 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:23:18,832 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:23:20,716 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-22 11:23:25,182 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 11:23:31,836 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:23:55,079 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:23:55,284 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:23:58,561 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:24:22,214 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:24:22,418 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:24:27,645 tasks Tienda nueva detectada: FARMATADO
+INFO 2025-12-22 11:24:53,035 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 11:25:10,026 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:25:13,016 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 11:25:25,515 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 11:25:38,190 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:25:38,196 tasks Tienda nueva detectada: TGM PEDREGAL
+INFO 2025-12-22 11:25:50,895 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:25:53,144 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ

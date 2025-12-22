@@ -297,48 +297,46 @@ class GeminiService:
             {text_content}
             """,
             "facturacion_from_text_with_context": """
-            Eres un auditor forense de facturación (CFDI 4.0).
-            Tu misión es extraer datos con precisión quirúrgica, incluso si el OCR es imperfecto.
+            Eres un auditor fiscal experto en CFDI 4.0 de México.
+            Tu trabajo es extraer datos de tickets de compra con una precisión del 100%.
 
-            ### BASE DE DATOS DE TIENDAS:
+            ### ENTRADA:
+            1. **LISTA DE TIENDAS CONOCIDAS (CONTEXTO):**
             {context_str}
 
-            ### TEXTO DEL TICKET (OCR):
+            2. **TEXTO DEL TICKET (OCR):**
             {text_content}
 
-            ### INSTRUCCIONES MAESTRAS:
-            1. **IDENTIFICACIÓN:** Vincula el ticket con un ID de la lista anterior.
-               - Si hay coincidencia semántica, USA EL ID EXACTO.
+            ### TUS OBJETIVOS CRÍTICOS:
+            1. **IDENTIFICAR LA TIENDA:**
+               - Busca coincidencias en la lista de tiendas conocidas.
+               - Si encuentras una coincidencia, USA ESE NOMBRE EXACTO y el ID asociado si existe.
+               - Si no, usa el nombre comercial más claro que veas en el ticket (ej. "STARBUCKS", "OXXO").
 
-            2. **EXTRACCIÓN FORENSE (ESTO ES LO MÁS IMPORTANTE):**
-               Si la tienda requiere campos específicos (ej. "Caja", "Ticket", "Sucursal"), aplica estas estrategias:
-               
-               A. **BÚSQUEDA DE SINÓNIMOS:**
-                  - Si busco "Caja", busca también: "Cja", "Pos", "Terminal", "Reg", "Register", "Kiosko", "KS", "Mesa".
-                  - Si busco "Ticket", busca también: "Folio", "Transaccion", "Trx", "Chk", "Check", "Doc", "Factura".
-                  - Si busco "Sucursal", busca también: "Store", "Tienda", "Loc", "Local", "Brn", "Branch".
-               
-               B. **CORRECCIÓN DE ERRORES OCR:**
-                  - El OCR suele confundir caracteres. Sé inteligente:
-                  - "Tienda 0XX0" -> "Tienda OXXO"
-                  - "Caja l" (ele) -> "Caja 1" (uno)
-                  - "Foli0" -> "Folio"
-               
-               C. **PRIORIDAD NUMÉRICA:**
-                  - Para "Sucursal", "Caja" o "Ticket", casi siempre buscamos NÚMEROS.
-                  - Si ves "Caja: Principal", sigue buscando. Probablemente abajo diga "Reg: 2". Queremos el "2".
-                  - En McDonald's, "Side 1" o "Side 2" a menudo equivalen a la Caja.
+            2. **EXTRACCIÓN DE CAMPOS (PRIORIDAD ALTA):**
+               - Si la tienda es conocida, **BUSCA SOLO Y EXCLUSIVAMENTE** los campos que esa tienda requiere (listados en el contexto).
+               - Si la tienda NO es conocida, extrae: 'Folio', 'Ticket ID', 'Sucursal', 'Caja', 'Transaccion', 'RFC'.
 
-            3. **FORMATO DE SALIDA (JSON):**
+            3. **VERIFICACIÓN (CHAIN OF THOUGHT):**
+               - Para cada campo extraído, debes justificar DÓNDE lo encontraste.
+               - Si un campo es obligatorio pero NO está claro, devuelve `null` o `""`, NO INVENTES.
+               - **CUIDADO CON LOS FALSOS POSITIVOS:**
+                 - NO confundas el "Número de Cliente Puntos" con el "Número de Ticket".
+                 - NO confundas la "Hora" (12:30) con una "Caja" (12).
+                 - NO confundas el "Total" con el "Subtotal".
+                 - En Caso de ser MCdonald´s, el campo Sucursal debe de ser el número de la sucursal; Ejemplo: "0011".
+
+            ### ESTRUCTURA DE SALIDA (JSON ÚNICO VALIDO):
             {{
                 "tienda": "NOMBRE_NORMALIZADO",
                 "fecha": "YYYY-MM-DD",
                 "total": 0.00,
-                "es_conocida": true,
+                "es_conocida": true/false,
                 "campos_adicionales": {{
-                    "NombreDelCampo": "ValorExtraído" 
-                    // Si un valor es realmente imposible de encontrar tras intentar todo, usa "" (string vacío).
-                }}
+                    "NombreCampo1": "Valor1",
+                    "NombreCampo2": "Valor2"
+                }},
+                "_razonamiento": "Explica brevemente por qué elegiste estos valores y descarta dudas. Ej: 'Encontré Ticket: 4502 cerca de la fecha. Descarté 888 porque parece ser puntos de lealtad.'"
             }}
             """
         }
@@ -783,46 +781,156 @@ class MistralOCRService:
         self.api_key = os.getenv("MISTRAL_API_KEY") 
         self.client = Mistral(api_key=self.api_key) if self.api_key else None
 
-    def optimize_image(self, image_bytes, max_size=2048):  # <-- CAMBIO: De 1024 a 2048
+    def order_points(self, pts):
+        """Ordena coordenadas: arriba-izq, arriba-der, abajo-der, abajo-izq."""
+        rect = np.zeros((4, 2), dtype="float32")
+        s = pts.sum(axis=1)
+        rect[0] = pts[np.argmin(s)]
+        rect[2] = pts[np.argmax(s)]
+        diff = np.diff(pts, axis=1)
+        rect[1] = pts[np.argmin(diff)]
+        rect[3] = pts[np.argmax(diff)]
+        return rect
+
+    def four_point_transform(self, image, pts):
+        """Transformación de perspectiva para 'aplanar' el ticket."""
+        rect = self.order_points(pts)
+        (tl, tr, br, bl) = rect
+
+        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        maxWidth = max(int(widthA), int(widthB))
+
+        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        maxHeight = max(int(heightA), int(heightB))
+
+        dst = np.array([
+            [0, 0],
+            [maxWidth - 1, 0],
+            [maxWidth - 1, maxHeight - 1],
+            [0, maxHeight - 1]], dtype="float32")
+
+        M = cv2.getPerspectiveTransform(rect, dst)
+        warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+        return warped
+
+    def preprocess_image_advanced(self, file_bytes):
         """
-        Redimensiona y comprime la imagen.
-        MEJORA: Aumentamos a 2048px para que tickets largos no pierdan nitidez en textos pequeños.
+        Aplica procesamiento avanzado de imagen usando OpenCV (en memoria).
+        Basado en el código proporcionado por el usuario:
+        - Redimensionamiento
+        - Thresholding Otsu
+        - Detección de contornos y Perspective Transform
+        - Denoising y Threshold Adaptativo
+        - Morfología para rellenar caracteres
         """
         try:
-            img = Image.open(BytesIO(image_bytes))
+            # 1. Leer imagen desde bytes
+            nparr = np.frombuffer(file_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
-            # Convertir a RGB si es PNG/RGBA
-            if img.mode in ('RGBA', 'P'):
-                img = img.convert('RGB')
+            if img is None:
+                logger.error("No se pudo decodificar la imagen con cv2")
+                return None
 
-            # Redimensionar solo si es excesivamente grande, manteniendo aspect ratio
-            # Tickets largos necesitan altura, así que cuidamos el lado mayor.
-            if max(img.size) > max_size:
-                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            # 2. PREPARACIÓN (Resize)
+            detect_h = 800.0
+            h, w = img.shape[:2]
+            ratio = h / detect_h
+            orig = img.copy()
+            
+            if h > detect_h:
+                image_resized = cv2.resize(img, (int(w / ratio), int(detect_h)))
+            else:
+                image_resized = img.copy()
+                ratio = 1.0
 
-            # Guardar en buffer optimizado con calidad alta (90)
-            buffer = BytesIO()
-            img.save(buffer, format="JPEG", quality=95, optimize=True) # <-- CAMBIO: Calidad 95
-            return base64.b64encode(buffer.getvalue()).decode('utf-8')
+            # 3. DETECCIÓN (OTSU)
+            gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+            
+            _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+            # 4. ENCONTRAR CONTORNOS
+            cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+            cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+            
+            pts_for_transform = None
+            
+            if len(cnts) > 0:
+                c = cnts[0]
+                peri = cv2.arcLength(c, True)
+                approx = cv2.approxPolyDP(c, 0.04 * peri, True)
+                
+                if len(approx) == 4:
+                    pts_for_transform = approx.reshape(4, 2) * ratio
+                else:
+                    # Fallback a bounding box rotada si no es un cuadrado perfecto
+                    rect = cv2.minAreaRect(c)
+                    box = cv2.boxPoints(rect)
+                    box = np.int32(box)
+                    pts_for_transform = box.astype("float32") * ratio
+
+            # 5. RECORTAR (Perspective Transform)
+            if pts_for_transform is not None:
+                warped = self.four_point_transform(orig, pts_for_transform)
+            else:
+                # Si no se detectó contorno claro, usamos imagen original
+                warped = orig
+
+            # 6. FILTROS DE MEJORA
+            if len(warped.shape) == 3:
+                warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+            else:
+                warped_gray = warped
+
+            denoised = cv2.fastNlMeansDenoising(warped_gray, None, 10, 7, 21)
+            
+            processed_img = cv2.adaptiveThreshold(
+                denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                cv2.THRESH_BINARY_INV, 21, 10
+            )
+
+            # 7. RELLENADO DE CARACTERES (AGRESIVO)
+            fill_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+            processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_CLOSE, fill_kernel, iterations=2)
+
+            dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+            processed_img = cv2.dilate(processed_img, dilate_kernel, iterations=1)
+            
+            # 8. Codificar resultado a base64
+            _, buffer = cv2.imencode('.jpg', processed_img)
+            return base64.b64encode(buffer).decode('utf-8')
+
         except Exception as e:
-            logger.error(f"Error optimizando imagen: {e}")
-            # Fallback: devolver original si falla PIL
-            return base64.b64encode(image_bytes).decode('utf-8')
+            logger.error(f"Error en preprocesamiento avanzado de imagen: {e}")
+            return None
 
     def get_text_from_image(self, file_content_bytes, mime_type="image/jpeg"):
         if not self.client:
             return {"error": "Mistral API Key missing"}
 
-        # 1. Optimización (Clave para velocidad)
+        # 1. Optimización (Avanzada vs Simple)
         if 'pdf' in mime_type:
              # Los PDFs no se redimensionan igual, se mandan directo
              base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
         else:
-             base64_image = self.optimize_image(file_content_bytes)
+             # Intentamos el procesamiento avanzado
+             base64_image = self.preprocess_image_advanced(file_content_bytes)
+             
+             # Fallback si falló cv2
+             if not base64_image:
+                 logger.warning("Falló preprocess_image_advanced, usando fallback simple.")
+                 base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
 
         try:
             # 2. Llamada a Mistral
-            # Mistral OCR es rápido, el cuello de botella suele ser la subida de la imagen
             ocr_response = self.client.ocr.process(
                 model="mistral-ocr-latest",
                 document={
@@ -838,11 +946,9 @@ class MistralOCRService:
             if "pages" in json_data:
                 for page in json_data["pages"]:
                     if "markdown" in page:
-                        # Limpieza ultra-rápida
                         text = page["markdown"]
-                        # Solo correcciones críticas
-                        if "0XX0" in text or "0xx0" in text:
-                            text = text.replace("0XX0", "OXXO").replace("0xx0", "OXXO")
+                        # NO HACEMOS regex replacements aquí a petición del usuario.
+                        # Dejamos que Gemini interprete el texto tal cual viene.
                         full_markdown += text + "\n"
 
             return {"text_content": full_markdown, "raw_json": json_data}
@@ -991,7 +1097,7 @@ class BillingService:
                     campos_faltantes.append(campo)
         else:
             # Si NO es conocida, mostramos todo (modo aprendizaje)
-            claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales']
+            claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales', '_razonamiento']
             
             for k, v in campos_encontrados.items():
                 if k not in claves_ignorar and isinstance(v, (str, int, float)) and v:

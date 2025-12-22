@@ -953,7 +953,7 @@ def facturacion(request):
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     
     # Ahora consultamos el modelo Factura en lugar de registro_transacciones
-    facturas = Factura.objects.filter(propietario=request.user).order_by('-fecha_emision')
+    facturas = Factura.objects.filter(propietario=request.user, estado='facturado').order_by('-fecha_emision')
 
     context = {
         'facturas': facturas,
