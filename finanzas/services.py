@@ -297,37 +297,49 @@ class GeminiService:
             {text_content}
             """,
             "facturacion_from_text_with_context": """
-            Eres un experto en extracción de datos de facturación en México.
-            Analiza el siguiente TEXTO CRUDO obtenido de un OCR (Mistral) de un ticket de compra.
+            Eres un auditor forense de facturación (CFDI 4.0).
+            Tu misión es extraer datos con precisión quirúrgica, incluso si el OCR es imperfecto.
 
-            ### CONTEXTO DE TIENDAS CONOCIDAS:
+            ### BASE DE DATOS DE TIENDAS:
             {context_str}
 
-            ### INSTRUCCIONES:
-            1.  **Identificar Tienda**: Busca el nombre del establecimiento en el texto.
-            2.  **Verificar Requisitos**: Si el nombre de la tienda coincide (o es muy similar) a una de las "Tiendas Conocidas", **DEBES** buscar obligatoriamente los campos listados para esa tienda (ej. "Ticket ID", "Sucursal", etc.).
-            3.  **Regla Especial 'Sucursal'**: 
-                - Si se pide "Sucursal", busca el **NÚMERO** o **CÓDIGO** de la sucursal (ej. "Suc: 402", "Store# 3920").
-                - EVITA devolver el nombre de la calle o colonia (ej. "Polanco", "Centro") salvo que no exista ningún número.
-            4.  **Extracción General**:
-                - **tienda**: Nombre comercial (MAYÚSCULAS).
-                - **fecha**: Formato YYYY-MM-DD.
-                - **total**: Monto total pagado (numérico).
-                - **campos_adicionales**: Aquí DEBES poner todos los campos específicos encontrados (Folio, Sucursal, Ticket ID, etc.).
-
-            Devuelve un JSON con esta estructura:
-            {
-                "tienda": "NOMBRE",
-                "fecha": "YYYY-MM-DD",
-                "total": 0.0,
-                "campos_adicionales": {
-                    "Sucursal": "3940",
-                    "Ticket ID": "..."
-                }
-            }
-
-            Texto OCR:
+            ### TEXTO DEL TICKET (OCR):
             {text_content}
+
+            ### INSTRUCCIONES MAESTRAS:
+            1. **IDENTIFICACIÓN:** Vincula el ticket con un ID de la lista anterior.
+               - Si hay coincidencia semántica, USA EL ID EXACTO.
+
+            2. **EXTRACCIÓN FORENSE (ESTO ES LO MÁS IMPORTANTE):**
+               Si la tienda requiere campos específicos (ej. "Caja", "Ticket", "Sucursal"), aplica estas estrategias:
+               
+               A. **BÚSQUEDA DE SINÓNIMOS:**
+                  - Si busco "Caja", busca también: "Cja", "Pos", "Terminal", "Reg", "Register", "Kiosko", "KS", "Mesa".
+                  - Si busco "Ticket", busca también: "Folio", "Transaccion", "Trx", "Chk", "Check", "Doc", "Factura".
+                  - Si busco "Sucursal", busca también: "Store", "Tienda", "Loc", "Local", "Brn", "Branch".
+               
+               B. **CORRECCIÓN DE ERRORES OCR:**
+                  - El OCR suele confundir caracteres. Sé inteligente:
+                  - "Tienda 0XX0" -> "Tienda OXXO"
+                  - "Caja l" (ele) -> "Caja 1" (uno)
+                  - "Foli0" -> "Folio"
+               
+               C. **PRIORIDAD NUMÉRICA:**
+                  - Para "Sucursal", "Caja" o "Ticket", casi siempre buscamos NÚMEROS.
+                  - Si ves "Caja: Principal", sigue buscando. Probablemente abajo diga "Reg: 2". Queremos el "2".
+                  - En McDonald's, "Side 1" o "Side 2" a menudo equivalen a la Caja.
+
+            3. **FORMATO DE SALIDA (JSON):**
+            {{
+                "tienda": "NOMBRE_NORMALIZADO",
+                "fecha": "YYYY-MM-DD",
+                "total": 0.00,
+                "es_conocida": true,
+                "campos_adicionales": {{
+                    "NombreDelCampo": "ValorExtraído" 
+                    // Si un valor es realmente imposible de encontrar tras intentar todo, usa "" (string vacío).
+                }}
+            }}
             """
         }
         # Preconfiguramos configs opcionales de generación
@@ -771,10 +783,10 @@ class MistralOCRService:
         self.api_key = os.getenv("MISTRAL_API_KEY") 
         self.client = Mistral(api_key=self.api_key) if self.api_key else None
 
-    def optimize_image(self, image_bytes, max_size=1024):
+    def optimize_image(self, image_bytes, max_size=2048):  # <-- CAMBIO: De 1024 a 2048
         """
-        Redimensiona y comprime la imagen en memoria usando PIL.
-        Pasa de 5MB -> 150KB en milisegundos.
+        Redimensiona y comprime la imagen.
+        MEJORA: Aumentamos a 2048px para que tickets largos no pierdan nitidez en textos pequeños.
         """
         try:
             img = Image.open(BytesIO(image_bytes))
@@ -783,13 +795,14 @@ class MistralOCRService:
             if img.mode in ('RGBA', 'P'):
                 img = img.convert('RGB')
 
-            # Redimensionar si es muy grande (Cuello de botella de red)
+            # Redimensionar solo si es excesivamente grande, manteniendo aspect ratio
+            # Tickets largos necesitan altura, así que cuidamos el lado mayor.
             if max(img.size) > max_size:
                 img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
 
-            # Guardar en buffer optimizado
+            # Guardar en buffer optimizado con calidad alta (90)
             buffer = BytesIO()
-            img.save(buffer, format="JPEG", quality=85, optimize=True)
+            img.save(buffer, format="JPEG", quality=95, optimize=True) # <-- CAMBIO: Calidad 95
             return base64.b64encode(buffer.getvalue()).decode('utf-8')
         except Exception as e:
             logger.error(f"Error optimizando imagen: {e}")
@@ -922,45 +935,51 @@ class BillingService:
     @staticmethod
     def procesar_datos_facturacion(datos_json: dict) -> dict:
         """
-        Analiza los datos extraídos por la IA y los cruza con la configuración de la tienda.
-        Devuelve un contexto listo para el template.
+        Analiza los datos y devuelve el contexto para el Template.
+        CORRECCIÓN: Ahora respeta la bandera 'es_conocida' si viene desde la Tarea.
         """
         tienda_detectada = datos_json.get('tienda') or datos_json.get('establecimiento') or 'DESCONOCIDO'
-        tienda_detectada = tienda_detectada.upper()
+        tienda_detectada = tienda_detectada.upper().strip()
         
-        # Usamos la búsqueda inteligente
-        config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
+        # --- LÓGICA CORREGIDA ---
+        # 1. Verificamos si la Tarea (Celery) ya validó esta tienda
+        ya_validada_por_ia = datos_json.get('es_conocida') is True
+
+        config_tienda = None
         
+        if ya_validada_por_ia:
+            # Si la IA ya dijo que es conocida, confiamos y buscamos directo por nombre exacto
+            try:
+                config_tienda = TiendaFacturacion.objects.get(tienda=tienda_detectada)
+            except TiendaFacturacion.DoesNotExist:
+                # Fallback: Si por alguna razón extraña no existe, intentamos fuzzy
+                config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
+        else:
+            # Si no viene validada, hacemos la búsqueda tradicional
+            config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
+        
+        # 2. Establecemos las variables base según si encontramos la config
         if config_tienda:
             es_conocida = True
-            tienda_nombre = config_tienda.tienda # Usamos el nombre OFICIAL de la DB
+            tienda_nombre = config_tienda.tienda 
             campos_requeridos = config_tienda.campos_requeridos
             url_portal = config_tienda.url_portal
         else:
             es_conocida = False
-            tienda_nombre = tienda_detectada # Usamos lo que encontró la IA
+            tienda_nombre = tienda_detectada
             campos_requeridos = []
             url_portal = None
 
-        # 2. Preparamos los datos base
-        # El modelo Factura guarda los datos específicos en 'datos_facturacion'
-        # Pero a veces vienen mezclados en el root del JSON si es un objeto antiguo.
-        # Asumimos que datos_json ES el 'datos_facturacion' completo.
-        
-        # Extraemos campos comunes
+        # 3. Extracción de campos (El resto de la lógica se mantiene igual)
+        # Extraemos campos comunes del JSON
         campos_encontrados = datos_json.get('campos_adicionales') or datos_json 
-        # (Si campos_adicionales no existe, usamos el propio dict, asumiendo estructura plana)
         
-        # Datos para mostrar al usuario final (limpios)
         datos_para_cliente = {}
-        
-        # 3. Lógica de coincidencias
         campos_faltantes = []
         
         if es_conocida and campos_requeridos:
-            # Si sabemos qué buscar, filtramos y validamos
             for campo in campos_requeridos:
-                # Buscamos el campo con varias estrategias (exacto, lowercase, espacios->guiones)
+                # Buscamos el campo con varias estrategias
                 valor = (campos_encontrados.get(campo) or 
                          campos_encontrados.get(campo.lower()) or 
                          campos_encontrados.get(campo.replace(' ', '_').lower()) or
@@ -971,55 +990,45 @@ class BillingService:
                 else:
                     campos_faltantes.append(campo)
         else:
-            # Si NO es conocida, mostramos TODO lo que parezca útil (excluyendo basura)
-            claves_ignorar = ['tienda', 'fecha', 'total', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales']
+            # Si NO es conocida, mostramos todo (modo aprendizaje)
+            claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales']
             
             for k, v in campos_encontrados.items():
                 if k not in claves_ignorar and isinstance(v, (str, int, float)) and v:
                      datos_para_cliente[k] = v
 
-        # 4. Sugerencia de campos (para el modo aprendizaje)
-        # Si no es conocida, enviamos todas las llaves encontradas como sugerencia
-        claves_sugeridas = [k for k in campos_encontrados.keys() if k not in ['tienda', 'fecha', 'total', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'campos_adicionales']]
+        # 4. Sugerencia de campos
+        claves_sugeridas = [k for k in campos_encontrados.keys() if k not in ['tienda', 'fecha', 'total', 'es_conocida', 'campos_adicionales']]
 
         return {
-            'tienda': tienda_nombre, # Nombre normalizado si se encontró, o el original
-            'tienda_original': tienda_detectada if tienda_detectada != tienda_nombre else None, # Para avisar al usuario si hubo corrección
-            'es_conocida': es_conocida,
+            'tienda': tienda_nombre,
+            'tienda_original': tienda_detectada if tienda_detectada != tienda_nombre else None,
+            'es_conocida': es_conocida, # Ahora esto será True si la IA lo marcó
             'url_portal': url_portal,
-            'datos_para_cliente': datos_para_cliente, # Lo que se guardará en la Factura final
+            'datos_para_cliente': datos_para_cliente,
             'campos_faltantes': campos_faltantes,
             'claves_sugeridas': claves_sugeridas,
-            'raw_json': datos_json # Para debug o fallback
+            'raw_json': datos_json
         }
 
     @staticmethod
     def preparar_contexto_para_gemini(texto_ticket: str) -> str:
         """
-        Genera el string {context_str} que necesita tu prompt 'facturacion_from_text_with_context'.
-        Filtra solo las tiendas relevantes o devuelve todas si no está seguro.
+        Genera el contexto con LA LISTA COMPLETA de tiendas y sus reglas.
+        SOLUCIÓN DEFINITIVA: No filtramos en Python. Dejamos que la IA decida.
         """
-        # 1. Intentamos identificar la tienda primero para no enviar TODA la base de datos
-        #    (Esto ahorra tokens y confusión a Gemini)
-        texto_upper = texto_ticket.upper()
+        # Obtenemos TODAS las tiendas configuradas.
         tiendas = TiendaFacturacion.objects.all()
         
-        tiendas_relevantes = []
-        for t in tiendas:
-            # Si el nombre de la tienda aparece en el ticket, es relevante
-            if t.tienda in texto_upper:
-                tiendas_relevantes.append(t)
+        if not tiendas.exists():
+            return "No hay tiendas conocidas configuradas. Extrae los datos estándar."
+
+        # Construimos el "Menú" de opciones para Gemini
+        contexto_str = "### BASE DE DATOS DE TIENDAS CONOCIDAS (USAR ESTOS NOMBRES EXACTOS):\n"
         
-        # Si no encontramos ninguna exacta, mandamos todas por si acaso (o las más comunes)
-        lista_final = tiendas_relevantes if tiendas_relevantes else tiendas
-
-        contexto_str = "LISTA DE TIENDAS Y CAMPOS REQUERIDOS:\n"
-        if not lista_final:
-            return "No hay tiendas conocidas configuradas."
-
-        for t in lista_final:
-            lista_campos = ", ".join(t.campos_requeridos) if t.campos_requeridos else "Estándar"
-            # Formato que tu prompt ya entiende:
-            contexto_str += f"- {t.tienda}: [{lista_campos}]\n"
+        for t in tiendas:
+            # Convertimos la lista de campos a string JSON
+            campos_json = json.dumps(t.campos_requeridos, ensure_ascii=False)
+            contexto_str += f"- ID: '{t.tienda}' | REQUIERE EXTRACCIÓN DE: {campos_json}\n"
             
         return contexto_str

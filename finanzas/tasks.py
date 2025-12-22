@@ -339,7 +339,6 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         gemini_service = get_gemini_service()
         
         try:
-            # Usamos tu prompt existente
             datos_extraidos = gemini_service.extract_from_text(
                 prompt_name="facturacion_from_text_with_context", 
                 text=texto_ticket, 
@@ -357,34 +356,57 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         if not datos_extraidos:
              return {'status': 'FAILURE', 'file_name': file_name, 'error': 'JSON vacío de Gemini'}
 
-        # 5. Guardar en Factura (Flujo de Revisión)
-        # Usamos el modelo Factura con estado 'pendiente' en lugar de TransaccionPendiente
+        # --- LÓGICA DEFINITIVA DE NORMALIZACIÓN ---
         
-        from decimal import Decimal
+        # 1. Nombre propuesto por la IA (Ya debería venir normalizado si hizo match)
+        nombre_ia = datos_extraidos.get("tienda") or datos_extraidos.get("establecimiento") or "DESCONOCIDO"
+        nombre_ia = nombre_ia.upper().strip()
         
-        # --- NORMALIZACIÓN DE NOMBRE DE TIENDA ---
-        nombre_raw = datos_extraidos.get("tienda") or datos_extraidos.get("establecimiento") or "DESCONOCIDO"
-        nombre_raw = nombre_raw.upper().strip()
+        # 2. Verificamos la bandera de la IA
+        es_conocida_por_ia = datos_extraidos.get("es_conocida", False)
+
+        if es_conocida_por_ia:
+            # Si la IA dice que la encontró en la lista, CONFIAMOS EN ELLA.
+            # Esto evita que "WALMART" se convierta en "WAL-MART" y se duplique.
+            tienda_final = nombre_ia
+            logger.info(f"Tienda reconocida por IA: {tienda_final}")
+        else:
+            # Solo si la IA no la reconoció, usamos el Fuzzy Search como respaldo final
+            # por si la IA falló pero el nombre es muy similar.
+            tienda_obj = BillingService.buscar_tienda_fuzzy(nombre_ia)
+            if tienda_obj:
+                tienda_final = tienda_obj.tienda
+                logger.info(f"Tienda normalizada por Fuzzy: {nombre_ia} -> {tienda_final}")
+            else:
+                tienda_final = nombre_ia
+                logger.info(f"Tienda nueva detectada: {tienda_final}")
+
+   # 1. Preparamos el JSON para guardar
+        payload_facturacion = datos_extraidos.get("campos_adicionales", {})
         
-        tienda_final = nombre_raw
-        
-        # Intentamos encontrar la tienda oficial en la BD
-        tienda_obj = BillingService.buscar_tienda_fuzzy(nombre_raw)
-        if tienda_obj:
-            tienda_final = tienda_obj.tienda
-            logger.info(f"Tienda normalizada: {nombre_raw} -> {tienda_final}")
-        
+        # 2. Inyectamos la tienda para que el resumen la detecte como conocida
+        payload_facturacion['tienda'] = tienda_final
+        payload_facturacion['es_conocida'] = True 
+
+        # 3. Guardamos la factura con el JSON enriquecido
         Factura.objects.create(
             propietario=user,
-            tienda=tienda_final, # Guardamos el nombre normalizado
+            tienda=tienda_final,
             fecha_emision=parse_date_safely(datos_extraidos.get("fecha")),
             total=Decimal(str(datos_extraidos.get("total", 0))),
-            datos_facturacion=datos_extraidos.get("campos_adicionales", {}), # Guardamos el JSON con los detalles
+            datos_facturacion=payload_facturacion, # <--- Ahora sí lleva el nombre dentro
             archivo_drive_id=file_id,
             estado='pendiente' 
         )
 
-        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': tienda_final}
+        # 4. Devolvemos la respuesta completa para la notificación visual
+        return {
+            'status': 'SUCCESS', 
+            'file_name': file_name, 
+            'tienda': tienda_final,
+            'es_conocida': True, 
+            'mensaje': f"Tienda vinculada: {tienda_final}"
+        }
 
     except Exception as e:
         logger.error(f"Error fatal procesando {file_name}: {e}")
