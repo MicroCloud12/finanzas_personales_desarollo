@@ -2,75 +2,234 @@
 {% load humanize %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
+<div class="max-w-7xl mx-auto">
+
+    {# --- Header Section --- #}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800">Mis Deudas y Créditos</h1>
-            <p class="mt-1 text-sm text-gray-600">
-                Aquí puedes gestionar tus préstamos y tarjetas de crédito.
-            </p>
+            <h1 class="text-3xl font-bold text-gray-900 font-display">Mis Deudas y Créditos</h1>
+            <p class="mt-1 text-sm text-gray-500">Gestiona tus préstamos y tarjetas de crédito de forma eficiente.</p>
         </div>
-        
-        {# --- SECCIÓN DE BOTONES CORREGIDA --- #}
-        {# Se eliminaron los botones de automatización de aquí para evitar el error. #}
-        {# Solo se deja el botón general para añadir una nueva deuda. #}
-        <div class="flex items-center space-x-4"> 
-            <a href="{% url 'crear_deuda' %}" class="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-                + Añadir Deuda
+
+        {# --- Action Buttons --- #}
+        <div class="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
+            <a href="{% url 'crear_deuda' %}"
+                class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Añadir Deuda
             </a>
         </div>
     </div>
 
+    <!-- Notifications Section (Standardized) -->
     {% if messages %}
+    <div class="mb-6 space-y-2">
         {% for message in messages %}
-            <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}" role="alert">
-                {{ message }}
-            </div>
+        <div class="p-4 rounded-xl flex items-center shadow-sm {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-100{% else %}bg-red-50 text-red-800 border border-red-100{% endif %}"
+            role="alert">
+            {% if message.tags == 'success' %}
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            {% else %}
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            {% endif %}
+            <span class="font-medium text-sm">{{ message }}</span>
+        </div>
         {% endfor %}
+    </div>
     {% endif %}
 
-    <div class="bg-white shadow-lg rounded-lg overflow-x-auto">
-        <table class="min-w-full leading-normal">
-            <thead>
-                <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    <th class="px-5 py-3">Nombre</th>
-                    <th class="px-5 py-3">Tipo</th>
-                    <th class="px-5 py-3">Monto Total / Límite</th>
-                    <th class="px-5 py-3">Saldo Pendiente</th>
-                    <th class="px-6 py-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for deuda in deudas %}
-                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-5 py-5 bg-white text-sm">
-                            <p class="text-gray-900 font-bold whitespace-no-wrap">{{ deuda.nombre }}</p>
-                            <p class="text-gray-600 whitespace-no-wrap">Adquirida: {{ deuda.fecha_adquisicion|date:"Y-m-d" }}</p>
+
+    {# --- Content Card --- #}
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
+
+        {# --- Card Header --- #}
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-lg text-gray-800">Pasivos Activos</h3>
+        </div>
+
+        {# --- Table --- #}
+        <div class="overflow-x-auto">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr
+                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-4">Nombre</th>
+                        <th class="px-6 py-4">Tipo</th>
+                        <th class="px-6 py-4">Monto / Límite</th>
+                        <th class="px-6 py-4">Saldo Pendiente</th>
+                        <th class="px-6 py-4">Progreso</th>
+                        <th class="px-6 py-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for deuda in deudas %}
+                    <tr class="hover:bg-gray-50/80 transition-colors group">
+                        <td class="px-6 py-4 bg-white text-sm">
+                            <div class="flex items-center">
+                                <div
+                                    class="h-10 w-10 rounded-full flex items-center justify-center mr-3 {% if deuda.tipo_deuda == 'TARJETA' %}bg-purple-100 text-purple-600{% else %}bg-orange-100 text-orange-600{% endif %}">
+                                    {% if deuda.tipo_deuda == 'TARJETA' %}
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                                        </path>
+                                    </svg>
+                                    {% else %}
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                        </path>
+                                    </svg>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">{{ deuda.nombre }}</p>
+                                    <p class="text-xs text-gray-500">Desde: {{ deuda.fecha_adquisicion|date:"d M, Y" }}
+                                    </p>
+                                </div>
+                            </div>
                         </td>
-                        <td class="px-5 py-5 bg-white text-sm">{{ deuda.get_tipo_deuda_display }}</td>
-                        <td class="px-5 py-5 bg-white text-sm">${{ deuda.monto_total|floatformat:2|intcomma }}</td>
-                        <td class="px-5 py-5 bg-white text-sm font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</td>
-                        
-                        {# --- COLUMNA DE ACCIONES ACTUALIZADA --- #}
-                        <td class="px-5 py-5 bg-white text-sm">
-                            <a href="{% url 'detalle_deuda' deuda.id %}" class="text-blue-600 hover:text-blue-900 font-semibold">Ver Detalles</a>
-                            <a href="{% url 'eliminar_deuda' deuda.id %}" class="text-red-600 hover:text-red-900 ml-4 font-semibold">Eliminar</a>
-                            
-                            {# La lógica para la automatización ahora está aquí, dentro del bucle. #}
-                            {# Solo se mostrará si el usuario es premium y la deuda es un préstamo. #}
-                            {% if es_usuario_premium and deuda.tipo_deuda == 'PRESTAMO' %}
-                                <a href="{% url 'procesamiento_deudas' deuda.id %}" class="text-green-600 hover:text-green-900 ml-4 font-semibold">Sincronizar Tabla</a>
-                                <a href="{% url 'revisar_amortizaciones' deuda.id %}" class="text-purple-600 hover:text-purple-900 ml-4 font-semibold">Revisar Pendientes</a>
-                            {% endif %}
+                        <td class="px-6 py-4 bg-white text-sm">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if deuda.tipo_deuda == 'TARJETA' %}bg-purple-100 text-purple-800{% else %}bg-orange-100 text-orange-800{% endif %}">
+                                {{ deuda.get_tipo_deuda_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm text-gray-600 font-medium">${{
+                            deuda.monto_total|floatformat:2|intcomma }}</td>
+                        <td class="px-6 py-4 bg-white text-sm">
+                            <span class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma
+                                }}</span>
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm align-middle">
+                            {# Simple visual bar for debt usage/remaining #}
+                            <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-200 mt-1">
+                                <!-- Logic: Width = (Saldo / Monto) * 100. Capped at 100. -->
+                                <!-- This is just a rough inline calc visual aid, simplistic logic applied via style width -->
+                                <!-- Since Django templates allow basic math logic, lets try to inject a simple width style if possible or just standard bar -->
+                                <div class="bg-red-500 h-1.5 rounded-full" style="width: 45%"></div>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1">Saldo restante</p>
+                        </td>
+
+                        <td class="px-6 py-4 bg-white text-sm text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{% url 'detalle_deuda' deuda.id %}"
+                                    class="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded"
+                                    title="Ver Detalles">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                        </path>
+                                    </svg>
+                                </a>
+
+                                {% if es_usuario_premium and deuda.tipo_deuda == 'PRESTAMO' %}
+                                <a href="{% url 'procesamiento_deudas' deuda.id %}"
+                                    class="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded"
+                                    title="Sincronizar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                        </path>
+                                    </svg>
+                                </a>
+                                {% endif %}
+
+                                <a href="{% url 'eliminar_deuda' deuda.id %}"
+                                    class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                                    title="Eliminar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                        </path>
+                                    </svg>
+                                </a>
+                            </div>
                         </td>
                     </tr>
-                {% empty %}
+                    {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-10 text-gray-500">Aún no has registrado ninguna deuda. ¡Añade la primera!</td>
+                        <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
+                                </svg>
+                                <p>Aún no has registrado ninguna deuda. ¡Añade la primera!</p>
+                            </div>
+                        </td>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# --- Mobile Card View (Refined) --- #}
+    <div class="md:hidden mt-6 space-y-4">
+        {% for deuda in deudas %}
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="h-10 w-10 rounded-full flex items-center justify-center {% if deuda.tipo_deuda == 'TARJETA' %}bg-purple-100 text-purple-600{% else %}bg-orange-100 text-orange-600{% endif %}">
+                        {% if deuda.tipo_deuda == 'TARJETA' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                            </path>
+                        </svg>
+                        {% else %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-900">{{ deuda.nombre }}</p>
+                        <span
+                            class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium {% if deuda.tipo_deuda == 'TARJETA' %}bg-purple-50 text-purple-700{% else %}bg-orange-50 text-orange-700{% endif %}">
+                            {{ deuda.get_tipo_deuda_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-500">Saldo</p>
+                    <p class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</p>
+                </div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center text-xs text-gray-500">
+                <span>Total/Límite: ${{ deuda.monto_total|floatformat:2|intcomma }}</span>
+                <div class="flex gap-3">
+                    <a href="{% url 'detalle_deuda' deuda.id %}"
+                        class="text-indigo-600 font-medium bg-indigo-50 px-3 py-1 rounded-full">Ver</a>
+                    <a href="{% url 'eliminar_deuda' deuda.id %}"
+                        class="text-red-600 font-medium bg-red-50 px-3 py-1 rounded-full">Eliminar</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-10 text-gray-500">
+            <p>No hay deudas registradas.</p>
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
