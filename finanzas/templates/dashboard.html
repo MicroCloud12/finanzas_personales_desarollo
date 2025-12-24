@@ -5,109 +5,232 @@
 {% load static %}
 
 {# Contenedor Principal Unificado #}
-<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div class="max-w-7xl mx-auto">
 
-    <h1 class="text-3xl font-bold text-gray-800 mb-8">Tu Resumen Financiero</h1>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 font-display">Dashboard</h1>
 
-    {# --- Filtros --- #}
-    {# La clase 'mb-8' (margin-bottom) controla el espacio hacia la siguiente sección #}
-    <div class="bg-white p-4 rounded-lg shadow-md mt-6">
-        <form method="GET" action="" class="grid grid-cols-1 sm:grid-cols-3 items-end gap-4">
-
-            {# Columna para el selector de Mes #}
-            <div class="sm:col-span-1">
-                <label for="month" class="block text-sm font-medium text-gray-700">Mes:</label>
-                <select name="month" id="month"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        {# --- Filtros Minimalistas --- #}
+        <div class="mt-4 sm:mt-0 bg-white rounded-xl shadow-sm p-1 inline-flex items-center">
+            <form method="GET" action="" class="flex items-center gap-2">
+                <select name="month" onchange="this.form.submit()"
+                    class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
                     {% for m in months %}
-                    {# Fíjate en los espacios: m (espacio) == (espacio) selected_month #}
                     <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
                     {% endfor %}
                 </select>
-            </div>
-
-            {# Columna para el selector de Año #}
-            <div class="sm:col-span-1">
-                <label for="year" class="block text-sm font-medium text-gray-700">Año:</label>
-                <select name="year" id="year"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <span class="text-gray-300">|</span>
+                <select name="year" onchange="this.form.submit()"
+                    class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
                     {% for y in years %}
-                    {# Fíjate en los espacios: y (espacio) == (espacio) selected_year #}
                     <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
                 </select>
-            </div>
-
-            {# Columna para el botón de Filtrar #}
-            <div class="sm:col-span-1">
-                <button type="submit"
-                    class="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Filtrar
-                </button>
-            </div>
-
-        </form>
-    </div>
-
-    {# --- Resumen del Mes --- #}
-    <h2 class="text-xl font-semibold text-gray-700 mb-4">Resumen del Mes</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Ingresos (Mes)</h3>
-            <p class="mt-2 text-3xl font-semibold text-gray-900">${{ ingresos|floatformat:2 | intcomma }}</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Gastos (Mes)</h3>
-            <p class="mt-2 text-3xl font-semibold text-gray-900">${{ gastos|floatformat:2 | intcomma }}</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Disponible Banco</h3>
-            <p class="mt-2 text-3xl font-semibold text-gray-900">${{ disponible_banco|floatformat:2 | intcomma }}</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Balance (Mes)</h3>
-            <p class="mt-2 text-3xl font-semibold text-gray-900">${{ balance|floatformat:2 | intcomma }}</p>
+            </form>
         </div>
     </div>
 
-    {# --- Gráficas --- #}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h3 class="font-semibold text-lg text-gray-700 mb-4">Gastos por Categoría (Mes)</h3>
-            <div class="relative h-150">
-                <canvas id="gastosPorCategoriaChart"
-                    data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
+    {# --- Top Cards Row --- #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
+        <!-- Balance Card (Highlighted) -->
+        <div class="card-premium gradient-blue text-white shadow-xl shadow-indigo-200">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 bg-white/20 rounded-full backdrop-blur-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                </div>
+                <button class="text-white/70 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z">
+                        </path>
+                    </svg></button>
+            </div>
+            <div>
+                <p class="text-indigo-100 text-sm font-medium mb-1">Total Balance</p>
+                <h3 class="text-3xl font-bold tracking-tight">${{ balance|floatformat:2 | intcomma }}</h3>
+                <div class="mt-4 flex items-center text-xs text-indigo-100">
+                    <span class="bg-white/20 px-2 py-0.5 rounded text-white font-medium mr-2">**** 4242</span> VISA
+                </div>
             </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h3 class="font-semibold text-lg text-gray-700 mb-4">Ingresos vs. Gastos (Mes)</h3>
-            <div class="relative h-150">
+
+        <!-- Income Card -->
+        <div class="card-premium">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 bg-green-50 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                    </svg>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z">
+                        </path>
+                    </svg></button>
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-1">${{ ingresos|floatformat:2 | intcomma }}</h3>
+                <p class="text-gray-500 text-sm font-medium">Income</p>
+            </div>
+        </div>
+
+        <!-- Savings Card (Using 'Ahorro') -->
+        <div class="card-premium">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 bg-purple-50 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z">
+                        </path>
+                    </svg></button>
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-1">${{ ahorro|floatformat:2 | intcomma }}</h3>
+                <p class="text-gray-500 text-sm font-medium">Savings</p>
+            </div>
+        </div>
+
+        <!-- Expenses Card -->
+        <div class="card-premium">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 bg-red-50 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+                    </svg>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z">
+                        </path>
+                    </svg></button>
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-1">${{ gastos|floatformat:2 | intcomma }}</h3>
+                <p class="text-gray-500 text-sm font-medium">Expenses</p>
+            </div>
+        </div>
+    </div>
+
+    {# --- Main Charts Section (Grid Split) --- #}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+
+        {# Left: Finances Line Chart (Occupy 2 cols) #}
+        <div class="lg:col-span-2 card-premium p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-lg text-gray-800">Finances Overview</h3>
+                <div class="flex gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        <span class="text-xs text-gray-500 font-medium">Income</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-red-400"></span>
+                        <span class="text-xs text-gray-500 font-medium">Outcome</span>
+                    </div>
+                </div>
+            </div>
+            <div class="relative h-80 w-full">
                 <canvas id="flujoDeDineroChart"
                     data-url="{% url 'api_flujo_dinero' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>
         </div>
+
+        {# Right: Expenses Donut Chart (Occupy 1 col) #}
+        <div class="card-premium p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-lg text-gray-800">All Expenses</h3>
+                <select
+                    class="text-xs bg-gray-50 border-none rounded-lg text-gray-500 font-medium cursor-pointer focus:ring-0">
+                    <option>Monthly</option>
+                </select>
+            </div>
+            <div class="relative h-60 flex justify-center">
+                <canvas id="gastosPorCategoriaChart"
+                    data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
+            </div>
+            <div class="mt-6">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-gray-500">Daily Average</span>
+                    <span class="text-sm font-bold text-gray-900">$102.50</span>
+                    <!-- Placeholder/Calc needed if real data -->
+                </div>
+            </div>
+        </div>
     </div>
 
-    {# --- Patrimonio e Inversiones --- #}
-    <h2 class="text-xl font-semibold text-gray-700 mb-4">Patrimonio</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-teal-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Ahorro</h3>
-            <p class="mt-2 text-3xl font-semibold text-gray-900">${{ ahorro|floatformat:2 | intcomma }}</p>
+    {# --- Bottom Section: Investments & Quick Transfer (or Recent Transactions) --- #}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="card-premium p-6">
+            <h3 class="font-bold text-lg text-gray-800 mb-4">Capital Evolution</h3>
+            <div class="relative h-64">
+                <canvas id="investmentLineChart" data-url="{% url 'api_ganancias_mensuales' %}"></canvas>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Inversion Inicial (USD)</h3>
-            <p class="mt-2 text-3xl font-semibold text-gray-900">${{ inversion_inicial|floatformat:2 | intcomma }}</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Inversion Actual (USD)</h3>
-            <p class="mt-2 text-3xl font-semibold text-gray-900">${{ inversion_actual|floatformat:2 | intcomma}}</p>
-        </div>
-    </div>
-    <div class="bg-white p-6 rounded-lg shadow-md">
-        <h3 class="font-semibold text-lg text-gray-700 mb-4">Evolución del Capital Invertido</h3>
-        <div class="relative h-150">
-            <canvas id="investmentLineChart" data-url="{% url 'api_ganancias_mensuales' %}"></canvas>
+
+        {# Placeholder for Recent Transactions - Using simple list logic #}
+        <div class="card-premium p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-lg text-gray-800">Quick Stats</h3>
+                <a href="{% url 'lista_transacciones' %}"
+                    class="text-sm text-indigo-600 font-medium hover:text-indigo-700">View All</a>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">Inversión Actual</p>
+                            <p class="text-xs text-gray-500">Total Portfolio</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">${{ inversion_actual|floatformat:2 | intcomma}}</span>
+                </div>
+
+                <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">Inversión Inicial</p>
+                            <p class="text-xs text-gray-500">Base Capital</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">${{ inversion_inicial|floatformat:2 | intcomma
+                        }}</span>
+                </div>
+            </div>
+
         </div>
     </div>
 

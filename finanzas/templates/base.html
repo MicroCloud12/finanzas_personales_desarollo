@@ -34,20 +34,40 @@
   <script src="{% static 'js/main.js' %}"></script>
 </head>
 
-<body class="bg-gray-50 flex flex-col min-h-screen">
-  {% block header %}
-  {% include 'partials/_header.html' %}
-  {% endblock header %}
-  <main class="flex-grow">
-    {% block content %}
-    {% endblock content %}
-  </main>
-  {% block footer %}
-  <footer class="bg-gray-100 text-gray-600 text-center py-4 mt-8">
-    <p class="text-sm">&copy; {{ now|date:"Y" }} Prisma Vault</p>
-    <a class="text-sm" href="{% url 'privacy_policy' %}"> Politica de Privacidad</a>
-  </footer>
-  {% endblock footer %}
+<body class="bg-gray-50 font-sans antialiased text-gray-900">
+
+  <div class="flex h-screen overflow-hidden">
+    {# --- Sidebar for Desktop --- #}
+    {% if user.is_authenticated %}
+    {% include 'partials/_sidebar.html' %}
+    {% endif %}
+
+    {# --- Main Content Wrapper --- #}
+    <div
+      class="flex-1 flex flex-col h-screen overflow-hidden {% if user.is_authenticated %}md:ml-64{% endif %} transition-all duration-300 relative">
+
+      {# --- Top Bar / Header --- #}
+      {% block header %}
+      {% include 'partials/_header.html' %}
+      {% endblock header %}
+
+      {# --- Content Scrollable Area --- #}
+      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+        {% block content %}
+        {% endblock content %}
+
+        {% block footer %}
+        <footer class="bg-transparent text-gray-400 text-center py-6 mt-auto">
+          <p class="text-xs">&copy; {{ now|date:"Y" }} Prisma Vault. All rights reserved.</p>
+          <a class="text-xs hover:text-indigo-500 transition-colors" href="{% url 'privacy_policy' %}">Política de
+            Privacidad</a>
+        </footer>
+        {% endblock footer %}
+      </main>
+
+    </div>
+  </div>
+
   {% block javascript %}{% endblock javascript %}
 </body>
 

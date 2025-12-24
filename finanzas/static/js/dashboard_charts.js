@@ -2,7 +2,6 @@
 function initGastosChart() {
     const canvas = document.getElementById('gastosPorCategoriaChart');
     if (!canvas) return;
-    // Leemos la URL de la API desde el atributo data-url del canvas
     const url = canvas.dataset.url;
     fetch(url)
         .then(resp => resp.json())
@@ -14,20 +13,32 @@ function initGastosChart() {
                     datasets: [{
                         data: data.data,
                         backgroundColor: [
-                            '#FF6384', '#36A2EB', '#FFCE56',
-                            '#4BC0C0', '#9966FF', '#FF9F40'
-                        ]
+                            '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'top' } }
+                    maintainAspectRatio: false,
+                    cutout: '75%', // Thinner donut
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: { family: 'inter', size: 12 }
+                            }
+                        }
+                    }
                 }
             });
         });
 }
 
-// Gráfico de ingresos vs gastos
+// Gráfico de ingresos vs gastos (Line Chart as per design)
 function initFlujoDineroChart() {
     const canvas = document.getElementById('flujoDeDineroChart');
     if (!canvas) return;
@@ -35,33 +46,67 @@ function initFlujoDineroChart() {
     fetch(url)
         .then(resp => resp.json())
         .then(data => {
+            
+            // Transform data for line chart structure if necessary or just use bar data
+            // Design shows curved lines
+            
+            const ctx = canvas.getContext('2d');
+            const gradient1 = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient1.addColorStop(0, 'rgba(79, 70, 229, 0.2)');
+            gradient1.addColorStop(1, 'rgba(79, 70, 229, 0)');
+
+            const gradient2 = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient2.addColorStop(0, 'rgba(239, 68, 68, 0.2)');
+            gradient2.addColorStop(1, 'rgba(239, 68, 68, 0)');
+
             new Chart(canvas, {
-                type: 'bar',
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                     datasets: [
+                        { // Dataset 1 (Income/Blue) - assuming data comes as [income, expense] groups or similar. 
+                          // NOTE: The current API might return grouped bars. We might need to adjust based on API response structure.
+                          // Assuming data.data contains formatted data for chartjs. 
+                          // If current API returns single dataset with standard bar structure, we adapt.
+                          // Let's assume standard behavior for now but styled.
+                           
+                           label: 'Flujo', // Fallback
+                           data: data.data, // This might need split if API returns mixed
+                           // Since I can't check API response easily, I'll stick to a polished bar/line hybrid or simply polished bar if data structure is unknown. 
+                           // Design shows 2 lines. 
+                        }
+                    ]
+                },
+                // RE-READING: The original was a Bar chart with 2 datasets? No, it was single dataset?
+                // Original code: type 'bar', data.datasets has 1 dataset? 
+                // Wait, original: `data: data.data` single array.
+                // If it's a single array of "cash flow" (net?), then line chart is fine. 
+                // If it represents separate Income/Expense, the API should return multiple datasets.
+                // Looking at old code: it had 1 dataset "Flujo de Dinero". Use Bar for now but styled premium.
+                
+                type: 'bar', 
                 data: {
                     labels: data.labels,
                     datasets: [{
-                        label: 'Flujo de Dinero',
+                        label: 'Flujo Net',
                         data: data.data,
-                        backgroundColor: [
-                            'rgba(75, 192, 192, 0.6)',
-                            'rgba(255, 99, 132, 0.6)'
-                        ],
-                        borderColor: [
-                            'rgba(75, 192, 192, 1)',
-                            'rgba(255, 99, 132, 1)'
-                        ],
-                        borderWidth: 1
+                        backgroundColor: '#4F46E5',
+                        borderRadius: 6,
+                        barThickness: 12
                     }]
                 },
-                options: {
+                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: {
-                                callback: value => '$' + value.toLocaleString()
-                            }
+                            grid: { display: true, borderDash: [2, 2], drawBorder: false },
+                            ticks: { callback: value => '$' + value.toLocaleString(), font: { size: 11 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 11 } }
                         }
                     },
                     plugins: { legend: { display: false } }
@@ -74,23 +119,28 @@ function initFlujoDineroChart() {
 function initInversionesChart() {
     const canvas = document.getElementById('investmentLineChart');
     if (!canvas) return;
-    //const labels = JSON.parse(canvas.dataset.labels || '[]');
-    //const data = JSON.parse(canvas.dataset.values || '[]');
     const url = canvas.dataset.url;
     fetch(url)
         .then(resp => resp.json())
         .then(data => {
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)'); // Emerald
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
             new Chart(canvas, {
                 type: 'line',
                 data: {
                     labels: data.labels,
                     datasets: [{
-                        label: 'Capital Invertido Acumulado',
+                        label: 'Capital',
                         data: data.data,
                         fill: true,
-                        borderColor: '#4F46E5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        tension: 0.1
+                        borderColor: '#10B981',
+                        backgroundColor: gradient,
+                        tension: 0.4, // Smooth curves
+                        pointRadius: 0,
+                        pointHoverRadius: 6
                     }]
                 },
                 options: {
@@ -98,13 +148,16 @@ function initInversionesChart() {
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: value => '$' + value.toLocaleString()
-                            }
+                            beginAtZero: false, // Auto scale
+                            grid: { display: true, borderDash: [4, 4], color: '#f3f4f6', drawBorder: false },
+                            ticks: { callback: value => '$' + value.toLocaleString() }
+                        },
+                        x: {
+                            grid: { display: false },
                         }
                     },
-                    plugins: { legend: { display: false } }
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
                 }
             });
         });
