@@ -3,60 +3,67 @@
 
 {% block content %}
 <div class="container mx-auto mt-10 p-5">
-    <a href="{% url 'detalle_deuda' deuda.id %}" class="text-indigo-600 hover:text-indigo-800 mb-4 inline-block">&larr; Volver al detalle de la deuda</a>
-    <h1 class="text-3xl font-bold text-gray-900 mb-6">Revisar Tablas de Amortización para <span class="text-indigo-600">{{ deuda.nombre }}</span></h1>
+    <a href="{% url 'detalle_deuda' deuda.id %}" class="text-indigo-600 hover:text-indigo-800 mb-4 inline-block">&larr;
+        Volver al detalle de la deuda</a>
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Revisar Tablas de Amortización para <span
+            class="text-indigo-600">{{ deuda.nombre }}</span></h1>
 
-    {% include 'partials/_error_message.html'%}
 
     {% if pendientes %}
-        {% for pendiente in pendientes %}
-            <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
-                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h2 class="text-lg font-semibold">Extraído del archivo: <span class="font-bold text-gray-800">{{ pendiente.nombre_archivo }}</span></h2>
-                    
-                    {# --- SECCIÓN DE BOTONES ACTUALIZADA --- #}
-                    <div class="flex space-x-4">
-                        <form action="{% url 'aprobar_amortizacion' pendiente.id %}" method="POST">
-                            {% csrf_token %}
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg">Aprobar</button>
-                        </form>
-                        <form action="{% url 'rechazar_amortizacion' pendiente.id %}" method="POST">
-                            {% csrf_token %}
-                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg">Rechazar</button>
-                        </form>
-                    </div>
-                    {# --- FIN DE LA ACTUALIZACIÓN --- #}
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Fecha Vencimiento</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Capital</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Interés</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">IVA</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Saldo Insoluto</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            {% for cuota in pendiente.datos_json %}
-                            <tr>
-                                <td class="px-4 py-3 text-sm">{{ cuota.fecha_vencimiento }}</td>
-                                <td class="px-4 py-3 text-sm">${{ cuota.capital|floatformat:2|intcomma }}</td>
-                                <td class="px-4 py-3 text-sm">${{ cuota.interes|floatformat:2|intcomma }}</td>
-                                <td class="px-4 py-3 text-sm">${{ cuota.iva|floatformat:2|intcomma }}</td>
-                                <td class="px-4 py-3 text-sm font-semibold text-blue-600">${{ cuota.saldo_insoluto|floatformat:2|intcomma }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+    {% for pendiente in pendientes %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
+        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+            <h2 class="text-lg font-semibold">Extraído del archivo: <span class="font-bold text-gray-800">{{
+                    pendiente.nombre_archivo }}</span></h2>
+
+            {# --- SECCIÓN DE BOTONES ACTUALIZADA --- #}
+            <div class="flex space-x-4">
+                <form action="{% url 'aprobar_amortizacion' pendiente.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg">Aprobar</button>
+                </form>
+                <form action="{% url 'rechazar_amortizacion' pendiente.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg">Rechazar</button>
+                </form>
             </div>
-        {% endfor %}
-    {% else %}
-        <div class="bg-white shadow rounded-lg p-10 text-center">
-            <p class="text-gray-500">No se encontraron tablas de amortización pendientes de revisión para esta deuda.</p>
+            {# --- FIN DE LA ACTUALIZACIÓN --- #}
         </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Fecha Vencimiento
+                        </th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Capital</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Interés</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">IVA</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Saldo Insoluto
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for cuota in pendiente.datos_json %}
+                    <tr>
+                        <td class="px-4 py-3 text-sm">{{ cuota.fecha_vencimiento }}</td>
+                        <td class="px-4 py-3 text-sm">${{ cuota.capital|floatformat:2|intcomma }}</td>
+                        <td class="px-4 py-3 text-sm">${{ cuota.interes|floatformat:2|intcomma }}</td>
+                        <td class="px-4 py-3 text-sm">${{ cuota.iva|floatformat:2|intcomma }}</td>
+                        <td class="px-4 py-3 text-sm font-semibold text-blue-600">${{
+                            cuota.saldo_insoluto|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="bg-white shadow rounded-lg p-10 text-center">
+        <p class="text-gray-500">No se encontraron tablas de amortización pendientes de revisión para esta deuda.</p>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

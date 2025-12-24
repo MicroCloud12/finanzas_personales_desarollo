@@ -21,6 +21,8 @@
       <div class="hidden md:flex flex-1 justify-between items-center ml-4">
 
         {# --- Search Bar (Visual Only) --- #}
+        {% if user.is_authenticated %}
+        {# --- Search Bar (Visual Only) --- #}
         <div class="relative w-full max-w-md">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
@@ -34,6 +36,12 @@
             class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out"
             placeholder="Search for transaction, item, etc.">
         </div>
+        {% else %}
+        {# --- Logo for Unauthenticated Users --- #}
+        <a href="{% url 'home' %}" class="flex items-center gap-2">
+          <img src="{% static 'img/Prisma.svg' %}" alt="Logo" class="h-16 w-auto">
+        </a>
+        {% endif %}
 
         {# --- Right Side Actions --- #}
         <div class="flex items-center space-x-4">

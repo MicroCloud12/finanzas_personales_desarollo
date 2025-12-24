@@ -18,18 +18,21 @@
         {% csrf_token %}
 
         <div class="bg-white shadow-lg rounded-lg p-4 mb-6 flex justify-end space-x-4">
-            <button type="submit" formaction="{% url 'aprobar_todos_tickets' %}" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg">
+            <button type="submit" formaction="{% url 'aprobar_todos_tickets' %}"
+                class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg">
                 Aprobar Tickets Preparados
             </button>
-            <button type="submit" formaction="{% url 'rechazar_todos_tickets' %}" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg">
+            <button type="submit" formaction="{% url 'rechazar_todos_tickets' %}"
+                class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg">
                 Rechazar Todos
             </button>
         </div>
-        {% include 'partials/_error_message.html'%}
+
         <div class="bg-white shadow-lg rounded-lg overflow-x-auto">
             <table class="min-w-full leading-normal">
                 <thead>
-                    <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <tr
+                        class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         <th class="px-6 py-3">Fecha</th>
                         <th class="px-6 py-3">Descripción</th>
                         <th class="px-6 py-3">Total</th>
@@ -41,49 +44,58 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                {% for ticket in tickets %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">{{ ticket.datos_json.fecha }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">
-                        {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
+                    {% for ticket in tickets %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">{{
+                            ticket.datos_json.fecha }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">
+                            {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
                             {{ ticket.datos_json.establecimiento }}
-                        {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
+                            {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
                             {{ ticket.datos_json.descripcion_corta }}
-                        {% else %}
+                            {% else %}
                             {# Opcional: Muestra algo si no es ninguna de las dos #}
                             {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta }}
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 align-middle">${{ ticket.datos_json.total }}</td>
-                        
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 align-middle">${{
+                            ticket.datos_json.total }}</td>
+
                         <td class="px-6 py-4 align-middle">
-                            <select name="cuenta_origen_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                            <select name="cuenta_origen_{{ ticket.id }}"
+                                class="block w-full border-gray-300 rounded-md shadow-sm">
                                 {% include 'partials/_ticket_select_options.html' %}
                             </select>
                         </td>
                         <td class="px-6 py-4 align-middle">
-                            <select name="categoria_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                            <select name="categoria_{{ ticket.id }}"
+                                class="block w-full border-gray-300 rounded-md shadow-sm">
                                 {% include 'partials/_ticket_category_options.html' %}
                             </select>
                         </td>
                         <td class="px-6 py-4 align-middle">
-                            <select name="tipo_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                            <select name="tipo_{{ ticket.id }}"
+                                class="block w-full border-gray-300 rounded-md shadow-sm">
                                 {% include 'partials/_ticket_tipo_options.html' %}
                             </select>
                         </td>
                         <td class="px-6 py-4 align-middle">
-                            <select name="cuenta_destino_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                            <select name="cuenta_destino_{{ ticket.id }}"
+                                class="block w-full border-gray-300 rounded-md shadow-sm">
                                 {% include 'partials/_ticket_cuentadestino_options.html' %}
                             </select>
                         </td>
                         <td class="px-6 py-4 align-middle flex items-center space-x-2">
-                            <button type="submit" formaction="{% url 'aprobar_ticket' ticket.id %}" class="text-green-600 hover:text-green-900 font-semibold">Aprobar</button>
-                            <a href="{% url 'rechazar_ticket' ticket.id %}" class="text-red-600 hover:text-red-900 font-semibold">Rechazar</a>
+                            <button type="submit" formaction="{% url 'aprobar_ticket' ticket.id %}"
+                                class="text-green-600 hover:text-green-900 font-semibold">Aprobar</button>
+                            <a href="{% url 'rechazar_ticket' ticket.id %}"
+                                class="text-red-600 hover:text-red-900 font-semibold">Rechazar</a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">No hay tickets pendientes por revisar.</td>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">No hay tickets pendientes por
+                            revisar.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
