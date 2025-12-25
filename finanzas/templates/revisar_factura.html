@@ -5,102 +5,117 @@
 {% block title %}Facturas Pendientes | Finanzas Personales{% endblock %}
 
 {% block content %}
-<div class="container mx-auto mt-10 p-5">
-    <div class="md:flex md:items-center md:justify-between mb-6">
-        <div class="min-w-0 flex-1">
-            <h1 class="text-3xl font-bold leading-7 text-gray-900 sm:truncate sm:tracking-tight">
-                Facturas por Procesar
-            </h1>
-            <p class="mt-2 text-sm text-gray-600">
-                Selecciona un ticket para extraer sus datos de facturación (CFDI).
+<div class="max-w-7xl mx-auto">
+
+    {# --- Header Section --- #}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 font-display">Facturas por Procesar</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                Selecciona un ticket para extraer y confirmar sus datos de facturación.
             </p>
         </div>
-        <div class="mt-4 flex md:ml-4 md:mt-0">
-            <a href="{% url 'facturacion' %}" class="text-indigo-600 hover:text-indigo-900 font-medium">
-                &larr; Volver al historial
+        <div class="mt-4 sm:mt-0">
+            <a href="{% url 'facturacion' %}"
+                class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
+                <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+                </svg>
+                Volver al historial
             </a>
         </div>
     </div>
 
 
-    <div class="hidden md:block bg-white shadow-lg rounded-lg overflow-x-auto border border-gray-200">
-        <table class="min-w-full leading-normal">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha
-                        Ticket</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        Establecimiento / Concepto</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Monto</th>
-                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Acción
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for ticket in tickets %}
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {{ ticket.fecha_emision|default:"--/--/----" }}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-900 font-medium">
-                        {{ ticket.tienda }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">
-                        ${{ ticket.total|floatformat:2|intcomma }}
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <a href="{% url 'revisar_factura' ticket.id %}"
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                            Revisar
-                        </a>
+    {# --- Tickets List Card --- #}
+    <div class="hidden md:block bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-lg text-gray-800">Tickets Pendientes</h3>
+        </div>
 
-                        <form action="{% url 'marcar_ticket_facturado' ticket.id %}" method="POST"
-                            class="inline-block ml-2" title="Marcar como ya facturado">
-                            {% csrf_token %}
-                            <button type="submit"
-                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </button>
-                        </form>
+        <div class="overflow-x-auto">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr
+                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-4">Fecha Ticket</th>
+                        <th class="px-6 py-4">Establecimiento / Concepto</th>
+                        <th class="px-6 py-4">Monto</th>
+                        <th class="px-6 py-4 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for ticket in tickets %}
+                    <tr class="hover:bg-gray-50/80 transition-colors">
+                        <td class="px-6 py-4 bg-white text-sm text-gray-700">
+                            {{ ticket.fecha_emision|default:"--/--/----" }}
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm text-gray-900 font-medium">
+                            {{ ticket.tienda }}
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm font-bold text-gray-800">
+                            ${{ ticket.total|floatformat:2|intcomma }}
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="{% url 'revisar_factura' ticket.id %}"
+                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Revisar
+                                </a>
 
-                        <form action="{% url 'eliminar_factura' ticket.id %}" method="POST" class="inline-block ml-2"
-                            onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta factura pendiente?');">
-                            {% csrf_token %}
-                            <button type="submit"
-                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <form action="{% url 'marcar_ticket_facturado' ticket.id %}" method="POST"
+                                    title="Marcar como ya facturado">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="p-1.5 rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none transition-colors">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+
+                                <form action="{% url 'eliminar_factura' ticket.id %}" method="POST"
+                                    onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta factura pendiente?');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="p-1.5 rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none transition-colors">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
                                     </path>
                                 </svg>
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="px-6 py-10 text-center text-gray-500">
-                        <p class="text-lg">No hay tickets pendientes.</p>
-                        <p class="text-sm mt-1">Sube nuevos tickets desde el Dashboard o sincroniza con Drive.</p>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                                <p class="text-gray-500">No hay tickets pendientes.</p>
+                                <p class="text-sm mt-1 text-gray-400">Sube nuevos tickets desde el Dashboard.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Mobile Cards View -->
-    <div class="md:hidden mt-6 space-y-4">
+    {# --- Mobile Cards View --- #}
+    <div class="md:hidden space-y-4 mb-8">
         {% for ticket in tickets %}
-        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-bold text-gray-900">{{ ticket.tienda }}</h3>
@@ -113,15 +128,14 @@
 
             <div class="mt-4 flex flex-wrap gap-2 justify-end">
                 <a href="{% url 'revisar_factura' ticket.id %}"
-                    class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    class="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors">
                     Revisar
                 </a>
 
-                <form action="{% url 'marcar_ticket_facturado' ticket.id %}" method="POST"
-                    title="Marcar como ya facturado">
+                <form action="{% url 'marcar_ticket_facturado' ticket.id %}" method="POST">
                     {% csrf_token %}
                     <button type="submit"
-                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-green-700 bg-green-100 hover:bg-green-200 transition-colors">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
                             </path>
@@ -130,10 +144,10 @@
                 </form>
 
                 <form action="{% url 'eliminar_factura' ticket.id %}" method="POST"
-                    onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta factura pendiente?');">
+                    onsubmit="return confirm('¿Eliminar?');">
                     {% csrf_token %}
                     <button type="submit"
-                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 transition-colors">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
@@ -144,68 +158,70 @@
             </div>
         </div>
         {% empty %}
-        <div class="text-center py-10 text-gray-500 bg-white rounded-lg shadow">
+        <div class="text-center py-10 text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
             <p>No hay tickets pendientes.</p>
         </div>
         {% endfor %}
     </div>
+
+
+    {# --- Detail View (Selected Ticket) --- #}
     {% if factura %}
-    <div class="mt-8 grid md:grid-cols-2 gap-6 card">
-        <div class="bg-white shadow rounded-lg p-6 border border-gray-200">
-            <h3 class="text-xl font-semibold text-gray-900 mb-4">Resumen detectado</h3>
-            <p class="text-sm text-gray-600"><strong>Tienda:</strong> {{ factura.tienda }}</p>
-            <p class="text-sm text-gray-600"><strong>Fecha emisión:</strong> {{ factura.fecha_emision }}</p>
-            <p class="text-sm text-gray-600"><strong>Total pagado:</strong> {{ factura.total_pagado }}</p>
-            <p class="mt-2 text-sm text-gray-600">
-                {% if factura.tienda_original and factura.tienda_original != factura.tienda %}
-            <p class="text-sm text-yellow-600 mt-1 mb-2">
-                <span class="font-semibold">Nota:</span> Detectado como "{{ factura.tienda_original }}", corregido a "{{
-                factura.tienda }}".
-            </p>
+    <div class="mt-8 grid md:grid-cols-2 gap-6 items-start">
+
+        {# Left Column: Detected Summary #}
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6 overflow-hidden">
+            <h3 class="text-xl font-bold text-gray-900 mb-6 font-display">Resumen Detectado</h3>
+
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between border-b border-gray-50 pb-2">
+                    <span class="text-gray-500 text-sm">Tienda</span>
+                    <span class="font-semibold text-gray-900">{{ factura.tienda }}</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-50 pb-2">
+                    <span class="text-gray-500 text-sm">Fecha emisión</span>
+                    <span class="font-semibold text-gray-900">{{ factura.fecha_emision }}</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-50 pb-2">
+                    <span class="text-gray-500 text-sm">Total pagado</span>
+                    <span class="font-bold text-gray-900">{{ factura.total_pagado }}</span>
+                </div>
+            </div>
+
+            {% if factura.tienda_original and factura.tienda_original != factura.tienda %}
+            <div class="bg-yellow-50 text-yellow-800 text-sm p-3 rounded-lg mb-4 border border-yellow-100">
+                <span class="font-bold">Corrección:</span> Detectado como "{{ factura.tienda_original }}", ajustado a
+                "{{ factura.tienda }}".
+            </div>
             {% endif %}
 
             {% if factura.es_conocida %}
-            <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-green-700">
-                            ¡Tienda identificada! Hemos filtrado los datos para <strong>{{ factura.tienda }}</strong>.
-                        </p>
-                    </div>
+            <div class="bg-green-50 border border-green-100 p-4 rounded-xl mb-6 flex gap-3">
+                <svg class="h-5 w-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="text-sm text-green-700">
+                    <p class="font-bold">¡Tienda identificada!</p>
+                    <p>Hemos filtrado los datos para <strong>{{ factura.tienda }}</strong>.</p>
                 </div>
             </div>
             {% else %}
-            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-blue-700">
-                            Es la primera vez que vemos un ticket de <strong>{{ factura.tienda }}</strong>.
-                            <br>Ayúdanos a configurar qué datos son importantes para la próxima vez.
-                        </p>
-                    </div>
+            <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6 flex gap-3">
+                <svg class="h-5 w-5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="text-sm text-blue-700">
+                    <p class="font-bold">Primera vez detectada</p>
+                    <p>Ayúdanos a configurar qué datos son importantes para <strong>{{ factura.tienda }}</strong>.</p>
                 </div>
             </div>
             {% endif %}
-            </p>
-            <div class="mt-4">
+
+            <div class="space-y-3">
                 <button type="button" onclick="guardarConfiguracion(this)" data-tienda="{{ factura.tienda }}"
-                    class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-green-600 hover:bg-green-700 shadow-sm focus:outline-none transition-colors">
                     <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
@@ -218,7 +234,7 @@
                     data-archivo-id="{{ factura.archivo_id|default:'' }}" data-tienda="{{ factura.tienda }}"
                     data-total="{{ factura.total_pagado }}" data-fecha="{{ factura.fecha_emision }}"
                     data-json-completo='{{ factura_json }}'
-                    class="mt-3 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none transition-colors">
                     <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
@@ -226,22 +242,27 @@
                 </button>
             </div>
         </div>
-        <div class="bg-white shadow rounded-lg p-6 border border-gray-200">
-            <h3 class="text-xl font-semibold text-gray-900 mb-4">Campos sugeridos</h3>
-            <dl class="divide-y divide-gray-200">
-                {% for nombre, valor in factura.datos_para_cliente.items %}
-                <div class="py-2 grid grid-cols-12 gap-2 items-center">
-                    <div class="col-span-1 flex justify-center">
-                        <input type="checkbox" value="{{ nombre }}"
-                            class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+
+        {# Right Column: Suggested Fields #}
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6 overflow-hidden">
+            <h3 class="text-xl font-bold text-gray-900 mb-6 font-display">Campos Sugeridos</h3>
+            <div class="space-y-2">
+                <dl class="divide-y divide-gray-100">
+                    {% for nombre, valor in factura.datos_para_cliente.items %}
+                    <div
+                        class="py-3 grid grid-cols-12 gap-2 items-center hover:bg-gray-50 rounded-lg px-2 transition-colors">
+                        <div class="col-span-1 flex justify-center">
+                            <input type="checkbox" value="{{ nombre }}"
+                                class="rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5 border-gray-300">
+                        </div>
+                        <dt class="text-sm font-semibold text-gray-700 col-span-4 break-words">{{ nombre }}</dt>
+                        <dd class="text-sm text-gray-900 col-span-7 break-all text-right">{{ valor }}</dd>
                     </div>
-                    <dt class="text-sm font-medium text-gray-700 col-span-4 break-words">{{ nombre }}</dt>
-                    <dd class="text-sm text-gray-900 col-span-7 break-all">{{ valor }}</dd>
-                </div>
-                {% empty %}
-                <p class="text-sm text-gray-500">No se encontraron campos para mostrar.</p>
-                {% endfor %}
-            </dl>
+                    {% empty %}
+                    <p class="text-sm text-gray-500 text-center py-4">No se encontraron campos para mostrar.</p>
+                    {% endfor %}
+                </dl>
+            </div>
         </div>
     </div>
     {% endif %}
