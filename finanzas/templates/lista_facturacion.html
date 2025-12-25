@@ -1,48 +1,261 @@
 {% extends 'base.html' %}
 {% load humanize %}
-{% block title %}Facturación | Finanzas Personales</div>
 
-<!-- Modal para JSON -->
-<div id="jsonModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog"
-  aria-modal="true">
-  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()">
+{% block title %}Facturación | Finanzas Personales{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  {# --- Header Section --- #}
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 font-display">Facturación</h1>
+      <p class="mt-1 text-sm text-gray-500">Gestiona tus facturas y gastos deducibles.</p>
     </div>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+    {# --- Action Buttons --- #}
+    <div class="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
+      {% if es_usuario_premium %}
+      <a href="{% url 'procesamiento_facturacion' %}"
+        class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+          </path>
+        </svg>
+        Sincronizar
+      </a>
+      <a href="{% url 'revisar_facturas_pendientes' %}"
+        class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+          </path>
+        </svg>
+        Revisar Pendientes
+      </a>
+      {% else %}
+      <a href="{% url 'gestionar_suscripcion' %}"
+        class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
+        ✨ Sincronización Auto
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Notifications Section usually handled by base.html global toast, but keeping fallback just in case -->
+  {% if messages %}
+  <div class="mb-6 space-y-2">
+    {% for message in messages %}
     <div
-      class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-        <div class="sm:flex sm:items-start">
-          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-              Detalles de Facturación
-            </h3>
-            <div class="mt-4 border-t border-gray-200 pt-4">
-              <dl id="formattedContent" class="divide-y divide-gray-200 space-y-3">
-                <!-- JS inserts content here -->
-              </dl>
-              <pre id="jsonContent"
-                class="hidden bg-gray-50 p-2 rounded text-xs overflow-auto mt-4 text-gray-500"></pre>
+      class="p-4 rounded-xl flex items-center shadow-sm {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-100{% else %}bg-yellow-50 text-yellow-800 border border-yellow-100{% endif %}"
+      role="alert">
+      <span class="font-medium text-sm">{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+
+  {# --- Content Card --- #}
+  <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
+
+    {# --- Card Header --- #}
+    <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+      <h3 class="font-bold text-lg text-gray-800">Historial de Facturas</h3>
+    </div>
+
+    {# --- Table --- #}
+    <div class="overflow-x-auto">
+      <table class="min-w-full leading-normal">
+        <thead>
+          <tr
+            class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <th class="px-6 py-4">Tienda</th>
+            <th class="px-6 py-4 hidden sm:table-cell">RFC Emisor</th>
+            <th class="px-6 py-4 hidden sm:table-cell">Folio</th>
+            <th class="px-6 py-4">Monto</th>
+            <th class="px-6 py-4">Estado</th>
+            <th class="px-6 py-4 text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for factura in facturas %}
+          <tr class="hover:bg-gray-50/80 transition-colors group">
+            <td class="px-6 py-4 bg-white text-sm">
+              <div class="flex items-center">
+                <div class="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                  </svg>
+                </div>
+                <div>
+                  <p class="font-bold text-gray-900">{{ factura.tienda }}</p>
+                  <p class="text-xs text-gray-500">{{ factura.fecha_emision|date:"d M, Y" }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 bg-white text-sm text-gray-600 hidden sm:table-cell">
+              {{ factura.datos_facturacion.RFC_Emisor|default:"-" }}
+            </td>
+            <td class="px-6 py-4 bg-white text-sm text-gray-500 hidden sm:table-cell">
+              {% if factura.datos_facturacion.Folio %}
+              {{ factura.datos_facturacion.Folio }}
+              {% elif factura.datos_facturacion.Folio_Venta %}
+              {{ factura.datos_facturacion.Folio_Venta }}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 bg-white text-sm font-bold text-gray-900">
+              ${{ factura.total|floatformat:2|intcomma }}
+            </td>
+            <td class="px-6 py-4 bg-white text-sm">
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if factura.estado == 'facturado' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                {{ factura.get_estado_display }}
+              </span>
+            </td>
+            <td class="px-6 py-4 bg-white text-sm text-right">
+              <div class="flex items-center justify-end gap-2">
+                <button onclick="openModal('{{ factura.get_script_id }}')"
+                  class="text-gray-500 hover:text-gray-900 p-1 hover:bg-gray-100 rounded" title="Ver Datos">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                    </path>
+                  </svg>
+                </button>
+                {{ factura.datos_facturacion|json_script:factura.get_script_id }}
+
+                <a href="{% url 'editar_factura_registro' factura.id %}"
+                  class="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded" title="Editar">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                    </path>
+                  </svg>
+                </a>
+                <form action="{% url 'eliminar_factura_registro' factura.id %}" method="post" class="inline"
+                  onsubmit="return confirm('¿Eliminar?');">
+                  {% csrf_token %}
+                  <button type="submit" class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                    title="Eliminar">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                      </path>
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+              <div class="flex flex-col items-center justify-center">
+                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                  </path>
+                </svg>
+                <p>No hay facturas registradas.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  {# --- Mobile Card View (Refined) --- #}
+  <div class="md:hidden mt-6 space-y-4">
+    {% for factura in facturas %}
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div class="flex justify-between items-start mb-2">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="font-bold text-gray-900">{{ factura.tienda }}</p>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium {% if factura.estado == 'facturado' %}bg-green-50 text-green-700{% else %}bg-yellow-50 text-yellow-700{% endif %}">
+              {{ factura.get_estado_display }}
+            </span>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="font-bold text-gray-900">${{ factura.total|floatformat:2|intcomma }}</p>
+          <p class="text-xs text-gray-400">{{ factura.fecha_emision|date:"d M" }}</p>
+        </div>
+      </div>
+
+      <div class="mt-3 pt-3 border-t border-gray-50 flex justify-end gap-3">
+        <button onclick="openModal('{{ factura.get_script_id }}')"
+          class="text-gray-500 font-medium text-xs bg-gray-50 px-3 py-1 rounded-full">Ver</button>
+        <a href="{% url 'editar_factura_registro' factura.id %}"
+          class="text-indigo-600 font-medium text-xs bg-indigo-50 px-3 py-1 rounded-full">Editar</a>
+        <form action="{% url 'eliminar_factura_registro' factura.id %}" method="post" class="inline"
+          onsubmit="return confirm('¿Eliminar?');">
+          {% csrf_token %}
+          <button type="submit"
+            class="text-red-600 font-medium text-xs bg-red-50 px-3 py-1 rounded-full">Eliminar</button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-10 text-gray-500">
+      <p>No hay facturas.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Modal for JSON Details (Preserved functionality) -->
+  <div id="jsonModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()">
+      </div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div
+        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Detalles de Facturación</h3>
+              <div class="mt-4 border-t border-gray-200 pt-4">
+                <dl id="formattedContent" class="divide-y divide-gray-200 space-y-3">
+                  <!-- JS inserts content here -->
+                </dl>
+                <pre id="jsonContent"
+                  class="hidden bg-gray-50 p-2 rounded text-xs overflow-auto mt-4 text-gray-500"></pre>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-        <button type="button"
-          class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-          onclick="closeModal()">
-          Cerrar
-        </button>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            onclick="closeModal()">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script>
-  function openModal(jsonData) {
-    try {
+  <script>
+    function openModal(jsonData) {
       try {
-        const scriptTag = document.getElementById(jsonData); // jsonData es ahora el ID
+        const scriptTag = document.getElementById(jsonData);
         let obj = null;
         if (scriptTag) {
           obj = JSON.parse(scriptTag.textContent);
@@ -52,24 +265,19 @@
         }
 
         const container = document.getElementById('formattedContent');
-        container.innerHTML = ''; // Limpiar previo
+        container.innerHTML = '';
 
         if (obj && typeof obj === 'object') {
           for (const [key, value] of Object.entries(obj)) {
-            // Ignorar campos vacíos o internos si se desea
             if (!value) continue;
-
             const div = document.createElement('div');
             div.className = "flex justify-between md:grid md:grid-cols-3 gap-4 pb-2";
-
             const dt = document.createElement('dt');
             dt.className = "text-sm font-medium text-gray-500 capitalize md:col-span-1";
             dt.textContent = key.replace(/_/g, ' ');
-
             const dd = document.createElement('dd');
             dd.className = "text-sm text-gray-900 font-semibold md:col-span-2 break-all text-right md:text-left";
             dd.textContent = value;
-
             div.appendChild(dt);
             div.appendChild(dd);
             container.appendChild(div);
@@ -77,225 +285,15 @@
         } else {
           container.innerHTML = '<p class="text-sm text-gray-500">No hay datos estructurados disponibles.</p>';
         }
-
-        // Keep raw JSON hidden but available if needed for debug
         document.getElementById('jsonModal').classList.remove('hidden');
       } catch (e) {
         console.error("Error modal:", e);
       }
     }
 
-  function closeModal() {
+    function closeModal() {
       document.getElementById('jsonModal').classList.add('hidden');
     }
-</script>
-{% endblock %}
-{% block content %}
-
-<div class="container mx-auto px-4 sm:px-8 py-8">
-  <div>
-    <h2 class="text-2xl font-semibold leading-tight text-gray-800">
-      Facturación
-    </h2>
-  </div>
-  <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-    {% if es_usuario_premium %}
-    {# Si el usuario ES premium, mostramos los botones funcionales #}
-    <a href="{% url 'procesamiento_facturacion' %}"
-      class="w-full sm:w-auto text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md transition-colors">
-      + Sincronizar Facturas
-    </a>
-    <a href="{% url 'revisar_facturas_pendientes' %}"
-      class="w-full sm:w-auto text-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-      Revisar Facturas Pendientes
-    </a>
-    {% else %}
-    {# Si el usuario NO es premium, mostramos un CTA para actualizar el plan #}
-    <div class="w-full sm:flex-1 p-4 bg-gray-100 rounded-lg border border-gray-200">
-      <button disabled class="w-full bg-gray-400 text-white font-semibold px-6 py-2 rounded-lg cursor-not-allowed">
-        ✨ Iniciar Sincronización Automática
-      </button>
-      <p class="mt-2 text-sm text-gray-700 text-center">
-        Esta es una función premium.
-        <a href="{% url 'gestionar_suscripcion' %}" class="text-indigo-600 font-bold hover:underline">¡Actualiza tu
-          plan!</a>
-      </p>
-    </div>
-    {% endif %}
-  </div>
-
-
-  {# Vista de escritorio - Tabla #}
-  <div class="hidden md:block mt-6 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 overflow-x-auto">
-    <div class="inline-block min-w-full shadow-md rounded-lg overflow-hidden">
-      <table class="min-w-full leading-normal">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Tienda
-            </th>
-            <th
-              class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">
-              RFC Emisor
-            </th>
-            <th
-              class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">
-              Folio
-            </th>
-            <th
-              class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Monto
-            </th>
-            <th
-              class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Estado
-            </th>
-            <th
-              class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Fecha
-            </th>
-            <th
-              class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Acciones
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for factura in facturas %}
-          <tr class="bg-white hover:bg-gray-50">
-            <td class="px-5 py-5 border-b border-gray-200 text-sm">
-              <p class="text-gray-900 font-medium">{{ factura.tienda }}</p>
-              <p class="text-xs text-gray-500">{{ factura.fecha_emision|date:"d M, Y" }}</p>
-            </td>
-            {# RFC Emisor #}
-            <td class="px-5 py-5 border-b border-gray-200 text-sm hidden sm:table-cell">
-              <p class="text-gray-900 whitespace-no-wrap">
-                {{ factura.datos_facturacion.RFC_Emisor|default:"-" }}
-              </p>
-            </td>
-            {# Folio / ID #}
-            <td class="px-5 py-5 border-b border-gray-200 text-sm hidden sm:table-cell">
-              <p class="text-gray-600 whitespace-no-wrap text-xs">
-                {% if factura.datos_facturacion.Folio %}
-                Folio: {{ factura.datos_facturacion.Folio }}
-                {% elif factura.datos_facturacion.Folio_Venta %}
-                Folio: {{ factura.datos_facturacion.Folio_Venta }}
-                {% else %}
-                -
-                {% endif %}
-              </p>
-            </td>
-            <td class="px-5 py-5 border-b border-gray-200 text-sm font-semibold text-gray-800">
-              ${{ factura.total|floatformat:2|intcomma }}</td>
-            <td class="px-5 py-5 border-b border-gray-200 text-sm">
-              <span
-                class="relative inline-block px-3 py-1 font-semibold leading-tight {% if factura.estado == 'facturado' %}text-green-900{% else %}text-yellow-900{% endif %}">
-                <span aria-hidden
-                  class="absolute inset-0 {% if factura.estado == 'facturado' %}bg-green-200{% else %}bg-yellow-200{% endif %} opacity-50 rounded-full"></span>
-                <span class="relative">{{ factura.get_estado_display }}</span>
-              </span>
-            </td>
-            <td class="px-5 py-5 border-b border-gray-200 text-sm">
-              <p class="text-gray-900 whitespace-no-wrap">{{ factura.fecha_emision|date:"d M, Y" }}</p>
-            </td>
-            <td class="px-5 py-5 border-b border-gray-200 text-sm">
-              <a href="{% url 'editar_factura_registro' factura.id %}"
-                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-2">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                  </path>
-                </svg>
-                Editar
-              </a>
-              <a href="{% url 'eliminar_factura_registro' factura.id %}"
-                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                onclick="return confirm('¿Estás seguro de que quieres eliminar esta factura?');">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                  </path>
-                </svg>
-                Eliminar
-              </a>
-              <button onclick="openModal('{{ factura.get_script_id }}')"
-                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-                Ver Datos
-              </button>
-              {{ factura.datos_facturacion|json_script:factura.get_script_id }}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="7" class="text-center py-10 text-gray-500">No hay facturas registradas.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  {# Vista móvil - Tarjetas #}
-  <div class="md:hidden mt-6 space-y-4">
-    {% for factura in facturas %}
-    <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-      <div class="flex justify-between items-start">
-        <div class="flex-grow">
-          <p class="font-bold text-gray-800">{{ factura.tienda }}</p>
-          <p class="text-sm text-gray-600">
-            <span
-              class="inline-block px-2 py-0.5 text-xs font-semibold rounded-full {% if factura.estado == 'facturado' %}bg-green-200 text-green-800{% else %}bg-yellow-200 text-yellow-800{% endif %}">
-              {{ factura.get_estado_display }}
-            </span>
-          </p>
-        </div>
-        <p class="text-lg font-semibold ml-4 text-gray-800">
-          ${{ factura.total|floatformat:2|intcomma }}</p>
-      </div>
-      <div class="mt-4 flex justify-between items-center">
-        <p class="text-sm text-gray-500">{{ factura.fecha_emision|date:"d M, Y" }}</p>
-        <div class="flex space-x-2">
-          <a href="{% url 'editar_factura_registro' factura.id %}"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 shadow-sm">
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-              </path>
-            </svg>
-            Editar
-          </a>
-          <a href="{% url 'eliminar_factura_registro' factura.id %}"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 shadow-sm"
-            onclick="return confirm('¿Estás seguro de que quieres eliminar esta factura?');">
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-              </path>
-            </svg>
-            Eliminar
-          </a>
-          <button onclick="openModal('{{ factura.get_script_id }}')"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 shadow-sm">
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-            Ver Datos
-          </button>
-          {{ factura.datos_facturacion|json_script:factura.get_script_id }}
-        </div>
-      </div>
-    </div>
-    {% empty %}
-    <div class="text-center py-10 text-gray-500">
-      <p>No hay facturas registradas.</p>
-    </div>
-    {% endfor %}
-  </div>
+  </script>
 </div>
 {% endblock %}
