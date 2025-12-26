@@ -248,44 +248,45 @@ async function agregarCampoInline(btn) {
         alert('Hubo un error al intentar agregar el campo.\nDetalle: ' + error.message);
         btn.disabled = false;
     }
+}
 
-    // 6. Función para ELIMINAR un campo de la configuración (Trash Icon)
-    async function eliminarCampoConfigurado(btn) {
-        const tienda = btn.dataset.tienda;
-        const nombreCampo = btn.dataset.campo;
+// 6. Función para ELIMINAR un campo de la configuración (Trash Icon)
+async function eliminarCampoConfigurado(btn) {
+    const tienda = btn.dataset.tienda;
+    const nombreCampo = btn.dataset.campo;
 
-        if (!confirm(`¿Estás seguro de que quieres dejar de solicitar el campo "${nombreCampo}" para ${tienda}?`)) {
-            return;
-        }
+    if (!confirm(`¿Estás seguro de que quieres dejar de solicitar el campo "${nombreCampo}" para ${tienda}?`)) {
+        return;
+    }
 
-        try {
-            btn.disabled = true;
-            // Optional spin processing styling if needed, but simple disable is likely enough for delete
+    try {
+        btn.disabled = true;
+        // Optional spin processing styling if needed, but simple disable is likely enough for delete
 
-            const response = await fetch('/api/eliminar-campo-tienda/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    tienda: tienda,
-                    campo: nombreCampo
-                })
-            });
+        const response = await fetch('/api/eliminar-campo-tienda/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                tienda: tienda,
+                campo: nombreCampo
+            })
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (data.success) {
-                window.location.reload();
-            } else {
-                alert('Error al eliminar campo: ' + (data.error || data.mensaje));
-                btn.disabled = false;
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Hubo un error al intentar eliminar el campo.\nDetalle: ' + error.message);
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error al eliminar campo: ' + (data.error || data.mensaje));
             btn.disabled = false;
         }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Hubo un error al intentar eliminar el campo.\nDetalle: ' + error.message);
+        btn.disabled = false;
     }
 }
+

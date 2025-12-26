@@ -1232,7 +1232,6 @@ def agregar_campo_tienda(request):
 
 @csrf_exempt
 @require_POST
-@login_required
 def eliminar_campo_tienda(request):
     try:
         from .models import TiendaFacturacion
