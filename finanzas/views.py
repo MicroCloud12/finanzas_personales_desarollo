@@ -1231,6 +1231,35 @@ def agregar_campo_tienda(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
+@require_POST
+@login_required
+def eliminar_campo_tienda(request):
+    try:
+        from .models import TiendaFacturacion
+        data = json.loads(request.body)
+        nombre_tienda = data.get('tienda')
+        campo_a_eliminar = data.get('campo')
+
+        if not nombre_tienda or not campo_a_eliminar:
+            return JsonResponse({'success': False, 'error': 'Faltan datos'}, status=400)
+
+        # Buscar la configuración
+        try:
+            config = TiendaFacturacion.objects.get(tienda=nombre_tienda)
+        except TiendaFacturacion.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Tienda no encontrada'}, status=404)
+        
+        if config.campos_requeridos and campo_a_eliminar in config.campos_requeridos:
+            config.campos_requeridos.remove(campo_a_eliminar)
+            config.save()
+            return JsonResponse({'success': True, 'mensaje': f'Campo "{campo_a_eliminar}" eliminado correctamente'})
+        else:
+            return JsonResponse({'success': True, 'mensaje': 'El campo no estaba en la configuración'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
 def confirmar_datos_factura(request):
     """
     BOTÓN 2: LA PALOMA (Confirmar Transacción)

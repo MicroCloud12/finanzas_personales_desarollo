@@ -256,7 +256,19 @@
                                 class="rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5 border-gray-300">
                         </div>
                         <dt class="text-sm font-semibold text-gray-700 col-span-4 break-words">{{ nombre }}</dt>
-                        <dd class="text-sm text-gray-900 col-span-7 break-all text-right">{{ valor }}</dd>
+                        <dd class="text-sm text-gray-900 col-span-6 break-all text-right">{{ valor }}</dd>
+                        <div class="col-span-1 flex justify-center">
+                            <button type="button" onclick="eliminarCampoConfigurado(this)"
+                                data-tienda="{{ factura.tienda }}" data-campo="{{ nombre }}"
+                                class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50"
+                                title="Eliminar campo de la configuración">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     {% empty %}
                     <p class="text-sm text-gray-500 text-center py-4">No se encontraron campos para mostrar.</p>
@@ -279,9 +291,21 @@
                             </svg>
                         </dt>
                         <dd
-                            class="text-sm text-gray-500 col-span-7 break-all text-right italic selection:bg-yellow-200">
+                            class="text-sm text-gray-500 col-span-6 break-all text-right italic selection:bg-yellow-200">
                             (No detectado)
                         </dd>
+                        <div class="col-span-1 flex justify-center">
+                            <button type="button" onclick="eliminarCampoConfigurado(this)"
+                                data-tienda="{{ factura.tienda }}" data-campo="{{ nombre }}"
+                                class="text-yellow-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-yellow-100"
+                                title="Eliminar campo de la configuración">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     {% endfor %}
 
