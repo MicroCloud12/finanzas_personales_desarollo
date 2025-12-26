@@ -185,3 +185,67 @@ async function confirmarFactura(btn) {
         alert('Error de conexión.');
     }
 }
+
+// 4. Función para agregar un nuevo campo a la tienda
+// 4. Función para agregar un nuevo campo a la tienda (INLINE - Refined)
+async function agregarCampoInline(btn) {
+    const tienda = btn.dataset.tienda;
+
+    // El input está en el contenedor hermano (col-span-11).
+    // Modificación robusta: Usar ID directo en lugar de traversing relativo
+    // El input tiene el ID "nuevo-campo-input"
+    const inputField = document.getElementById('nuevo-campo-input');
+
+    if (!inputField) {
+        console.error("No se encontró el input con id: nuevo-campo-input");
+        return;
+    }
+
+    const nombreCampo = inputField.value;
+
+    if (!nombreCampo || nombreCampo.trim() === "") {
+        // Visual cue for empty input error? For now, just focus it.
+        inputField.focus();
+        inputField.classList.add('ring-2', 'ring-red-300');
+        setTimeout(() => inputField.classList.remove('ring-2', 'ring-red-300'), 1500);
+        return;
+    }
+
+    try {
+        // Disable button to prevent double submission
+        btn.disabled = true;
+        const originalIcon = btn.innerHTML;
+        // Simple spinner or just opacity change
+        btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>`;
+
+        const response = await fetch('/api/agregar-campo-tienda/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                tienda: tienda,
+                campo: nombreCampo.trim()
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error al agregar campo: ' + (data.error || data.mensaje));
+            btn.disabled = false;
+            btn.innerHTML = originalIcon;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        // Mostrar detalle del error para depuración
+        alert('Hubo un error al intentar agregar el campo.\nDetalle: ' + error.message);
+        btn.disabled = false;
+    }
+}

@@ -83,4 +83,5 @@ urlpatterns = [
     # ... tus otras urls ...
     path('api/guardar-config-tienda/', views.guardar_configuracion_tienda, name='guardar_config_tienda'),
     path('api/confirmar-factura/', views.confirmar_datos_factura, name='confirmar_factura'),
+    path('api/agregar-campo-tienda/', views.agregar_campo_tienda, name='agregar_campo_tienda'),
 ]

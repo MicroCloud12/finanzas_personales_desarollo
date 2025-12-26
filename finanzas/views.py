@@ -16,6 +16,7 @@ from django.db.models.functions import TruncMonth
 from celery.result import AsyncResult, GroupResult
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .utils import parse_date_safely, generar_tabla_amortizacion
 from django.shortcuts import render, redirect, get_object_or_404
@@ -1197,6 +1198,37 @@ def guardar_configuracion_tienda(request):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+@login_required
+def agregar_campo_tienda(request):
+    try:
+        from .models import TiendaFacturacion
+        data = json.loads(request.body)
+        nombre_tienda = data.get('tienda')
+        nuevo_campo = data.get('campo')
+
+        if not nombre_tienda or not nuevo_campo:
+            return JsonResponse({'success': False, 'error': 'Faltan datos'}, status=400)
+
+        # Buscar la configuración de la tienda
+        config, created = TiendaFacturacion.objects.get_or_create(tienda=nombre_tienda)
+        
+        # Asegurarse de que campos_requeridos sea una lista
+        if not isinstance(config.campos_requeridos, list):
+            config.campos_requeridos = []
+
+        # Agregar el campo si no existe
+        if nuevo_campo not in config.campos_requeridos:
+            config.campos_requeridos.append(nuevo_campo)
+            config.save()
+            return JsonResponse({'success': True, 'mensaje': f'Campo "{nuevo_campo}" agregado correctamente'})
+        else:
+            return JsonResponse({'success': True, 'mensaje': 'El campo ya existía'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
 def confirmar_datos_factura(request):

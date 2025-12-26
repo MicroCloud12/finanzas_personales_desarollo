@@ -1103,17 +1103,26 @@ class BillingService:
                 if k not in claves_ignorar and isinstance(v, (str, int, float)) and v:
                      datos_para_cliente[k] = v
 
-        # 4. Sugerencia de campos
-        claves_sugeridas = [k for k in campos_encontrados.keys() if k not in ['tienda', 'fecha', 'total', 'es_conocida', 'campos_adicionales']]
+        # 4. Sugerencia de campos (Campos detectados que NO están en la configuración ni como encontrados ni como faltantes)
+        claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'campos_adicionales', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', '_razonamiento']
+        
+        campos_en_config = set(datos_para_cliente.keys()) | set(campos_faltantes)
+        campos_extra_detectados = {}
+        
+        for k, v in campos_encontrados.items():
+            if k not in claves_ignorar and k not in campos_en_config:
+                 if isinstance(v, (str, int, float)) and v:
+                     campos_extra_detectados[k] = v
 
         return {
             'tienda': tienda_nombre,
             'tienda_original': tienda_detectada if tienda_detectada != tienda_nombre else None,
-            'es_conocida': es_conocida, # Ahora esto será True si la IA lo marcó
+            'es_conocida': es_conocida,
             'url_portal': url_portal,
             'datos_para_cliente': datos_para_cliente,
             'campos_faltantes': campos_faltantes,
-            'claves_sugeridas': claves_sugeridas,
+            # 'claves_sugeridas': claves_sugeridas, # Obsoleto, reemplazado por campos_extra_detectados más inteligente
+            'campos_extra_detectados': campos_extra_detectados,
             'raw_json': datos_json
         }
 

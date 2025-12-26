@@ -261,6 +261,81 @@
                     {% empty %}
                     <p class="text-sm text-gray-500 text-center py-4">No se encontraron campos para mostrar.</p>
                     {% endfor %}
+
+                    {# --- Campos Faltantes (Configurados pero no encontrados) --- #}
+                    {% for nombre in factura.campos_faltantes %}
+                    <div
+                        class="py-3 grid grid-cols-12 gap-2 items-center bg-yellow-50 hover:bg-yellow-100 rounded-lg px-2 transition-colors border border-yellow-100 mb-1">
+                        <div class="col-span-1 flex justify-center">
+                            <input type="checkbox" value="{{ nombre }}" checked
+                                class="rounded text-yellow-600 focus:ring-yellow-500 h-5 w-5 border-gray-300"
+                                title="Campo requerido pero no detectado">
+                        </div>
+                        <dt class="text-sm font-semibold text-gray-800 col-span-4 break-words flex items-center gap-1">
+                            {{ nombre }}
+                            <svg class="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </dt>
+                        <dd
+                            class="text-sm text-gray-500 col-span-7 break-all text-right italic selection:bg-yellow-200">
+                            (No detectado)
+                        </dd>
+                    </div>
+                    {% endfor %}
+
+                    {# --- Otros Campos Detectados (Sugerencias) --- #}
+                    {% if factura.campos_extra_detectados %}
+                    <div class="pt-4 pb-2">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Otros Campos
+                            Detectados</h4>
+                    </div>
+                    {% for nombre, valor in factura.campos_extra_detectados.items %}
+                    <div
+                        class="py-3 grid grid-cols-12 gap-2 items-center hover:bg-indigo-50 rounded-lg px-2 transition-colors border border-dashed border-indigo-100 mb-1 group">
+                        <div class="col-span-1 flex justify-center">
+                            <button type="button" onclick="agregarCampoSugerido(this)"
+                                data-tienda="{{ factura.tienda }}" data-campo="{{ nombre }}"
+                                class="h-5 w-5 rounded border border-indigo-200 bg-white flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-500 hover:border-indigo-500 transition-all cursor-pointer shadow-sm group-hover:scale-110"
+                                title="Agregar este campo a la configuración">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <dt
+                            class="text-sm font-semibold text-gray-500 group-hover:text-indigo-700 col-span-4 break-words flex items-center gap-1 transition-colors">
+                            {{ nombre }}
+                        </dt>
+                        <dd
+                            class="text-sm text-gray-400 group-hover:text-gray-600 col-span-7 break-all text-right transition-colors">
+                            {{ valor }}
+                        </dd>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+                    {# --- Nuevo Renglón para Agregar Campo (Refined UX) --- #}
+                    <div
+                        class="py-3 grid grid-cols-12 gap-2 items-center bg-gray-50 hover:bg-white rounded-lg px-2 border border-gray-100 mt-4 transition-colors group">
+                        <div class="col-span-1 flex justify-center">
+                            <button type="button" onclick="agregarCampoInline(this)" data-tienda="{{ factura.tienda }}"
+                                class="text-indigo-400 group-hover:text-indigo-600 hover:scale-110 transition-all cursor-pointer"
+                                title="Guardar nuevo campo">
+                                <svg class="h-6 w-6 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="col-span-11 relative">
+                            <input type="text" id="nuevo-campo-input" placeholder="Agrega otro campo (ej. Uso CFDI)..."
+                                class="w-full text-sm border-transparent bg-transparent focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50 focus:rounded-md transition-all cursor-text placeholder-gray-400 text-gray-700"
+                                onkeypress="if(event.key === 'Enter') agregarCampoInline(this.parentElement.previousElementSibling.firstElementChild)">
+                        </div>
+                    </div>
                 </dl>
             </div>
         </div>
@@ -270,5 +345,5 @@
 {% endblock %}
 
 {% block javascript %}
-<script src="{% static 'js/procesamiento.js' %}?v=1.2"></script>
+<script src="{% static 'js/procesamiento.js' %}?v=1.3"></script>
 {% endblock %}
