@@ -3,13 +3,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!startBtn) return;
     const progressContainer = document.getElementById('progress-container');
     const progressText = document.getElementById('progress-text');
+    const progressPercent = document.getElementById('progress-percent');
     const progressBar = document.getElementById('progress-bar');
     let pollingInterval;
 
     startBtn.addEventListener('click', async function () {
         startBtn.disabled = true;
         progressContainer.classList.remove('hidden');
-        updateProgress(0, "Iniciando...", 'bg-blue-500');
+        updateProgress(0, "Iniciando...", 'bg-indigo-600');
 
         try {
             const startUrl = startBtn.dataset.startUrl;
@@ -70,10 +71,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-    function updateProgress(percentage, text, color = 'bg-blue-500') {
+    function updateProgress(percentage, text, color = 'bg-indigo-600') {
         progressBar.style.width = `${percentage}%`;
-        progressBar.textContent = `${percentage}%`;
-        progressBar.className = `text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full ${color}`;
+        // Removed text injection into the bar itself to fix duplicate % and layout issues
+        progressBar.textContent = '';
+        // Update the external percentage text
+        if (progressPercent) progressPercent.textContent = `${percentage}%`;
+
+        // Preserve layout classes (h-2.5, rounded-full, transitions) and only switch color
+        progressBar.className = `h-2.5 rounded-full transition-all duration-300 ease-out ${color}`;
         progressText.textContent = text;
     }
 
