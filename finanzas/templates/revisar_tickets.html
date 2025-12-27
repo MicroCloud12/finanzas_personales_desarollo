@@ -4,6 +4,17 @@
 {% block content %}
 <div class="max-w-7xl mx-auto">
 
+    <div class="mb-6 flex justify-end">
+        <a href="{% url 'lista_transacciones' %}"
+            class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
+            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12">
+                </path>
+            </svg>
+            Volver a Transacciones
+        </a>
+    </div>
+
     <form method="POST">
         {% csrf_token %}
 
