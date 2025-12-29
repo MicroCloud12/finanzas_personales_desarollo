@@ -253,12 +253,13 @@
                     <div
                         class="py-3 grid grid-cols-12 gap-2 items-center hover:bg-gray-50 rounded-lg px-2 transition-colors">
                         <div class="col-span-1 flex justify-center">
-                            <input type="checkbox" value="{{ nombre }}"
-                                class="rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5 border-gray-300">
+                            <input type="checkbox" value="{{ nombre }}" {% if factura.es_conocida %}disabled{% endif %}
+                                class="rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5 border-gray-300 {% if factura.es_conocida %}bg-gray-100 cursor-not-allowed{% endif %}">
                         </div>
                         <dt class="text-sm font-semibold text-gray-700 col-span-4 break-words">{{ nombre }}</dt>
                         <dd class="text-sm text-gray-900 col-span-6 break-all text-right">{{ valor }}</dd>
                         <div class="col-span-1 flex justify-center">
+                            {% if not factura.es_conocida %}
                             <button type="button" onclick="eliminarCampoConfigurado(this)"
                                 data-tienda="{{ factura.tienda }}" data-campo="{{ nombre }}"
                                 class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50"
@@ -269,6 +270,7 @@
                                     </path>
                                 </svg>
                             </button>
+                            {% endif %}
                         </div>
                     </div>
                     {% empty %}
@@ -320,6 +322,7 @@
                     <div
                         class="py-3 grid grid-cols-12 gap-2 items-center hover:bg-indigo-50 rounded-lg px-2 transition-colors border border-dashed border-indigo-100 mb-1 group">
                         <div class="col-span-1 flex justify-center">
+                            {% if not factura.es_conocida %}
                             <button type="button" onclick="agregarCampoSugerido(this)"
                                 data-tienda="{{ factura.tienda }}" data-campo="{{ nombre }}"
                                 class="h-5 w-5 rounded border border-indigo-200 bg-white flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-500 hover:border-indigo-500 transition-all cursor-pointer shadow-sm group-hover:scale-110"
@@ -329,6 +332,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
                                 </svg>
                             </button>
+                            {% endif %}
                         </div>
                         <dt
                             class="text-sm font-semibold text-gray-500 group-hover:text-indigo-700 col-span-4 break-words flex items-center gap-1 transition-colors">
@@ -343,6 +347,7 @@
                     {% endif %}
 
                     {# --- Nuevo Renglón para Agregar Campo (Refined UX) --- #}
+                    {% if not factura.es_conocida %}
                     <div
                         class="py-3 grid grid-cols-12 gap-2 items-center bg-gray-50 hover:bg-white rounded-lg px-2 border border-gray-100 mt-4 transition-colors group">
                         <div class="col-span-1 flex justify-center">
@@ -361,6 +366,7 @@
                                 onkeypress="if(event.key === 'Enter') agregarCampoInline(this.parentElement.previousElementSibling.firstElementChild)">
                         </div>
                     </div>
+                    {% endif %}
                 </dl>
             </div>
         </div>

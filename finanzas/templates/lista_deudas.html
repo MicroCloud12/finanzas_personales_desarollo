@@ -104,11 +104,9 @@
                                 {{ deuda.get_tipo_deuda_display }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 bg-white text-sm text-gray-600 font-medium">${{
-                            deuda.monto_total|floatformat:2|intcomma }}</td>
+                        <td class="px-6 py-4 bg-white text-sm text-gray-600 font-medium">${{ deuda.monto_total|floatformat:2|intcomma }}</td>
                         <td class="px-6 py-4 bg-white text-sm">
-                            <span class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma
-                                }}</span>
+                            <span class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</span>
                         </td>
                         <td class="px-6 py-4 bg-white text-sm align-middle">
                             {# Simple visual bar for debt usage/remaining #}
