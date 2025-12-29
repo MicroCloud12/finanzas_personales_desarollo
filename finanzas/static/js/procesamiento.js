@@ -242,6 +242,8 @@ async function agregarCampoInline(btn) {
         const data = await response.json();
 
         if (data.success) {
+            // Reload preserving scroll position
+            window.location.href = window.location.pathname + window.location.search + '#seccion-campos-sugeridos';
             window.location.reload();
         } else {
             alert('Error al agregar campo: ' + (data.error || data.mensaje));
@@ -285,6 +287,8 @@ async function agregarCampoSugerido(btn) {
         const data = await response.json();
 
         if (data.success) {
+            // Reload preserving scroll position
+            window.location.href = window.location.pathname + window.location.search + '#seccion-campos-sugeridos';
             window.location.reload();
         } else {
             alert('Error al agregar campo: ' + (data.error || data.mensaje));

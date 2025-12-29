@@ -244,7 +244,8 @@
         </div>
 
         {# Right Column: Suggested Fields #}
-        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6 overflow-hidden">
+        <div id="seccion-campos-sugeridos"
+            class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6 overflow-hidden">
             <h3 class="text-xl font-bold text-gray-900 mb-6 font-display">Campos Sugeridos</h3>
             <div class="space-y-2">
                 <dl class="divide-y divide-gray-100">
@@ -369,5 +370,5 @@
 {% endblock %}
 
 {% block javascript %}
-<script src="{% static 'js/procesamiento.js' %}?v=1.4"></script>
+<script src="{% static 'js/procesamiento.js' %}?v=1.5"></script>
 {% endblock %}
