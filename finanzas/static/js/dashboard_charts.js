@@ -45,12 +45,11 @@ function initGastosChart() {
 
                                 // Radii
                                 const outerRadius = element.outerRadius;
-                                const arcRadius = outerRadius + 10; // Start line just outside
+                                const arcRadius = outerRadius + 4; // Start line closer to slice
 
-                                // 3-Level Staggering to prevent overlap of adjacent small items
-                                // 0: Short, 1: Medium, 2: Long
+                                // 3-Level Staggering
                                 const staggerLevel = index % 3;
-                                const staggerDist = 15 + (staggerLevel * 25); // 15, 40, 65
+                                const staggerDist = 15 + (staggerLevel * 25); // Ends at 15, 40, 65
 
                                 const midX = centerX + Math.cos(angle) * (outerRadius + staggerDist);
                                 const midY = centerY + Math.sin(angle) * (outerRadius + staggerDist);
@@ -170,7 +169,7 @@ function initGastosChart() {
                                 // Only stagger outside labels
                                 if (percentage > 8) return 0;
                                 const level = ctx.dataIndex % 3;
-                                return 10 + (level * 20);
+                                return 20 + (level * 25); // Labels at 20, 45, 70 (5px gap from line end)
                             },
                             textAlign: 'center'
                         }
