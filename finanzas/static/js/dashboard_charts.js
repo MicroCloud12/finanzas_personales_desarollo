@@ -6,27 +6,78 @@ function initGastosChart() {
     fetch(url)
         .then(resp => resp.json())
         .then(data => {
+
             new Chart(canvas, {
                 type: 'doughnut',
+                plugins: [ChartDataLabels, {
+                    id: 'customConnectorLines',
+                    afterDraw: (chart) => {
+                        const {
+                            ctx,
+                            chartArea: { width, height }
+                        } = chart;
+
+                        chart.data.datasets.forEach((dataset, i) => {
+                            const meta = chart.getDatasetMeta(i);
+
+                            meta.data.forEach((element, index) => {
+                                // Only draw if visible and has value
+                                if (dataset.data[index] === 0 || element.hidden) return;
+
+                                // Calculate percentage
+                                const total = dataset.data.reduce((a, b) => Number(a) + Number(b), 0);
+                                const value = Number(dataset.data[index]); // Ensure value is number
+                                const percentage = (value * 100 / total);
+
+                                // Only draw lines for small slices (<= 8%)
+                                if (percentage > 8) return;
+
+                                const { x, y } = element.tooltipPosition();
+                                const center = element.getCenterPoint();
+
+                                // Calculate coordinates
+                                // We need center of chart, not center of arc
+                                const centerX = chart.chartArea.left + width / 2;
+                                const centerY = chart.chartArea.top + height / 2;
+
+                                // Angle of the arc center
+                                const angle = Math.atan2(y - centerY, x - centerX);
+
+                                // Radii
+                                const outerRadius = element.outerRadius;
+                                const arcRadius = outerRadius + 10; // Start line just outside
+
+                                // 3-Level Staggering to prevent overlap of adjacent small items
+                                // 0: Short, 1: Medium, 2: Long
+                                const staggerLevel = index % 3;
+                                const staggerDist = 15 + (staggerLevel * 25); // 15, 40, 65
+
+                                const midX = centerX + Math.cos(angle) * (outerRadius + staggerDist);
+                                const midY = centerY + Math.sin(angle) * (outerRadius + staggerDist);
+
+                                const startX = centerX + Math.cos(angle) * arcRadius;
+                                const startY = centerY + Math.sin(angle) * arcRadius;
+
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.moveTo(startX, startY);
+                                ctx.lineTo(midX, midY);
+                                ctx.strokeStyle = '#9ca3af'; // gray-400
+                                ctx.lineWidth = 1;
+                                ctx.stroke();
+                                ctx.restore();
+                            });
+                        });
+                    }
+                }],
                 data: {
                     labels: data.labels,
                     datasets: [{
                         data: data.data,
                         backgroundColor: [
-                            '#4F46E5', // Indigo-600
-                            '#10B981', // Emerald-500
-                            '#F59E0B', // Amber-500
-                            '#EF4444', // Red-500
-                            '#06B6D4', // Cyan-500
-                            '#EC4899', // Pink-500
-                            '#84CC16', // Lime-500
-                            '#D946EF', // Fuchsia-500
-                            '#0EA5E9', // Sky-500
-                            '#F97316', // Orange-500
-                            '#8B5CF6', // Violet-500
-                            '#F43F5E', // Rose-500
-                            '#6366F1', // Indigo-500
-                            '#14B8A6', // Teal-500
+                            '#FCD34D', '#F87171', '#FB923C', '#9D174D',
+                            '#60A5FA', '#34D399', '#A78BFA', '#D946EF',
+                            '#0EA5E9', '#F97316', '#8B5CF6', '#F43F5E'
                         ],
                         borderWidth: 0,
                         hoverOffset: 4
@@ -35,26 +86,93 @@ function initGastosChart() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '65%', // Slightly thicker donut
+                    layout: {
+                        padding: 45 // Reduced padding for Zoom In
+                    },
+                    cutout: '50%',
+                    rotation: 120,
                     plugins: {
-                        legend: {
-                            position: 'bottom',
-                            align: 'start', // Center the legend items
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20,
-                                boxWidth: 10,
-                                font: { family: 'Inter', size: 12, weight: 500 },
-                                color: '#6B7280' // Gray-500
-                            }
-                        },
+                        legend: { display: false },
                         tooltip: {
                             backgroundColor: '#1F2937',
                             padding: 12,
-                            titleFont: { family: 'Inter', size: 13 },
-                            bodyFont: { family: 'Inter', size: 13 },
+                            titleFont: { family: 'Outfit', size: 13 },
+                            bodyFont: { family: 'Outfit', size: 13 },
                             cornerRadius: 8,
-                            displayColors: true
+                            displayColors: true,
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('en-US', {
+                                            style: 'currency', currency: 'USD'
+                                        }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            // Hybrid Color: White inside, Gray outside
+                            color: (ctx) => {
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => { sum += Number(data); });
+                                let value = ctx.dataset.data[ctx.dataIndex];
+                                let percentage = (value * 100 / sum);
+                                return percentage > 8 ? '#ffffff' : '#374151';
+                            },
+                            font: {
+                                weight: '500', // Medium weight for Outfit
+                                size: 11,
+                                family: 'Outfit'
+                            },
+                            formatter: (value, ctx) => {
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => { sum += Number(data); });
+                                let percentage = (value * 100 / sum);
+
+                                let label = ctx.chart.data.labels[ctx.dataIndex];
+                                if (label.length > 15 && label.includes(' ')) {
+                                    const words = label.split(' ');
+                                    const mid = Math.floor(words.length / 2);
+                                    label = words.slice(0, mid).join(' ') + '\n' + words.slice(mid).join(' ');
+                                }
+
+                                return label + '\n' + percentage.toFixed(0) + "%";
+                            },
+                            // Hybrid Anchor/Align
+                            anchor: (ctx) => {
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => { sum += Number(data); });
+                                let value = ctx.dataset.data[ctx.dataIndex];
+                                let percentage = (value * 100 / sum);
+                                return percentage > 8 ? 'center' : 'end';
+                            },
+                            align: (ctx) => {
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => { sum += Number(data); });
+                                let value = ctx.dataset.data[ctx.dataIndex];
+                                let percentage = (value * 100 / sum);
+                                return percentage > 8 ? 'center' : 'end';
+                            },
+                            offset: (ctx) => {
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => { sum += Number(data); });
+                                let value = ctx.dataset.data[ctx.dataIndex];
+                                let percentage = (value * 100 / sum);
+                                // Only stagger outside labels
+                                if (percentage > 8) return 0;
+                                const level = ctx.dataIndex % 3;
+                                return 10 + (level * 20);
+                            },
+                            textAlign: 'center'
                         }
                     }
                 }
@@ -114,9 +232,11 @@ function initFlujoDineroChart() {
                     datasets: [{
                         label: 'Flujo Net',
                         data: data.data,
-                        backgroundColor: '#4F46E5',
+                        backgroundColor: ['#4F46E5', '#EF4444'], // Blue for Income, Red for Expenses
                         borderRadius: 6,
-                        barThickness: 12
+                        barThickness: 50, // Thicker bars
+                        maxBarThickness: 80,
+                        cornerRadius: 8,
                     }]
                 },
                 options: {
@@ -126,14 +246,46 @@ function initFlujoDineroChart() {
                         y: {
                             beginAtZero: true,
                             grid: { display: true, borderDash: [2, 2], drawBorder: false },
-                            ticks: { callback: value => '$' + value.toLocaleString(), font: { size: 11 } }
+                            ticks: {
+                                callback: value => '$' + value.toLocaleString(),
+                                font: { family: 'Outfit', size: 11 },
+                                color: '#6B7280'
+                            }
                         },
                         x: {
                             grid: { display: false },
-                            ticks: { font: { size: 11 } }
+                            ticks: {
+                                font: { family: 'Outfit', size: 11 },
+                                color: '#6B7280'
+                            }
                         }
                     },
-                    plugins: { legend: { display: false } }
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1F2937',
+                            padding: 12,
+                            titleFont: { family: 'Outfit', size: 13 },
+                            bodyFont: { family: 'Outfit', size: 13 },
+                            cornerRadius: 8,
+                            displayColors: true,
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: 'USD'
+                                        }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         });

@@ -1,11 +1,13 @@
 {% extends 'base.html' %}
 {% load humanize %}
 {% block title %}Dashboard de Finanzas Personales | Tu Resumen Financiero{% endblock %}
+{% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5{% endblock %}
+
 {% block content %}
 {% load static %}
 
 {# Contenedor Principal Unificado #}
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
 
     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
         <h1 class="text-3xl font-bold text-gray-900 font-display">Dashboard</h1>
@@ -130,10 +132,10 @@
     </div>
 
     {# --- Main Charts Section (Grid Split) --- #}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
 
-        {# Left: Finances Line Chart (Occupy 2 cols) #}
-        <div class="lg:col-span-2 card-premium p-6">
+        {# Left: Finances Line Chart (Occupy 1 col) #}
+        <div class="card-premium p-6">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-bold text-lg text-gray-800">Finances Overview</h3>
                 <div class="flex gap-4">
@@ -147,7 +149,7 @@
                     </div>
                 </div>
             </div>
-            <div class="relative h-80 w-full">
+            <div class="relative h-96 w-full">
                 <canvas id="flujoDeDineroChart"
                     data-url="{% url 'api_flujo_dinero' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>
@@ -162,7 +164,8 @@
                     <option>Monthly</option>
                 </select>
             </div>
-            <div class="relative h-60 flex justify-center">
+            <div class="relative min-h-[24rem] h-96 flex items-center justify-center">
+                <!-- Added centering and increased height -->
                 <canvas id="gastosPorCategoriaChart"
                     data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>
@@ -235,6 +238,6 @@
 </div>
 
 {% block javascript %}
-<script src="{% static 'js/dashboard_charts.js' %}"></script>
+<script src="{% static 'js/dashboard_charts.js' %}?v=7"></script>
 {% endblock javascript %}
 {% endblock %}
