@@ -4,6 +4,7 @@ from datetime import datetime, date
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from .models import inversiones, Deuda, PagoAmortizacion
+import time
 
 def parse_date_safely(date_str: str | None) -> date:
     """
@@ -80,6 +81,9 @@ def calculate_monthly_profit(user, price_service=None):
     for ticker, inicio in inicio_por_ticker.items():
         series = servicio_precios.get_monthly_series(ticker, inicio, hoy)
         series_cache[ticker] = {p["datetime"][:7]: Decimal(str(p["close"])) for p in series}
+        # Esperamos 12 segundos entre llamadas para respetar el límite de 5 llamadas por minuto (aprox)
+        # o el límite de 8 llamadas/minuto del que se queja el usuario.
+        time.sleep(12)
 
     # Calculamos las ganancias iterando sobre cada inversión pero reutilizando el caché
     for ticker, inversiones_list in inversiones_por_ticker.items():
