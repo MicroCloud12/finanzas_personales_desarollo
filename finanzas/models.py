@@ -25,6 +25,7 @@ class registro_transacciones(models.Model):
     TIPO_PAGO_CHOICES = [
         ('MENSUALIDAD', 'Pago de Mensualidad'),
         ('CAPITAL', 'Pago a Capital'),
+        ('TARJETA_CREDITO', 'Compra con Tarjeta de Crédito'),
     ]
     # LA LÍNEA CLAVE ES AÑADIR default='MENSUALIDAD'
     tipo_pago = models.CharField(max_length=15, choices=TIPO_PAGO_CHOICES, default='MENSUALIDAD')
@@ -43,7 +44,14 @@ class registro_transacciones(models.Model):
         if self.deuda_asociada:
             deuda = self.deuda_asociada
             
-            if self.tipo_pago == 'CAPITAL':
+            # --- NUEVA LÓGICA: COMPRA CON TARJETA ---
+            if self.tipo_pago == 'TARJETA_CREDITO':
+                # Si es una compra, RESTATAMOS al saldo disponible (o aumentamos la deuda si se viera así)
+                # Dado el requerimiento: "se haga la resta... se actualice el saldo", asumimos que reduce el 'Disponible'.
+                deuda.saldo_pendiente -= self.monto
+                deuda.save()
+
+            elif self.tipo_pago == 'CAPITAL':
                 deuda.saldo_pendiente -= self.monto
                 deuda.save()
 
