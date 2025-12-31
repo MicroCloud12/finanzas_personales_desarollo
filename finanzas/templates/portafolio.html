@@ -214,107 +214,12 @@
 
 {% block javascript %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const chartLabels = JSON.parse('{{ chart_labels|safe }}');
-        const chartData = JSON.parse('{{ chart_data|safe }}');
 
-        const distLabels = JSON.parse('{{ dist_labels|safe }}');
-        const distData = JSON.parse('{{ dist_data|safe }}');
+{# Inject data securely into the DOM #}
+{{ chart_labels|json_script:"chart-labels-data" }}
+{{ chart_data|json_script:"chart-data-data" }}
+{{ dist_labels|json_script:"dist-labels-data" }}
+{{ dist_data|json_script:"dist-data-data" }}
 
-        // --- MAIN PORTFOLIO LINE CHART ---
-        const ctxMain = document.getElementById('portfolioMainChart').getContext('2d');
-
-        // Create gradient
-        let gradient = ctxMain.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)'); // Indigo
-        gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
-
-        new Chart(ctxMain, {
-            type: 'line',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                    label: 'Valor Acumulado',
-                    data: chartData,
-                    borderColor: '#818cf8', // Indigo-400 (Lighter for dark background)
-                    backgroundColor: gradient,
-                    borderWidth: 3,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                        titleColor: '#e5e7eb',
-                        bodyColor: '#fff',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        borderWidth: 1,
-                        padding: 10,
-                        callbacks: {
-                            label: function (context) {
-                                return '$' + context.parsed.y.toLocaleString();
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        display: false, // Hide X axis for clean look
-                    },
-                    y: {
-                        display: false, // Hide Y axis for clean look
-                        beginAtZero: false
-                    }
-                }
-            }
-        });
-
-        // --- ALLOCATION DOUGHNUT CHART ---
-        const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
-        new Chart(ctxAlloc, {
-            type: 'doughnut',
-            data: {
-                labels: distLabels,
-                datasets: [{
-                    data: distData,
-                    backgroundColor: [
-                        '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%', // Thinner ring
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += '$' + context.parsed.toLocaleString();
-                                return label;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    });
-</script>
+<script src="{% static 'js/portafolio_charts.js' %}?v=1"></script>
 {% endblock %}
