@@ -1090,3 +1090,7 @@ INFO 2025-12-22 13:28:38,789 tasks Tienda reconocida por IA: OXXO
 INFO 2025-12-22 13:28:40,177 tasks Tienda reconocida por IA: OXXO
 INFO 2025-12-26 19:08:07,821 tasks Tienda nueva detectada: MERCADO PAGO
 INFO 2025-12-26 19:08:19,550 tasks Tienda nueva detectada: G500
+ERROR 2025-12-30 22:08:40,945 views Error de validación en TransaccionesForm: {"cuenta_origen": [{"message": "This field is required.", "code": "required"}], "tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-30 22:08:43,827 views Error de validación en TransaccionesForm: {"categoria": [{"message": "This field is required.", "code": "required"}], "cuenta_origen": [{"message": "This field is required.", "code": "required"}], "tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-30 22:09:17,515 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-30 22:09:54,758 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "This field is required.", "code": "required"}]}

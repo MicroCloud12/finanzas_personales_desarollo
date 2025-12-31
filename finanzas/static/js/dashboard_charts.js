@@ -339,9 +339,118 @@ function initInversionesChart() {
 }
 
 
+// Gráfico de Crecimiento de Ahorro (Savings Growth - Purple Area)
+function initSavingsGrowthChart() {
+    const canvas = document.getElementById('savingsGrowthChart');
+    if (!canvas) return;
+
+    // Retrieve data securely from json_script tags
+    const labelsScript = document.getElementById('savings-labels-data');
+    const valuesScript = document.getElementById('savings-values-data');
+
+    if (!labelsScript || !valuesScript) return;
+
+    const labels = JSON.parse(labelsScript.textContent);
+    const data = JSON.parse(valuesScript.textContent);
+
+    const ctx = canvas.getContext('2d');
+
+    // Create Purple Gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.5)'); // Purple-500 @ 50%
+    gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)'); // Transparent
+
+    new Chart(canvas, {
+        type: 'line',
+        plugins: [ChartDataLabels],
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Savings',
+                data: data,
+                borderColor: '#8B5CF6', // Purple-500
+                backgroundColor: gradient,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4, // Smooth curves
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#8B5CF6',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointHoverBorderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: { top: 20, right: 20, left: 10, bottom: 10 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    grid: {
+                        color: '#f3f4f6',
+                        drawBorder: false,
+                        borderDash: [5, 5]
+                    },
+                    ticks: {
+                        callback: function (value) { return '$' + value.toLocaleString(); },
+                        font: { family: 'Outfit', size: 11 },
+                        color: '#9ca3af'
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { family: 'Outfit', size: 11 },
+                        color: '#9ca3af'
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1F2937',
+                    padding: 12,
+                    titleFont: { family: 'Outfit', size: 13 },
+                    bodyFont: { family: 'Outfit', size: 13 },
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        label: function (context) {
+                            return 'Saved: $' + Number(context.parsed.y).toLocaleString();
+                        }
+                    }
+                },
+                datalabels: {
+                    align: 'top',
+                    anchor: 'end',
+                    offset: 4,
+                    backgroundColor: '#1F2937', // Dark bg like tooltip for contrast
+                    color: '#ffffff',
+                    borderRadius: 4,
+                    font: { family: 'Outfit', weight: 'bold', size: 10 },
+                    formatter: function (value) {
+                        // Shorten large numbers: 1.2k, 15k
+                        if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+                        return value;
+                    },
+                    display: function (context) {
+                        // Only show label for the last point or significant peaks if crowded
+                        // For now, show all but ensure enough space
+                        return true;
+                    }
+                }
+            }
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initGastosChart();
     initFlujoDineroChart();
-    initInversionesChart();
+    // initInversionesChart(); // Removed/Replaced
+    initSavingsGrowthChart();
 });

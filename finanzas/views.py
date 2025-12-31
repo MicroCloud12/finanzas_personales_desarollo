@@ -262,36 +262,58 @@ y ganancias mensuales, e inversiones.
 '''
 @login_required
 def vista_dashboard(request):
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    # --- LÓGICA PARA LA GRÁFICA DE LÍNEAS ---
-    # Obtenemos todas las compras de inversiones del usuario, ordenadas por fecha
-    compras = inversiones.objects.filter(propietario=request.user).order_by('fecha_compra')
-
-    chart_labels = []
-    chart_data = []
-    capital_acumulado = Decimal('0.0')
-
-    # Agrupamos las compras por día y calculamos el capital acumulado
-    compras_por_dia = {}
-    for compra in compras:
-        fecha_str = compra.fecha_compra.strftime('%Y-%m-%d')
-        if fecha_str not in compras_por_dia:
-            compras_por_dia[fecha_str] = Decimal('0.0')
-        compras_por_dia[fecha_str] += compra.costo_total_adquisicion
-
-    # Ordenamos las fechas y construimos los datos del gráfico
-    fechas_ordenadas = sorted(compras_por_dia.keys())
-    for fecha in fechas_ordenadas:
-        capital_acumulado += compras_por_dia[fecha]
-        chart_labels.append(fecha)
-        chart_data.append(str(capital_acumulado))
-    # ----------------------------------------------
-    # Verificamos si la suscripción está activa con nuestro método del modelo.
-    es_usuario_premium = suscripcion.is_active()
+    # Definimos fechas al inicio para usarlas en todo el dashboard
     current_year = datetime.now().year
     current_month = datetime.now().month
     year = int(request.GET.get('year', current_year))
     month = int(request.GET.get('month', current_month))
+
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    # --- LÓGICA PARA LA GRÁFICA DE AHORRO (SAVINGS GROWTH) ---
+    # Calculamos el ahorro acumulado mes a mes para el año seleccionado
+    # Usamos 'year' obtenido de los params GET (o año actual por defecto)
+    savings_qs = registro_transacciones.objects.filter(
+        propietario=request.user,
+        fecha__year=year
+    ).filter(
+        # 1. Todo lo que esté categorizado explícitamente como Ahorro (menos Gastos)
+        (Q(categoria__iexact='Ahorro') & ~Q(tipo__iexact='GASTO')) |
+        # 2. Transferencias directas a la Cuenta Ahorro
+        Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
+        # 3. Ingresos que entraron directo a Cuenta Ahorro (En Ingresos, 'cuenta_origen' suele ser destino/cuenta)
+        Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
+    ).annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+
+    savings_labels = []
+    savings_data = []
+    ahorro_acumulado = Decimal('0.0')
+    
+    # Mapa de ahorro por mes
+    ahorro_por_mes = {s['mes'].strftime('%Y-%m'): s['total'] for s in savings_qs}
+    
+    # Generamos los meses hasta el actual
+    current_date = datetime.now()
+    for m in range(1, 13):
+        # Si queremos proyectar todo el año o solo hasta hoy:
+        # Para "Growth Plan" se suele mostrar todo el año, pero solo tenemos datos hasta hoy.
+        # Mostremos hasta el mes actual para no tener una línea plana al final.
+        if m > current_date.month:
+            break
+            
+        mes_fecha = datetime(current_date.year, m, 1)
+        mes_key = mes_fecha.strftime('%Y-%m')
+        
+        monto_mes = ahorro_por_mes.get(mes_key, Decimal('0.0'))
+        ahorro_acumulado += monto_mes
+        
+        savings_labels.append(mes_fecha.strftime('%B')) # Nombre del mes
+        savings_data.append(str(ahorro_acumulado))
+        
+    chart_labels = savings_labels
+    chart_data = savings_data
+    # ----------------------------------------------
+    # Verificamos si la suscripción está activa con nuestro método del modelo.
+    es_usuario_premium = suscripcion.is_active()
     transacciones = registro_transacciones.objects.filter(
         propietario=request.user, 
         fecha__year=year, 
@@ -343,6 +365,8 @@ def vista_dashboard(request):
         'years': range(current_year, current_year - 5, -1),
         'months': range(1, 13),
         'es_usuario_premium': es_usuario_premium,
+        'investment_chart_labels': chart_labels,
+        'investment_chart_data': chart_data,
     }
     return render(request, 'dashboard.html', context)
 
