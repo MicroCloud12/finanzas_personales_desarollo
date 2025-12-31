@@ -10,6 +10,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='iniciosesion.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('dashboard/', views.vista_dashboard, name='dashboard'),
+    path('portafolio/', views.vista_portafolio, name='portafolio'),
     path('listatransacciones/', views.lista_transacciones, name='lista_transacciones'),
     path('transacciones/<int:transaccion_id>/editar/', views.editar_transaccion, name='editar_transaccion'),
     path('transacciones/<int:transaccion_id>/eliminar/', views.eliminar_transaccion, name='eliminar_transaccion'),

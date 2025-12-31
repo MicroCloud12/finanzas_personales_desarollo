@@ -343,12 +343,79 @@ def vista_dashboard(request):
         'years': range(current_year, current_year - 5, -1),
         'months': range(1, 13),
         'es_usuario_premium': es_usuario_premium,
-        'inversion_inicial': inversion_inicial_usd,
-        'inversion_actual': inversion_actual,
-        'investment_chart_labels': json.dumps(chart_labels),
-        'investment_chart_data': json.dumps(chart_data),
     }
     return render(request, 'dashboard.html', context)
+
+@login_required
+def vista_portafolio(request):
+    """
+    Vista dedicada para el Portafolio de Inversiones.
+    """
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    es_usuario_premium = suscripcion.is_active()
+
+    # --- LÓGICA DE ACTIVOS ---
+    mis_inversiones = inversiones.objects.filter(propietario=request.user).order_by('-valor_actual_mercado')
+    
+    # Totales Generales
+    agregados = mis_inversiones.aggregate(
+        total_invertido=Sum('costo_total_adquisicion'),
+        valor_actual=Sum('valor_actual_mercado')
+    )
+    
+    total_invertido = agregados['total_invertido'] or Decimal('0.00')
+    valor_total = agregados['valor_actual'] or Decimal('0.00')
+    ganancia_total = valor_total - total_invertido
+    
+    # Porcentaje de ganancia total
+    porcentaje_ganancia = 0
+    if total_invertido > 0:
+        porcentaje_ganancia = ((valor_total - total_invertido) / total_invertido) * 100
+
+    # --- DATOS PARA GRÁFICAS ---
+    # 1. Historia del Portafolio (Line Chart)
+    # Reusamos la lógica de 'compras acumuladas', pero idealmente deberíamos tener un historial de valor diario.
+    # Por ahora, proyectamos el costo acumulado vs fecha (como estaba antes) o mejoramos a futuro.
+    # Mantendremos la lógica de "Capital Invertido a lo largo del tiempo" que ya funcionaba.
+    compras_cronologicas = inversiones.objects.filter(propietario=request.user).order_by('fecha_compra')
+    
+    chart_labels = []
+    chart_data = []
+    capital_acumulado = Decimal('0.0')
+    
+    compras_por_dia = {}
+    for compra in compras_cronologicas:
+        fecha_str = compra.fecha_compra.strftime('%Y-%m-%d')
+        if fecha_str not in compras_por_dia:
+            compras_por_dia[fecha_str] = Decimal('0.0')
+        compras_por_dia[fecha_str] += compra.costo_total_adquisicion
+
+    for fecha in sorted(compras_por_dia.keys()):
+        capital_acumulado += compras_por_dia[fecha]
+        chart_labels.append(fecha)
+        chart_data.append(str(capital_acumulado))
+
+    # 2. Distribución (Doughnut)
+    # Agrupar por tipo (Cripto vs Acciones) o por Activo
+    distribucion_labels = []
+    distribucion_data = []
+    for inv in mis_inversiones[:5]: # Top 5 activos
+        distribucion_labels.append(inv.nombre_activo)
+        distribucion_data.append(float(inv.valor_actual_mercado))
+
+    context = {
+        'inversiones': mis_inversiones,
+        'valor_total': valor_total,
+        'total_invertido': total_invertido,
+        'ganancia_total': ganancia_total,
+        'porcentaje_ganancia': porcentaje_ganancia,
+        'chart_labels': json.dumps(chart_labels),
+        'chart_data': json.dumps(chart_data),
+        'dist_labels': json.dumps(distribucion_labels),
+        'dist_data': json.dumps(distribucion_data),
+        'es_usuario_premium': es_usuario_premium,
+    }
+    return render(request, 'portafolio.html', context)
 
 @login_required
 def datos_gastos_categoria(request):

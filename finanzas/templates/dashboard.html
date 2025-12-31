@@ -180,60 +180,8 @@
     </div>
 
     {# --- Bottom Section: Investments & Quick Transfer (or Recent Transactions) --- #}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div class="card-premium p-6">
-            <h3 class="font-bold text-lg text-gray-800 mb-4">Capital Evolution</h3>
-            <div class="relative h-64">
-                <canvas id="investmentLineChart" data-url="{% url 'api_ganancias_mensuales' %}"></canvas>
-            </div>
-        </div>
-
-        {# Placeholder for Recent Transactions - Using simple list logic #}
-        <div class="card-premium p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="font-bold text-lg text-gray-800">Quick Stats</h3>
-                <a href="{% url 'lista_transacciones' %}"
-                    class="text-sm text-indigo-600 font-medium hover:text-indigo-700">View All</a>
-            </div>
-
-            <div class="space-y-4">
-                <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-900">Inversión Inicial</p>
-                            <p class="text-xs text-gray-500">Base Capital</p>
-                        </div>
-                    </div>
-                    <span class="text-sm font-bold text-gray-900">${{ inversion_inicial|floatformat:2 |intcomma}}</span>
-                </div>
-                <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                    <div class="flex items-center gap-3">
-                        <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-900">Inversión Actual</p>
-                            <p class="text-xs text-gray-500">Total Portfolio</p>
-                        </div>
-                    </div>
-                    <span class="text-sm font-bold text-gray-900">${{ inversion_actual|floatformat:2 | intcomma}}</span>
-                </div>
-            </div>
-
-        </div>
-    </div>
+    {# --- Bottom Section: Removed Investments --- #}
+    {# Space reserved for future widgets #}
 
 </div>
 
