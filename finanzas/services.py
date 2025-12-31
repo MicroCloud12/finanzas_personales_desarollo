@@ -599,6 +599,32 @@ class StockPriceService:
                 print(f"Error al obtener la serie mensual de {ticker}: {e}")
                 return []
 
+    def get_daily_series(self, ticker: str, start_date, end_date):
+        """Devuelve la serie de precios diarios para un rango de fechas."""
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        cache_key = f"DAILY:{ticker.upper()}:{start_str}:{end_str}"
+        
+        if cache_key in self._series_cache:
+            return self._series_cache[cache_key]
+            
+        try:
+            series = self.client.time_series(
+                symbol=ticker,
+                interval="1day",
+                start_date=start_str,
+                end_date=end_str,
+            )
+            raw = series.as_json()
+            values = raw.get("values") if isinstance(raw, dict) else list(raw)
+            values = values or []
+            
+            self._series_cache[cache_key] = values
+            return values
+        except Exception as e:
+            print(f"Error al obtener datos diarios de {ticker}: {e}")
+            return []
+
     def get_closing_price_for_date(self, ticker: str, target_date):
         """Obtiene el precio de cierre aproximado de un ticker para una fecha."""
         month_start = target_date.replace(day=1)

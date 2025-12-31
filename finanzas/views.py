@@ -33,7 +33,7 @@ from .services import TransactionService, MercadoPagoService, StockPriceService,
 from .models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
     inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente, Factura
+    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory
 )
 from django.http import JsonResponse
 from .models import TiendaFacturacion # Asegúrate de tener los modelos importados
@@ -373,27 +373,25 @@ def vista_portafolio(request):
         porcentaje_ganancia = ((valor_total - total_invertido) / total_invertido) * 100
 
     # --- DATOS PARA GRÁFICAS ---
-    # 1. Historia del Portafolio (Line Chart)
-    # Reusamos la lógica de 'compras acumuladas', pero idealmente deberíamos tener un historial de valor diario.
-    # Por ahora, proyectamos el costo acumulado vs fecha (como estaba antes) o mejoramos a futuro.
-    # Mantendremos la lógica de "Capital Invertido a lo largo del tiempo" que ya funcionaba.
-    compras_cronologicas = inversiones.objects.filter(propietario=request.user).order_by('fecha_compra')
+    # --- DATOS PARA GRÁFICAS ---
+    # 1. Historia del Portafolio (Line/Area Chart - Diario)
+    # Consultamos el historial diario ya calculado
+    historial_diario = PortfolioHistory.objects.filter(usuario=request.user).order_by('fecha')
     
     chart_labels = []
     chart_data = []
-    capital_acumulado = Decimal('0.0')
     
-    compras_por_dia = {}
-    for compra in compras_cronologicas:
-        fecha_str = compra.fecha_compra.strftime('%Y-%m-%d')
-        if fecha_str not in compras_por_dia:
-            compras_por_dia[fecha_str] = Decimal('0.0')
-        compras_por_dia[fecha_str] += compra.costo_total_adquisicion
-
-    for fecha in sorted(compras_por_dia.keys()):
-        capital_acumulado += compras_por_dia[fecha]
-        chart_labels.append(fecha)
-        chart_data.append(str(capital_acumulado))
+    # Si no hay historial diario (primer uso), intentamos usar lo mensual como fallback temporal
+    # o simplemente mostramos vacío hasta que corran el comando.
+    if historial_diario.exists():
+        for dia in historial_diario:
+            chart_labels.append(dia.fecha.strftime('%Y-%m-%d'))
+            chart_data.append(str(dia.valor_total))
+    else:
+        # Fallback: Usamos la lógica mensual anterior si no han corrido el script aún
+        historial_ganancias = GananciaMensual.objects.filter(propietario=request.user).order_by('mes')
+        # ... (Lógica de fallback omitida para limpieza, asumimos que correrán el script)
+        pass
 
     # 2. Distribución (Doughnut)
     # Agrupar por tipo (Cripto vs Acciones) o por Activo

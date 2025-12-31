@@ -410,3 +410,27 @@ class Factura(models.Model):
     @property
     def get_script_id(self):
         return f"factura-json-{self.id}"
+
+class PortfolioHistory(models.Model):
+    """
+    Almacena el valor total del portafolio día a día.
+    Permite graficar la evolución histórica tipo 'stock chart'.
+    """
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    fecha = models.DateField()
+    
+    # Valor total de mercado de todos los activos ese día
+    valor_total = models.DecimalField(max_digits=20, decimal_places=2)
+    
+    # Capital total invertido (cash flow) hasta ese día
+    capital_invertido = models.DecimalField(max_digits=20, decimal_places=2)
+    
+    # Ganancia no realizada (valor_total - capital_invertido)
+    ganancia_no_realizada = models.DecimalField(max_digits=20, decimal_places=2)
+    
+    class Meta:
+        unique_together = ['usuario', 'fecha']
+        ordering = ['fecha']
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.fecha}: ${self.valor_total}"
