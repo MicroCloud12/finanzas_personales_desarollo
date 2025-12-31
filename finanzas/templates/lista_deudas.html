@@ -111,10 +111,9 @@
                         <td class="px-6 py-4 bg-white text-sm align-middle">
                             {# Simple visual bar for debt usage/remaining #}
                             <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-200 mt-1">
-                                <!-- Logic: Width = (Saldo / Monto) * 100. Capped at 100. -->
-                                <!-- This is just a rough inline calc visual aid, simplistic logic applied via style width -->
-                                <!-- Since Django templates allow basic math logic, lets try to inject a simple width style if possible or just standard bar -->
-                                <div class="bg-red-500 h-1.5 rounded-full" style="width: 45%"></div>
+                                <!-- Logic: Width = (Saldo / Monto) * 100. -->
+                                <div class="bg-red-500 h-1.5 rounded-full"
+                                    style="width: {% widthratio deuda.saldo_pendiente deuda.monto_total 100 %}%"></div>
                             </div>
                             <p class="text-[10px] text-gray-400 mt-1">Saldo restante</p>
                         </td>
