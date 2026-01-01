@@ -34,6 +34,25 @@ class TransaccionesForm(forms.ModelForm):
         self.fields['deuda_asociada'].required = False
         self.fields['deuda_asociada'].label = "Deuda Asociada (Opcional)"
         self.fields['deuda_asociada'].empty_label = "Ninguna"
+        
+        # "refresca la página" solía ser porque fallaba la validación de estos campos si venían vacíos.
+        self.fields['tipo_pago'].required = False
+        self.fields['cuenta_destino'].required = False
+        self.fields['cuenta_origen'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Si vienen vacíos, ponemos un valor por defecto para que el Modelo no se queje (blank=False)
+        if not cleaned_data.get('cuenta_origen'):
+            cleaned_data['cuenta_origen'] = 'Sin Cuenta'
+        
+        if not cleaned_data.get('cuenta_destino'):
+            cleaned_data['cuenta_destino'] = 'Sin Cuenta'
+            
+        if not cleaned_data.get('tipo_pago'):
+            cleaned_data['tipo_pago'] = 'MENSUALIDAD' # Valor por default seguro del modelo
+            
+        return cleaned_data
 
         # Aplicamos estilos
         tailwind_select_classes = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
