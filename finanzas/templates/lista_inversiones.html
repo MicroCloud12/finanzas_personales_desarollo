@@ -3,121 +3,189 @@
 {% block title %}Mi Portafolio de Inversiones | Finanzas Personales{% endblock %}
 {% block content %}
 
-<div class="container mx-auto px-4 py-8">
-    
-    {# Título de la Página #}
-    <div>
-        <h1 class="text-3xl font-bold text-gray-800">Portafolio de Inversiones</h1>
-        <p class="mt-1 text-sm text-gray-600">
-            Analiza el rendimiento de tus activos y registra nuevas inversiones.
-        </p>
+<div class="max-w-7xl mx-auto">
+
+    {# --- Header Section --- #}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 font-display">Portafolio de Inversiones</h1>
+            <p class="mt-1 text-sm text-gray-500">Analiza el rendimiento de tus activos y registra nuevas inversiones.
+            </p>
+        </div>
+
+        {# --- Action Buttons --- #}
+        <div class="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
+            <a href="{% url 'crear_inversion' %}"
+                class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Añadir Inversión
+            </a>
+
+            {% if es_usuario_premium %}
+            <a href="{% url 'procesamiento_inversiones' %}"
+                class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Auto-Scan
+            </a>
+            <a href="{% url 'revisar_inversiones' %}"
+                class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors">
+                Revisar Pendientes
+            </a>
+            {% else %}
+            <!-- Premium Promo Button -->
+            <a href="{% url 'gestionar_suscripcion' %}"
+                class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
+                ✨ Sincronización Auto
+            </a>
+            {% endif %}
+        </div>
     </div>
 
-    {# Contenedor de Botones (Idéntico a lista_transacciones.html) #}
-    <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-        <a href="{% url 'crear_inversion' %}" class="w-full sm:w-auto text-center bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-            + Añadir Inversión
-        </a>
-        
-        {% if es_usuario_premium %}
-          <a href="{% url 'procesamiento_inversiones' %}" class="w-full sm:w-auto text-center bg-green-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-            + Añadir Automáticamente
-          </a>
-          <a href="{% url 'revisar_inversiones' %}" class="w-full sm:w-auto text-center bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
-            Revisar Inversiones Pendientes
-          </a>
-        {% else %}
-          <div class="w-full sm:flex-1 p-4 bg-gray-100 rounded-lg border border-gray-200">
-              <button disabled class="w-full bg-gray-400 text-white font-semibold px-6 py-2 rounded-lg cursor-not-allowed">
-                  ✨ Iniciar Sincronización Automática
-              </button>
-              <p class="mt-2 text-sm text-gray-700 text-center">
-                  Esta es una función premium. 
-                  <a href="{% url 'gestionar_suscripcion' %}" class="text-indigo-600 font-bold hover:underline">¡Actualiza tu plan!</a>
-              </p>
-          </div>
-        {% endif %}
-    </div>
 
-    {% include 'partials/_error_message.html'%}
+    {# --- Content Card --- #}
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
 
-    <div class="hidden md:block mt-6 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 overflow-x-auto">
-        <div class="inline-block min-w-full shadow-md rounded-lg overflow-hidden">
+        {# --- Card Header --- #}
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-lg text-gray-800">Mis Activos</h3>
+        </div>
+
+        {# --- Table --- #}
+        <div class="overflow-x-auto">
             <table class="min-w-full leading-normal">
                 <thead>
-                    <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        <th class="px-5 py-3">Ticker</th>
-                        <th class="px-5 py-3">Cantidad</th>
-                        <th class="px-5 py-3">Precio Compra</th>
-                        <th class="px-5 py-3">Costo Total</th>
-                        <th class="px-5 py-3">Precio Actual</th>
-                        <th class="px-5 py-3">Valor Mercado</th>
-                        <th class="px-5 py-3">Gan./Pérd. No Realizada</th>
-                        <th class="px-6 py-3">Acciones</th>
+                    <tr
+                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-4">Ticker</th>
+                        <th class="px-6 py-4">Cantidad</th>
+                        <th class="px-6 py-4">Precio Compra</th>
+                        <th class="px-6 py-4">Costo Total</th>
+                        <th class="px-6 py-4">Precio Actual</th>
+                        <th class="px-6 py-4">Valor Mercado</th>
+                        <th class="px-6 py-4">Gan./Pérd.</th>
+                        <th class="px-6 py-4 text-right">Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-100">
                     {% for inv in inversiones %}
-                        <tr class="border-b border-gray-200 hover:bg-gray-50">
-                            <td class="px-5 py-5 bg-white text-sm">
-                                <p class="text-gray-900 font-bold whitespace-no-wrap">{{ inv.emisora_ticker }}</p>
-                                <p class="text-gray-600 whitespace-no-wrap">{{ inv.nombre_activo }}</p>
-                            </td>
-                            <td class="px-5 py-5 bg-white text-sm">{{ inv.cantidad_titulos }}</td>
-                            <td class="px-5 py-5 bg-white text-sm">${{ inv.precio_compra_titulo|floatformat:2|intcomma }}</td>
-                            <td class="px-5 py-5 bg-white text-sm">${{ inv.costo_total_adquisicion|floatformat:2|intcomma }}</td>
-                            <td class="px-5 py-5 bg-white text-sm font-semibold">${{ inv.precio_actual_titulo|floatformat:2|intcomma }}</td>
-                            <td class="px-5 py-5 bg-white text-sm font-bold">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</td>
-                            <td class="px-5 py-5 bg-white text-sm font-semibold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    <tr class="hover:bg-gray-50/80 transition-colors group">
+                        <td class="px-6 py-4 bg-white text-sm">
+                            <div class="flex items-center">
+                                <div
+                                    class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 font-bold text-xs">
+                                    {{ inv.emisora_ticker|slice:":3" }}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">{{ inv.emisora_ticker }}</p>
+                                    <p class="text-xs text-gray-500">{{ inv.nombre_activo }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm font-medium text-gray-700">{{ inv.cantidad_titulos }}</td>
+                        <td class="px-6 py-4 bg-white text-sm text-gray-600">
+                            ${{inv.precio_compra_titulo|floatformat:2|intcomma }}</td>
+                        <td class="px-6 py-4 bg-white text-sm text-gray-600">
+                            ${{inv.costo_total_adquisicion|floatformat:2|intcomma }}</td>
+                        <td class="px-6 py-4 bg-white text-sm font-medium text-gray-900">
+                            ${{inv.precio_actual_titulo|floatformat:2|intcomma }}</td>
+                        <td class="px-6 py-4 bg-white text-sm font-bold text-gray-900">
+                            ${{inv.valor_actual_mercado|floatformat:2|intcomma }}</td>
+                        <td class="px-6 py-4 bg-white text-sm">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if inv.ganancia_perdida_no_realizada >= 0 %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
                                 ${{ inv.ganancia_perdida_no_realizada|floatformat:2|intcomma }}
-                            </td>
-                            <td class="px-5 py-5 bg-white text-sm">
-                                <a href="{% url 'editar_inversion' inv.id %}" class="text-indigo-600 hover:text-indigo-900">Editar</a>
-                                <form action="{% url 'eliminar_inversion' inv.id %}" method="post" class="inline">
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm text-right">
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+                                <a href="{% url 'editar_inversion' inv.id %}"
+                                    class="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                        </path>
+                                    </svg>
+                                </a>
+                                <form action="{% url 'eliminar_inversion' inv.id %}" method="post" class="inline"
+                                    onsubmit="return confirm('¿Eliminar esta inversión?');">
                                     {% csrf_token %}
-                                    <button type="submit" class="text-red-600 hover:text-red-900 ml-2">Eliminar</button>
+                                    <button type="submit"
+                                        class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </button>
                                 </form>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                    </tr>
                     {% empty %}
-                        <tr>
-                            <td colspan="8" class="text-center py-10 text-gray-500">Aún no has registrado ninguna inversión. ¡Añade la primera!</td>
-                        </tr>
+                    <tr>
+                        <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                                <p>Aún no has registrado ninguna inversión.</p>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 
+    {# --- Mobile Card View (Refined) --- #}
     <div class="md:hidden mt-6 space-y-4">
         {% for inv in inversiones %}
-        <div class="bg-white p-4 rounded-lg shadow-md border-l-4 {% if inv.ganancia_perdida_no_realizada >= 0 %}border-green-500{% else %}border-red-500{% endif %}">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-gray-800 text-lg">{{ inv.emisora_ticker }}</p>
-                    <p class="text-sm text-gray-600">{{ inv.nombre_activo }}</p>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+                        {{ inv.emisora_ticker|slice:":3" }}
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-900">{{ inv.emisora_ticker }}</p>
+                        <p class="text-xs text-gray-500">{{ inv.nombre_activo }}</p>
+                    </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-xl font-bold text-gray-900">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</p>
-                    <p class="text-sm font-semibold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    <p class="font-bold text-gray-900">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</p>
+                    <span
+                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {% if inv.ganancia_perdida_no_realizada >= 0 %}bg-green-50 text-green-700{% else %}bg-red-50 text-red-700{% endif %}">
                         ${{ inv.ganancia_perdida_no_realizada|floatformat:2|intcomma }}
-                    </p>
+                    </span>
                 </div>
             </div>
-            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
-                <p class="text-sm text-gray-500">Cantidad: <span class="font-medium text-gray-700">{{ inv.cantidad_titulos }}</span></p>
-                <div>
-                    <a href="{% url 'editar_inversion' inv.id %}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium mr-3">Editar</a>
-                    <form action="{% url 'eliminar_inversion' inv.id %}" method="post" class="inline">
+            <div class="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center text-xs text-gray-500">
+                <span>Cant: {{ inv.cantidad_titulos }}</span>
+                <div class="flex gap-3">
+                    <a href="{% url 'editar_inversion' inv.id %}"
+                        class="text-indigo-600 font-medium bg-indigo-50 px-3 py-1 rounded-full">Editar</a>
+                    <form action="{% url 'eliminar_inversion' inv.id %}" method="post" class="inline"
+                        onsubmit="return confirm('¿Eliminar?');">
                         {% csrf_token %}
-                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">Eliminar</button>
+                        <button type="submit"
+                            class="text-red-600 font-medium bg-red-50 px-3 py-1 rounded-full">Eliminar</button>
                     </form>
                 </div>
             </div>
         </div>
         {% empty %}
         <div class="text-center py-10 text-gray-500">
-            <p>Aún no has registrado ninguna inversión.</p>
+            <p>No hay inversiones registradas.</p>
         </div>
         {% endfor %}
     </div>

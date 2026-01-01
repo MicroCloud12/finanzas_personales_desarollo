@@ -3,53 +3,102 @@
 {% block content %}
 
 
-<div class="container mx-auto mt-10 p-5">
-    <h1 class="text-3xl font-bold leading-7 text-gray-900 mb-6">Revisar Inversiones Pendientes</h1>
-    
-    {% include 'partials/_error_message.html'%}
+<div class="max-w-7xl mx-auto">
 
-    <div class="bg-white shadow-lg rounded-lg overflow-x-auto">  
-        <table class="min-w-full leading-normal">
-            <thead>
-                <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    <th class="px-6 py-3">Fecha</th>
-                    <th class="px-6 py-3">Activo (Ticker)</th>
-                    <th class="px-6 py-3">Cantidad</th>
-                    <th class="px-6 py-3">Costo Total</th>
-                    <th class="px-6 py-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-            {% for investment in pending_investments %}
-            <tr>
-                <td class="px-6 py-4 text-sm">{{ investment.datos_json.fecha_compra }}</td>
-                <td class="px-6 py-4 text-sm font-bold">
-                    {{ investment.datos_json.nombre_activo }}
-                    <span class="text-gray-500 font-normal">({{ investment.datos_json.emisora_ticker }})</span>
-                </td>
-                <td class="px-6 py-4 text-sm">{{ investment.datos_json.cantidad_titulos }}</td>
-                <td class="px-6 py-4 text-sm font-semibold text-blue-600">
-                    ${{ investment.datos_json.costo_total_adquisicion|floatformat:2|intcomma }}
-                    <span class="text-gray-500 font-normal">{{ investment.datos_json.moneda }}</span>
-                </td>
-                <td class="px-6 py-4 flex items-center space-x-4">
-                    <form action="{% url 'aprobar_inversion' investment.id %}" method="POST" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="text-green-600 hover:text-green-900 font-semibold">Aprobar</button>
-                    </form>
-                    <form action="{% url 'rechazar_inversion' investment.id %}" method="POST" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="text-red-600 hover:text-red-900 font-semibold">Rechazar</button>
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5" class="px-6 py-10 text-center text-gray-500">No hay inversiones pendientes por revisar.</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+    {# --- Header Section --- #}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 font-display">Revisar Inversiones</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                Confirma o rechaza las nuevas posiciones detectadas.
+            </p>
+        </div>
+    </div>
+
+
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-lg text-gray-800">Inversiones Pendientes</h3>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr
+                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-4">Fecha</th>
+                        <th class="px-6 py-4">Activo (Ticker)</th>
+                        <th class="px-6 py-4">Cantidad</th>
+                        <th class="px-6 py-4">Costo Total</th>
+                        <th class="px-6 py-4 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for investment in pending_investments %}
+                    <tr class="hover:bg-gray-50/80 transition-colors">
+                        <td class="px-6 py-4 bg-white text-sm text-gray-700">
+                            {{ investment.datos_json.fecha_compra }}
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm font-bold text-gray-900">
+                            {{ investment.datos_json.nombre_activo }}
+                            <span class="text-gray-400 font-normal ml-1">({{ investment.datos_json.emisora_ticker
+                                }})</span>
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm text-gray-700">
+                            {{ investment.datos_json.cantidad_titulos }}
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm font-bold text-blue-600">
+                            ${{ investment.datos_json.costo_total_adquisicion|floatformat:2|intcomma }}
+                            <span class="text-gray-400 font-normal text-xs">{{ investment.datos_json.moneda }}</span>
+                        </td>
+                        <td class="px-6 py-4 bg-white text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <form action="{% url 'aprobar_inversion' investment.id %}" method="POST" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 shadow-sm focus:outline-none transition-colors">
+                                        <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Aprobar
+                                    </button>
+                                </form>
+                                <form action="{% url 'rechazar_inversion' investment.id %}" method="POST"
+                                    class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none transition-colors">
+                                        <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                        Rechazar
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p class="text-gray-500 font-medium">Todo al día</p>
+                                <p class="text-sm mt-1 text-gray-400">No hay inversiones pendientes por revisar.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -16,6 +16,7 @@ from django.db.models.functions import TruncMonth
 from celery.result import AsyncResult, GroupResult
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .utils import parse_date_safely, generar_tabla_amortizacion
 from django.shortcuts import render, redirect, get_object_or_404
@@ -32,7 +33,7 @@ from .services import TransactionService, MercadoPagoService, StockPriceService,
 from .models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
     inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente, Factura
+    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory
 )
 from django.http import JsonResponse
 from .models import TiendaFacturacion # Asegúrate de tener los modelos importados
@@ -261,36 +262,58 @@ y ganancias mensuales, e inversiones.
 '''
 @login_required
 def vista_dashboard(request):
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    # --- LÓGICA PARA LA GRÁFICA DE LÍNEAS ---
-    # Obtenemos todas las compras de inversiones del usuario, ordenadas por fecha
-    compras = inversiones.objects.filter(propietario=request.user).order_by('fecha_compra')
-
-    chart_labels = []
-    chart_data = []
-    capital_acumulado = Decimal('0.0')
-
-    # Agrupamos las compras por día y calculamos el capital acumulado
-    compras_por_dia = {}
-    for compra in compras:
-        fecha_str = compra.fecha_compra.strftime('%Y-%m-%d')
-        if fecha_str not in compras_por_dia:
-            compras_por_dia[fecha_str] = Decimal('0.0')
-        compras_por_dia[fecha_str] += compra.costo_total_adquisicion
-
-    # Ordenamos las fechas y construimos los datos del gráfico
-    fechas_ordenadas = sorted(compras_por_dia.keys())
-    for fecha in fechas_ordenadas:
-        capital_acumulado += compras_por_dia[fecha]
-        chart_labels.append(fecha)
-        chart_data.append(str(capital_acumulado))
-    # ----------------------------------------------
-    # Verificamos si la suscripción está activa con nuestro método del modelo.
-    es_usuario_premium = suscripcion.is_active()
+    # Definimos fechas al inicio para usarlas en todo el dashboard
     current_year = datetime.now().year
     current_month = datetime.now().month
     year = int(request.GET.get('year', current_year))
     month = int(request.GET.get('month', current_month))
+
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    # --- LÓGICA PARA LA GRÁFICA DE AHORRO (SAVINGS GROWTH) ---
+    # Calculamos el ahorro acumulado mes a mes para el año seleccionado
+    # Usamos 'year' obtenido de los params GET (o año actual por defecto)
+    savings_qs = registro_transacciones.objects.filter(
+        propietario=request.user,
+        fecha__year=year
+    ).filter(
+        # 1. Todo lo que esté categorizado explícitamente como Ahorro (menos Gastos)
+        (Q(categoria__iexact='Ahorro') & ~Q(tipo__iexact='GASTO')) |
+        # 2. Transferencias directas a la Cuenta Ahorro
+        Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
+        # 3. Ingresos que entraron directo a Cuenta Ahorro (En Ingresos, 'cuenta_origen' suele ser destino/cuenta)
+        Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
+    ).annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+
+    savings_labels = []
+    savings_data = []
+    ahorro_acumulado = Decimal('0.0')
+    
+    # Mapa de ahorro por mes
+    ahorro_por_mes = {s['mes'].strftime('%Y-%m'): s['total'] for s in savings_qs}
+    
+    # Generamos los meses hasta el actual
+    current_date = datetime.now()
+    for m in range(1, 13):
+        # Si queremos proyectar todo el año o solo hasta hoy:
+        # Para "Growth Plan" se suele mostrar todo el año, pero solo tenemos datos hasta hoy.
+        # Mostremos hasta el mes actual para no tener una línea plana al final.
+        if m > current_date.month:
+            break
+            
+        mes_fecha = datetime(current_date.year, m, 1)
+        mes_key = mes_fecha.strftime('%Y-%m')
+        
+        monto_mes = ahorro_por_mes.get(mes_key, Decimal('0.0'))
+        ahorro_acumulado += monto_mes
+        
+        savings_labels.append(mes_fecha.strftime('%B')) # Nombre del mes
+        savings_data.append(str(ahorro_acumulado))
+        
+    chart_labels = savings_labels
+    chart_data = savings_data
+    # ----------------------------------------------
+    # Verificamos si la suscripción está activa con nuestro método del modelo.
+    es_usuario_premium = suscripcion.is_active()
     transacciones = registro_transacciones.objects.filter(
         propietario=request.user, 
         fecha__year=year, 
@@ -302,7 +325,7 @@ def vista_dashboard(request):
     agregados = transacciones.aggregate(
         ingresos_efectivo=Sum('monto', filter=Q(tipo='INGRESO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
         gastos_efectivo=Sum('monto', filter=Q(tipo='GASTO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-        ahorro_total=Sum('monto', filter=Q(tipo='TRANSFERENCIA', categoria='Ahorro', cuenta_origen='Efectivo Quincena', cuenta_destino='Cuenta Ahorro')),
+        ahorro_total=Sum('monto', filter=Q(tipo='Transferencia', categoria='Ahorro', cuenta_origen='Efectivo Quincena', cuenta_destino='Cuenta Ahorro')),
         transferencias_efectivo=Sum('monto', filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
         gastos_ahorro=Sum('monto', filter=Q(tipo='GASTO', cuenta_origen='Cuenta Ahorro')),
         ingresos_ahorro=Sum('monto', filter=Q(tipo='INGRESO', cuenta_origen='Cuenta Ahorro')),
@@ -328,7 +351,9 @@ def vista_dashboard(request):
 
     balance = ingresos - gastos - gastos_ahorro
     disponible_banco = ingresos - gastos - transferencias - ahorro_total
-    ahorro = ahorro_total - gastos_ahorro + ingresos_ahorro + transferencias
+    
+    # --- CORRECCIÓN: Usamos el acumulado del año (igual que la gráfica) ---
+    ahorro = ahorro_acumulado
 
     context = {
         'ingresos': ingresos,
@@ -342,12 +367,79 @@ def vista_dashboard(request):
         'years': range(current_year, current_year - 5, -1),
         'months': range(1, 13),
         'es_usuario_premium': es_usuario_premium,
-        'inversion_inicial': inversion_inicial_usd,
-        'inversion_actual': inversion_actual,
-        'investment_chart_labels': json.dumps(chart_labels),
-        'investment_chart_data': json.dumps(chart_data),
+        'investment_chart_labels': chart_labels,
+        'investment_chart_data': chart_data,
     }
     return render(request, 'dashboard.html', context)
+
+@login_required
+def vista_portafolio(request):
+    """
+    Vista dedicada para el Portafolio de Inversiones.
+    """
+    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    es_usuario_premium = suscripcion.is_active()
+
+    # --- LÓGICA DE ACTIVOS ---
+    mis_inversiones = inversiones.objects.filter(propietario=request.user).order_by('-valor_actual_mercado')
+    
+    # Totales Generales
+    agregados = mis_inversiones.aggregate(
+        total_invertido=Sum('costo_total_adquisicion'),
+        valor_actual=Sum('valor_actual_mercado')
+    )
+    
+    total_invertido = agregados['total_invertido'] or Decimal('0.00')
+    valor_total = agregados['valor_actual'] or Decimal('0.00')
+    ganancia_total = valor_total - total_invertido
+    
+    # Porcentaje de ganancia total
+    porcentaje_ganancia = 0
+    if total_invertido > 0:
+        porcentaje_ganancia = ((valor_total - total_invertido) / total_invertido) * 100
+
+    # --- DATOS PARA GRÁFICAS ---
+    # --- DATOS PARA GRÁFICAS ---
+    # 1. Historia del Portafolio (Line/Area Chart - Diario)
+    # Consultamos el historial diario ya calculado
+    historial_diario = PortfolioHistory.objects.filter(usuario=request.user).order_by('fecha')
+    
+    chart_labels = []
+    chart_data = []
+    
+    # Si no hay historial diario (primer uso), intentamos usar lo mensual como fallback temporal
+    # o simplemente mostramos vacío hasta que corran el comando.
+    if historial_diario.exists():
+        for dia in historial_diario:
+            chart_labels.append(dia.fecha.strftime('%Y-%m-%d'))
+            chart_data.append(str(dia.valor_total))
+    else:
+        # Fallback: Usamos la lógica mensual anterior si no han corrido el script aún
+        historial_ganancias = GananciaMensual.objects.filter(propietario=request.user).order_by('mes')
+        # ... (Lógica de fallback omitida para limpieza, asumimos que correrán el script)
+        pass
+
+    # 2. Distribución (Doughnut)
+    # Agrupar por tipo (Cripto vs Acciones) o por Activo
+    distribucion_labels = []
+    distribucion_data = []
+    for inv in mis_inversiones[:5]: # Top 5 activos
+        distribucion_labels.append(inv.nombre_activo)
+        distribucion_data.append(float(inv.valor_actual_mercado))
+
+    context = {
+        'inversiones': mis_inversiones,
+        'valor_total': valor_total,
+        'total_invertido': total_invertido,
+        'ganancia_total': ganancia_total,
+        'porcentaje_ganancia': porcentaje_ganancia,
+        'chart_labels': json.dumps(chart_labels),
+        'chart_data': json.dumps(chart_data),
+        'dist_labels': json.dumps(distribucion_labels),
+        'dist_data': json.dumps(distribucion_data),
+        'es_usuario_premium': es_usuario_premium,
+    }
+    return render(request, 'portafolio.html', context)
 
 @login_required
 def datos_gastos_categoria(request):
@@ -953,7 +1045,7 @@ def facturacion(request):
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     
     # Ahora consultamos el modelo Factura en lugar de registro_transacciones
-    facturas = Factura.objects.filter(propietario=request.user).order_by('-fecha_emision')
+    facturas = Factura.objects.filter(propietario=request.user, estado='facturado').order_by('-fecha_emision')
 
     context = {
         'facturas': facturas,
@@ -973,111 +1065,72 @@ def iniciar_procesamiento_facturacion(request):
 # --- VISTA 2: Listado de Pendientes (La redirección) ---
 def revisar_facturas_pendientes(request):
     """Lista los tickets pendientes para facturación."""
-    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    # Ahora consultamos directamente la tabla Factura con estado 'pendiente'
+    facturas_pendientes = Factura.objects.filter(propietario=request.user, estado='pendiente').order_by('-fecha_emision')
     
-    # Normalizamos los datos JSON en memoria para evitar errores en el template
-    # si faltan keys como 'fecha' o 'total'
-    for ticket in tickets_pendientes:
-        datos = ticket.datos_json
-        # Asegurar fecha
-        if 'fecha' not in datos and 'fecha_emision' in datos:
-            datos['fecha'] = datos['fecha_emision']
-        elif 'fecha_emision' not in datos and 'fecha' in datos:
-            datos['fecha_emision'] = datos['fecha']
-            
-        # Asegurar total
-        if 'total' not in datos and 'total_pagado' in datos:
-            datos['total'] = datos['total_pagado']
-        elif 'total_pagado' not in datos and 'total' in datos:
-             datos['total_pagado'] = datos['total']
-
-        # Asegurar establecimiento (facturas usan 'tienda')
-        if 'establecimiento' not in datos and 'tienda' in datos:
-            datos['establecimiento'] = datos['tienda']
-        elif 'tienda' not in datos and 'establecimiento' in datos:
-            datos['tienda'] = datos['establecimiento']
-
-    return render(request, 'revisar_factura.html', {'tickets': tickets_pendientes})
+    return render(request, 'revisar_factura.html', {'tickets': facturas_pendientes})
 
 @login_required
 def revisar_factura_detalle(request, ticket_id):
-    """Procesa y muestra los datos de facturación de un ticket concreto."""
-    tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+    """Procesa y muestra los datos de facturación de un ticket concreto (ahora objeto Factura)."""
     
-    # Normalizamos los datos JSON en memoria para evitar errores en el template
-    for ticket in tickets_pendientes:
-        datos = ticket.datos_json
-        # Asegurar fecha
-        if 'fecha' not in datos and 'fecha_emision' in datos:
-            datos['fecha'] = datos['fecha_emision']
-        elif 'fecha_emision' not in datos and 'fecha' in datos:
-            datos['fecha_emision'] = datos['fecha']
-        # Asegurar total
-        if 'total' not in datos and 'total_pagado' in datos:
-            datos['total'] = datos['total_pagado']
-        elif 'total_pagado' not in datos and 'total' in datos:
-            datos['total_pagado'] = datos['total']
-        # Asegurar establecimiento (facturas usan 'tienda')
-        if 'establecimiento' not in datos and 'tienda' in datos:
-            datos['establecimiento'] = datos['tienda']
-        elif 'tienda' not in datos and 'establecimiento' in datos:
-            datos['tienda'] = datos['establecimiento']
-
-    ticket = get_object_or_404(tickets_pendientes, id=ticket_id)
-    contexto_facturacion = BillingService.procesar_datos_facturacion(ticket.datos_json)
+    # Buscamos la Factura pendiente por ID
+    factura_obj = get_object_or_404(Factura, id=ticket_id, propietario=request.user)
     
+    # Usamos el servicio para procesar/refinar los datos que ya tenemos guardados
+    # Nota: BillingService espera un dict. Le pasamos 'datos_facturacion'
+    contexto_facturacion = BillingService.procesar_datos_facturacion(factura_obj.datos_facturacion)
+    
+    # Aseguramos que el contexto tenga los datos 'meta' del modelo si no vienen en el JSON
+    if not contexto_facturacion.get('tienda') or contexto_facturacion.get('tienda') == 'DESCONOCIDO':
+        contexto_facturacion['tienda'] = factura_obj.tienda
+        
+    contexto_facturacion['fecha_emision'] = factura_obj.fecha_emision
+    contexto_facturacion['total_pagado'] = factura_obj.total
+    contexto_facturacion['archivo_id'] = factura_obj.archivo_drive_id
 
     if request.method == 'POST':
         accion = request.POST.get('accion')
         
         # --- FLUJO DE APRENDIZAJE (Guardar Configuración) ---
-
         if accion == 'guardar_configuracion':
             nombre_tienda = request.POST.get('nombre_tienda')
-            # Obtenemos la lista de checkboxes que el usuario marcó
             campos_seleccionados = request.POST.getlist('campos_seleccionados')
             
-
             if campos_seleccionados:
                 BillingService.guardar_configuracion_tienda(nombre_tienda, campos_seleccionados)
                 messages.success(request, f"¡Entendido! Para {nombre_tienda} solo necesitamos: {', '.join(campos_seleccionados)}.")
             else:
                 messages.warning(request, "No seleccionaste ningún campo. La configuración no se guardó.")
             
-            # Recargamos la misma página. Ahora el servicio detectará que la tienda es 'conocida'
-
             return redirect('revisar_factura', ticket_id=ticket_id)
             
         # --- FLUJO DE CONFIRMACIÓN (Datos Correctos) ---
-
         elif accion == 'confirmar_datos':
-            # Creamos un registro de Factura independiente
-            from .models import Factura
-            from decimal import Decimal
+            # ACTUALIZAMOS el objeto Factura existente
+            # Y lo marcamos como 'listo_para_facturar' o 'facturado' (según tu flujo)
+            # Vamos a usar 'facturado' para que salga de pendientes y vaya al historial.
             
-            Factura.objects.create(
-                propietario=request.user,
-                tienda=contexto_facturacion.get('tienda', 'Desconocido'),
-                fecha_emision=parse_date_safely(contexto_facturacion.get('fecha_emision')),
-                total=Decimal(str(contexto_facturacion.get('total_pagado') or 0)),
-                datos_facturacion=contexto_facturacion.get('datos_para_cliente', {}),
-                estado='pendiente'
-            )
+            factura_obj.estado = 'facturado' # O el estado que signifique "Listo"
             
-            # Marcamos el ticket pendiente como procesado
-            ticket.estado = 'aprobada'
-            ticket.save()
+            # Opcional: Actualizar datos si cambiaron en el proceso (aunque aquí solo confirmamos)
+            # factura_obj.datos_facturacion = contexto_facturacion.get('datos_para_cliente', {})
             
-            messages.success(request, "Factura guardada correctamente.")
-            return redirect('facturacion')
+            factura_obj.save()
+            
+            messages.success(request, "Factura confirmada y guardada correctamente.")
+            return redirect('facturacion') # Redirige al historial de facturas
         
+    # Obtenemos la lista lateral de otros pendientes
+    otros_pendientes = Factura.objects.filter(propietario=request.user, estado='pendiente').exclude(id=ticket_id).order_by('-fecha_emision')
+
     return render(
         request,
         'revisar_factura.html',
         {
             'factura': contexto_facturacion,
-            'tickets': tickets_pendientes,
-            'ticket_seleccionado': ticket,
+            'tickets': [factura_obj] + list(otros_pendientes), # Hack para que la lista lateral funcione si el template itera 'tickets'
+            'ticket_seleccionado': factura_obj,
             'factura_json': json.dumps(contexto_facturacion.get('datos_para_cliente', {})),
         }
     )
@@ -1143,50 +1196,31 @@ def vista_procesamiento_facturacion(request):
 @login_required
 def eliminar_factura_pendiente(request, ticket_id):
     """
-    Elimina un ticket pendiente de facturación (TransaccionPendiente).
+    Elimina un ticket pendiente de facturación (ahora objeto Factura).
     """
-    ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
+    # Buscamos por ID y estado pendiente para seguridad
+    ticket = get_object_or_404(Factura, id=ticket_id, propietario=request.user, estado='pendiente')
     
     if request.method == 'POST':
         ticket.delete()
-        messages.success(request, "Ticket eliminado correctamente.")
+        messages.success(request, "Factura pendiente eliminada correctamente.")
         
     return redirect('revisar_facturas_pendientes')
 
 @login_required
 def marcar_ticket_facturado(request, ticket_id):
     """
-    Marca un ticket pendiente como 'aprobado' y crea la FACTURA en la tabla Factura.
+    Marca un ticket pendiente como 'facturado' (mueve de pendientes al historial).
     """
-    ticket = get_object_or_404(TransaccionPendiente, id=ticket_id, propietario=request.user)
+    # Ahora trabajamos directamente con el objeto Factura que ya existe
+    factura_obj = get_object_or_404(Factura, id=ticket_id, propietario=request.user)
     
     if request.method == 'POST':
-        # Extraer datos básicos del JSON para crear la Factura
-        datos = ticket.datos_json
-        tienda = datos.get('tienda') or datos.get('establecimiento') or 'Desconocido'
+        # Simplemente cambiamos el estado
+        factura_obj.estado = 'facturado'
+        factura_obj.save()
         
-        # Manejo seguro de fecha
-        fecha_str = datos.get('fecha_emision') or datos.get('fecha')
-        fecha_emision = parse_date_safely(fecha_str)
-        
-        # Manejo seguro de total
-        total_val = datos.get('total_pagado') or datos.get('total') or 0
-        
-        # Crear el objeto Factura
-        Factura.objects.create(
-            propietario=request.user,
-            tienda=tienda,
-            fecha_emision=fecha_emision,
-            total=Decimal(str(total_val)),
-            datos_facturacion=datos, # Guardamos todo el JSON original
-            estado='pendiente' # Se guarda como pendiente de facturar en el SAT/Portal
-        )
-        
-        # Marcar ticket como aprobado/procesado para que salga de la lista de pendientes
-        ticket.estado = 'aprobada'
-        ticket.save()
-        
-        messages.success(request, "Ticket enviado a la lista de facturación.")
+        messages.success(request, "Factura archivada en el historial.")
         
     return redirect('revisar_facturas_pendientes')
 
@@ -1246,7 +1280,8 @@ def guardar_configuracion_tienda(request):
             tienda=nombre_tienda,
             defaults={
                 'campos_requeridos': campos_seleccionados,
-                'url_portal': url_portal
+                'url_portal': url_portal,
+                'configuracion_finalizada': True # ¡CAMBIO CLAVE! El usuario confirmó, así que "cerramos" la config.
             }
         )
 
@@ -1255,6 +1290,65 @@ def guardar_configuracion_tienda(request):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+@login_required
+def agregar_campo_tienda(request):
+    try:
+        from .models import TiendaFacturacion
+        data = json.loads(request.body)
+        nombre_tienda = data.get('tienda')
+        nuevo_campo = data.get('campo')
+
+        if not nombre_tienda or not nuevo_campo:
+            return JsonResponse({'success': False, 'error': 'Faltan datos'}, status=400)
+
+        # Buscar la configuración de la tienda
+        config, created = TiendaFacturacion.objects.get_or_create(tienda=nombre_tienda)
+        
+        # Asegurarse de que campos_requeridos sea una lista
+        if not isinstance(config.campos_requeridos, list):
+            config.campos_requeridos = []
+
+        # Agregar el campo si no existe
+        if nuevo_campo not in config.campos_requeridos:
+            config.campos_requeridos.append(nuevo_campo)
+            config.save()
+            return JsonResponse({'success': True, 'mensaje': f'Campo "{nuevo_campo}" agregado correctamente'})
+        else:
+            return JsonResponse({'success': True, 'mensaje': 'El campo ya existía'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+def eliminar_campo_tienda(request):
+    try:
+        from .models import TiendaFacturacion
+        data = json.loads(request.body)
+        nombre_tienda = data.get('tienda')
+        campo_a_eliminar = data.get('campo')
+
+        if not nombre_tienda or not campo_a_eliminar:
+            return JsonResponse({'success': False, 'error': 'Faltan datos'}, status=400)
+
+        # Buscar la configuración
+        try:
+            config = TiendaFacturacion.objects.get(tienda=nombre_tienda)
+        except TiendaFacturacion.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Tienda no encontrada'}, status=404)
+        
+        if config.campos_requeridos and campo_a_eliminar in config.campos_requeridos:
+            config.campos_requeridos.remove(campo_a_eliminar)
+            config.save()
+            return JsonResponse({'success': True, 'mensaje': f'Campo "{campo_a_eliminar}" eliminado correctamente'})
+        else:
+            return JsonResponse({'success': True, 'mensaje': 'El campo no estaba en la configuración'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
 def confirmar_datos_factura(request):
@@ -1282,7 +1376,7 @@ def confirmar_datos_factura(request):
             'total': Decimal(str(total)),
             'fecha_emision': parse_date_safely(fecha),
             'datos_facturacion': datos_json,
-            'estado': 'pendiente'
+            'estado': 'facturado' # ¡CAMBIO CLAVE! Al confirmar, ya lo damos por bueno.
         }
 
         if archivo_id:

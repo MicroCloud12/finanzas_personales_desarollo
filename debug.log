@@ -537,3 +537,576 @@ ERROR 2025-12-12 19:49:00,267 services Error: La respuesta de Gemini no es un JS
     "Caja": "6"
   }
 }
+ERROR 2025-12-17 07:41:52,960 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:04,622 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:04,836 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:05,099 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:05,957 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:12,871 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:16,213 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:21,122 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:26,946 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:34,331 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:34,870 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:35,100 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:46,814 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:50,313 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:42:57,299 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:02,584 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:04,968 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:08,316 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:10,797 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 07:43:18,968 services Error Mistral API: name 're' is not defined
+ERROR 2025-12-17 22:03:13,873 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos del ticket en formato JSON.
+
+```json
+{
+    "tienda": "Cinemex",
+    "fecha": "2025-12-06",
+    "total": 430.00
+}
+ERROR 2025-12-17 22:03:18,794 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis del texto del ticket y la extracción de datos en formato JSON.
+
+```json
+{
+    "tienda": "Walmart",
+    "fecha": "2025-12-06",
+    "total": 129.00
+}
+ERROR 2025-12-17 22:12:44,944 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos en formato JSON.
+
+```json
+{
+    "tienda": "OXXO",
+    "fecha": "2025-12-07",
+    "total": 48.00
+}
+ERROR 2025-12-17 22:12:45,479 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos en formato JSON.
+
+```json
+{
+    "tienda": "Walmart",
+    "fecha": "2025-12-06",
+    "total": 129.00
+}
+ERROR 2025-12-20 16:59:36,914 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos del texto proporcionado.
+
+```json
+{
+    "tienda": "NU MEXICO",
+    "fecha": "2025-12-18",
+    "total": 10000.00,
+    "campos_adicionales": {
+        "tipo_documento": "Comprobante de Transferencia SPEI",
+        "concepto": "Ahorros",
+        "referencia_supermovil": "388701",
+        "estatus_operacion": "Exitosa",
+        "rfc_cliente": "AELM9508074V1"
+    }
+}
+ERROR 2025-12-20 17:00:55,808 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos del ticket en el formato JSON solicitado.
+
+```json
+{
+    "tienda": "FARMACIAS GUADALAJARA",
+    "fecha": "2025-12-07",
+    "total": 65.49,
+    "campos_adicionales": {
+        "rfc": "FGU030930P93",
+        "folio_factura": "567127-570934-811313",
+        "no_ticket": "142613",
+        "sucursal": "AV HOMERO CDMX MEXICO",
+        "caja": "6"
+    }
+}
+ERROR 2025-12-20 17:12:20,090 services Error Mistral API: [WinError 10053] Se ha anulado una conexión establecida por el software en su equipo host
+ERROR 2025-12-20 21:35:29,378 tasks Error fatal procesando 20251214_121108.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:34,810 tasks Error fatal procesando 20251214_121257.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:34,819 tasks Error fatal procesando 20251214_121236.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:35,265 tasks Error fatal procesando 20251214_121200.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:37,125 tasks Error fatal procesando 20251214_121308.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:43,491 tasks Error fatal procesando 20251214_121318.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:43,607 tasks Error fatal procesando 20251214_121331.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:43,800 tasks Error fatal procesando 20251214_121341.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:45,670 tasks Error fatal procesando 20251214_121454.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:51,852 tasks Error fatal procesando 20251214_121556.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:52,317 tasks Error fatal procesando 20251214_121529.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:53,622 tasks Error fatal procesando 20251214_121542.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:35:54,262 tasks Error fatal procesando 20251214_121513.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:36:01,022 tasks Error fatal procesando 20251214_121751.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:36:01,739 tasks Error fatal procesando 20251215_204236.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:36:01,744 tasks Error fatal procesando 20251214_121852.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:36:02,561 tasks Error fatal procesando 20251215_105114.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:36:10,754 tasks Error fatal procesando 20251215_105200.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:36:11,363 tasks Error fatal procesando 20251215_105059.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:29,091 tasks Error fatal procesando 20251214_121108.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:34,875 tasks Error fatal procesando 20251214_121236.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:35,635 tasks Error fatal procesando 20251214_121257.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:36,024 tasks Error fatal procesando 20251214_121200.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:36,411 tasks Error fatal procesando 20251214_121308.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:42,742 tasks Error fatal procesando 20251214_121318.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:44,322 tasks Error fatal procesando 20251214_121341.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:44,409 tasks Error fatal procesando 20251214_121331.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:45,657 tasks Error fatal procesando 20251214_121454.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:50,244 tasks Error fatal procesando 20251214_121529.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:52,927 tasks Error fatal procesando 20251214_121556.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:54,057 tasks Error fatal procesando 20251214_121542.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:55,080 tasks Error fatal procesando 20251214_121513.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:49:59,685 tasks Error fatal procesando 20251214_121751.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:50:01,431 tasks Error fatal procesando 20251214_121852.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:50:02,538 tasks Error fatal procesando 20251215_204236.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:50:03,577 tasks Error fatal procesando 20251215_105114.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:50:09,723 tasks Error fatal procesando 20251215_105200.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:50:10,644 tasks Error fatal procesando 20251215_105059.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:51:50,823 tasks Error fatal procesando 20251214_121108.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:51:55,910 tasks Error fatal procesando 20251214_121236.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:51:56,351 tasks Error fatal procesando 20251214_121257.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:51:57,462 tasks Error fatal procesando 20251214_121200.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:51:58,659 tasks Error fatal procesando 20251214_121308.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:04,167 tasks Error fatal procesando 20251214_121318.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:05,716 tasks Error fatal procesando 20251214_121331.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:06,153 tasks Error fatal procesando 20251214_121341.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:07,306 tasks Error fatal procesando 20251214_121454.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:12,474 tasks Error fatal procesando 20251214_121529.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:14,688 tasks Error fatal procesando 20251214_121556.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:16,078 tasks Error fatal procesando 20251214_121542.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:17,446 tasks Error fatal procesando 20251214_121513.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:24,788 tasks Error fatal procesando 20251214_121852.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:24,791 tasks Error fatal procesando 20251214_121751.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:25,064 tasks Error fatal procesando 20251215_204236.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:25,607 tasks Error fatal procesando 20251215_105114.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:34,320 tasks Error fatal procesando 20251215_105059.jpg: name 'BillingService' is not defined
+ERROR 2025-12-20 21:52:34,849 tasks Error fatal procesando 20251215_105200.jpg: name 'BillingService' is not defined
+INFO 2025-12-20 22:25:45,603 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:25:54,007 tasks Tienda normalizada: WALMART -> WALMART
+INFO 2025-12-20 22:25:54,615 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-20 22:26:00,994 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:26:09,027 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-20 22:26:17,841 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-20 22:26:19,906 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:26:25,846 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:26:33,427 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:26:36,395 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:26:38,134 tasks Tienda normalizada: FARMACIA GUADALAJARA -> FARMACIA GUADALAJARA
+INFO 2025-12-20 22:26:58,615 tasks Tienda normalizada: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-20 22:27:08,650 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:27:23,600 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:29:46,159 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:29:50,861 tasks Tienda normalizada: WALMART -> WALMART
+INFO 2025-12-20 22:29:54,284 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-20 22:29:59,358 tasks Tienda normalizada: EL PALACIO DE HIERRO -> FARMACIAS DEL AHORRO
+INFO 2025-12-20 22:30:00,582 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:30:13,884 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-20 22:30:17,721 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-20 22:30:28,743 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:30:35,398 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:30:38,983 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:30:45,331 tasks Tienda normalizada: FARMACIA GUADALAJARA -> FARMACIA GUADALAJARA
+INFO 2025-12-20 22:30:45,535 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:31:05,000 tasks Tienda normalizada: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-20 22:31:17,998 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:31:24,149 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:44:46,558 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:44:50,891 tasks Tienda normalizada: WALMART -> WALMART
+ERROR 2025-12-20 22:44:59,560 services Error: La respuesta de Gemini no es un JSON válido: Claro, aquí está el análisis y la extracción de datos del texto OCR en el formato JSON solicitado.
+
+```json
+{
+    "tienda": "PROMOCIONES INMOBILIARIAS NATURISTAS SA DE",
+    "fecha": "2015-11-29",
+    "total": 8140.01,
+    "campos_adicionales": {
+        "Sucursal": "120",
+        "Folio": "041852025112000004723",
+        "Folio SAT": "00004723",
+        "RFC": "PIN030011441",
+        "Código de Acceso Encuesta": "256472523111829250"
+    }
+}
+INFO 2025-12-20 22:45:01,908 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-20 22:45:04,582 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:45:12,156 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-20 22:45:21,595 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-20 22:45:21,949 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:45:25,217 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:45:39,192 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-20 22:45:46,872 tasks Tienda normalizada: FARMACIA GUADALAJARA -> FARMACIA GUADALAJARA
+INFO 2025-12-20 22:45:53,278 tasks Tienda normalizada: OXXO -> OXXO
+ERROR 2025-12-20 22:45:55,457 tasks Error fatal procesando 20251214_121751.jpg: [<class 'decimal.ConversionSyntax'>]
+INFO 2025-12-20 22:46:01,803 tasks Tienda normalizada: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-20 22:46:20,254 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-20 22:46:32,439 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 12:14:00,964 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 12:14:02,285 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 12:14:06,139 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-21 12:14:17,604 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 12:14:21,199 tasks Tienda normalizada: FARMACIA GUADALAJARA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 12:14:23,954 tasks Tienda normalizada: OXXO -> OXXO
+ERROR 2025-12-21 12:14:23,966 tasks Error fatal procesando 20251214_121751.jpg: [<class 'decimal.ConversionSyntax'>]
+INFO 2025-12-21 12:14:44,077 tasks Tienda normalizada: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-21 12:14:47,202 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 12:15:10,846 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:18:49,646 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-21 14:18:51,370 tasks Tienda normalizada: WALMART -> WALMART
+INFO 2025-12-21 14:18:51,705 tasks Tienda normalizada: EL PALACIO DE HIERRO -> FARMACIAS DEL AHORRO
+INFO 2025-12-21 14:18:53,349 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:19:03,863 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 14:19:12,262 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-21 14:19:14,248 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-21 14:19:19,325 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:19:25,169 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 14:19:31,642 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 14:19:35,403 tasks Tienda normalizada: FARMACIA GUADALAJARA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 14:19:35,505 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:19:59,474 tasks Tienda normalizada: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-21 14:20:05,612 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:20:14,008 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:28:12,650 tasks Tienda normalizada: WALMART -> WALMART
+INFO 2025-12-21 14:28:14,679 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:28:17,637 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-21 14:28:32,913 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 14:28:34,753 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-21 14:28:39,632 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-21 14:28:48,167 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 14:28:53,136 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:28:56,151 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 14:29:01,272 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:29:01,787 tasks Tienda normalizada: FARMACIAS GUADALAJARA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 14:29:26,414 tasks Tienda normalizada: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-21 14:29:35,954 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 14:29:40,934 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 17:13:35,738 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-21 17:13:36,350 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 17:13:40,145 tasks Tienda normalizada: WALMART -> WALMART
+INFO 2025-12-21 17:13:52,836 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 17:13:55,090 tasks Tienda normalizada: MCDONALD'S -> MCDONALD'S
+INFO 2025-12-21 17:14:03,749 tasks Tienda normalizada: MCDONALDS -> MCDONALD'S
+INFO 2025-12-21 17:14:08,647 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 17:14:10,571 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 17:14:19,153 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 17:14:21,925 tasks Tienda normalizada: CINEMEX -> CINEMEX
+INFO 2025-12-21 17:14:23,216 tasks Tienda normalizada: FARMACIA GUADALAJARA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 17:14:38,614 tasks Tienda normalizada: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-21 17:14:54,810 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 17:14:55,935 tasks Tienda normalizada: OXXO -> OXXO
+INFO 2025-12-21 18:27:15,500 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 18:27:22,338 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 18:27:23,161 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-21 18:27:28,942 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 18:27:34,377 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 18:27:51,726 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 18:27:53,676 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 18:27:56,642 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 18:28:03,201 tasks Tienda nueva detectada: FARMATODO
+INFO 2025-12-21 18:28:06,777 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 18:28:11,076 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 18:28:14,856 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 18:28:21,217 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 18:28:26,459 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 18:28:26,853 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 18:28:31,359 tasks Tienda nueva detectada: FARMACIAS SIMITLA, S.A. DE C.V.
+INFO 2025-12-21 18:28:37,298 tasks Tienda nueva detectada: TOM PEREIRO TACOS DE LA SANTA FE
+INFO 2025-12-21 18:28:46,306 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 18:28:47,126 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:34:49,602 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:34:56,837 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 20:35:02,162 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 20:35:02,311 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-21 20:35:08,817 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 20:35:20,081 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 20:35:26,025 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 20:35:26,224 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 20:35:26,639 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:35:35,545 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 20:35:44,658 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 20:35:46,910 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:35:47,045 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 20:35:54,186 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 20:36:02,787 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 20:36:05,755 tasks Tienda nueva detectada: TOM PEREIRO TACOS DE LA SANTA FE
+INFO 2025-12-21 20:36:07,294 tasks Tienda nueva detectada: FARMACIAS SIMITLA, S.A. DE C.V.
+INFO 2025-12-21 20:36:14,686 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:36:22,648 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:47:46,997 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:47:53,881 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 20:47:55,290 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 20:48:01,690 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-21 20:48:04,404 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 20:48:15,258 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 20:48:19,560 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:48:21,096 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 20:48:33,589 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 20:48:39,020 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 20:48:40,040 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:48:43,412 tasks Tienda nueva detectada: FARMATODO
+INFO 2025-12-21 20:48:52,327 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 20:48:53,706 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 20:49:01,220 tasks Tienda nueva detectada: FARMACIAS SIMITLA, S.A. DE C.V.
+INFO 2025-12-21 20:49:06,148 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 20:49:06,566 tasks Tienda nueva detectada: TOM PEREIRO TACOS DE LA SANTA FE
+INFO 2025-12-21 20:49:10,257 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 20:49:19,566 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:02:05,168 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:02:14,132 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-21 21:02:16,935 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:02:17,067 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 21:02:18,290 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:02:33,484 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:02:33,791 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:02:39,390 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:02:41,476 tasks Tienda nueva detectada: COMERCIALIZADORA FARMACÉUTICA DEL SURESTE, S.A. DE C.V.
+INFO 2025-12-21 21:02:52,446 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:02:54,987 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:02:59,400 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:03:01,659 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 21:03:11,033 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 21:03:11,581 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 21:03:19,716 tasks Tienda nueva detectada: FARMACIAS SIMITLA, S.A. DE C.V.
+INFO 2025-12-21 21:03:21,194 tasks Tienda nueva detectada: TACOS DE LA SANTA FE
+INFO 2025-12-21 21:03:28,784 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:03:31,275 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:09:29,571 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:09:37,721 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:09:39,596 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 21:09:43,773 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 21:09:44,593 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:09:55,754 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:10:03,946 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:10:10,914 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:10:11,603 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:10:20,228 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-21 21:10:23,813 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:10:29,138 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 21:10:29,595 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:10:39,693 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 21:10:40,201 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 21:10:46,423 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMITLA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 21:10:48,190 tasks Tienda nueva detectada: TACOS DE LA SANTA FE
+INFO 2025-12-21 21:11:01,118 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:11:03,025 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:06,337 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:09,320 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:15:13,306 tasks Tienda nueva detectada: BELON
+INFO 2025-12-21 21:15:16,475 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 21:15:23,453 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:15:29,890 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:15:36,442 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:15:42,484 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:44,143 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:15:44,672 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 21:15:53,875 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:15:59,238 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:15:59,519 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 21:16:08,335 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 21:16:09,215 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 21:16:16,889 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMITLA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 21:16:24,144 tasks Tienda nueva detectada: TACOS DE LA SANTA FE
+INFO 2025-12-21 21:16:25,870 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:16:33,470 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:26:40,106 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:26:52,191 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:26:52,803 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-21 21:26:55,294 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 21:26:59,089 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:27:15,946 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:27:17,686 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:27:18,402 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2025-12-21 21:27:21,968 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-21 21:27:34,379 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:27:36,384 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:27:37,552 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-21 21:27:38,373 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-21 21:27:56,089 tasks Tienda nueva detectada: TACOS DE LA SANTA FE
+INFO 2025-12-21 21:27:56,909 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-21 21:27:58,545 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-21 21:28:00,189 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMITLA -> FARMACIA GUADALAJARA
+INFO 2025-12-21 21:28:13,495 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-21 21:28:18,205 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:32:15,280 tasks Tienda nueva detectada: DESCONOCIDO
+ERROR 2025-12-22 10:32:15,281 tasks Error fatal procesando Screenshot_20251218_122342_Nubank.jpg: [<class 'decimal.ConversionSyntax'>]
+INFO 2025-12-22 10:32:22,980 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 10:32:26,776 tasks Tienda nueva detectada: PARQUIMETRO
+INFO 2025-12-22 10:32:30,661 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:32:41,056 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:33:04,155 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:33:05,474 tasks Tienda nueva detectada: NUTRISA
+INFO 2025-12-22 10:33:08,556 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:33:12,542 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 10:33:38,150 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:33:39,562 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:33:41,221 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:34:03,234 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:34:09,279 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:34:11,927 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 10:34:26,784 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 10:34:44,500 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 10:34:56,885 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:35:00,460 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 10:35:08,564 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:35:25,185 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:35:28,322 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 10:35:35,899 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 10:35:36,836 tasks Tienda nueva detectada: TIENDA DESCONOCIDA
+INFO 2025-12-22 10:35:48,190 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:35:50,130 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 10:36:00,873 tasks Tienda nueva detectada: COMPROBANTE SPEI
+INFO 2025-12-22 10:36:00,961 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:36:18,487 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:36:23,296 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:36:44,288 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:36:49,820 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS
+INFO 2025-12-22 10:36:51,454 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 10:36:57,295 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 10:37:09,579 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:37:11,603 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:37:12,355 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 10:37:21,250 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:37:27,087 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 10:37:32,639 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 10:37:48,998 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 10:37:53,757 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 10:38:02,002 tasks Tienda nueva detectada: TGM TACOS
+INFO 2025-12-22 10:38:06,302 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 10:38:13,159 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 10:38:16,845 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:09:06,102 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:13,267 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:13,600 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:13,731 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 11:09:21,049 tasks Tienda nueva detectada: DESCONOCIDO
+INFO 2025-12-22 11:09:34,712 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:35,508 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:09:42,863 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:09:45,160 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:10:01,702 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-22 11:10:05,187 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:10:06,428 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:10:07,483 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 11:10:28,217 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:10:32,112 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:10:33,413 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 11:10:34,877 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:10:51,460 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:10:52,999 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:10:55,256 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 11:11:16,959 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 11:11:22,069 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 11:11:26,383 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 11:11:27,813 tasks Tienda nueva detectada: TGM PEDREGAL 26 TACOS
+INFO 2025-12-22 11:11:36,825 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:11:47,471 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:22:17,677 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:29,208 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 11:22:31,436 tasks Tienda nueva detectada: DESCONOCIDO
+ERROR 2025-12-22 11:22:31,436 tasks Error fatal procesando Screenshot_20251218_122342_Nubank.jpg: [<class 'decimal.ConversionSyntax'>]
+INFO 2025-12-22 11:22:31,582 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:38,803 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:52,256 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:22:56,621 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 11:23:08,398 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:23:18,832 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:23:20,716 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-22 11:23:25,182 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 11:23:31,836 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:23:55,079 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:23:55,284 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:23:58,561 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 11:24:22,214 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:24:22,418 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 11:24:27,645 tasks Tienda nueva detectada: FARMATADO
+INFO 2025-12-22 11:24:53,035 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 11:25:10,026 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:25:13,016 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 11:25:25,515 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 11:25:38,190 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:25:38,196 tasks Tienda nueva detectada: TGM PEDREGAL
+INFO 2025-12-22 11:25:50,895 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 11:25:53,144 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 12:31:54,516 tasks Tienda nueva detectada: PARQUIMETRO
+INFO 2025-12-22 12:31:58,904 tasks Tienda nueva detectada: GBM
+INFO 2025-12-22 12:32:01,171 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 12:32:03,527 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 12:32:09,844 tasks Tienda nueva detectada: DESCONOCIDO
+INFO 2025-12-22 12:32:18,481 tasks Tienda nueva detectada: NU MEXICO
+INFO 2025-12-22 12:32:28,719 tasks Tienda nueva detectada: DESCONOCIDA
+INFO 2025-12-22 12:32:29,229 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:32:45,813 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 12:32:49,816 tasks Tienda nueva detectada: MOYO
+INFO 2025-12-22 12:33:01,396 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 12:33:06,703 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 12:33:21,961 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 12:33:22,630 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 12:33:25,405 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:33:26,365 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 12:33:39,992 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 12:33:44,927 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 12:34:05,071 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 12:34:07,737 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 12:34:15,319 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 12:34:20,022 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:34:27,134 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 12:34:35,484 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:34:35,489 tasks Tienda nueva detectada: TGM PEDREGAL 26 TACOS
+INFO 2025-12-22 12:34:42,754 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:52:00,552 tasks Tienda nueva detectada: DESCONOCIDO
+INFO 2025-12-22 12:52:16,775 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:52:30,480 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 12:52:36,339 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 12:52:36,765 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 12:52:42,922 tasks Tienda nueva detectada: PROMOCIONES INMOBILIARIAS NATURISTAS SA DE
+INFO 2025-12-22 12:52:53,506 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 12:53:02,596 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:53:09,350 tasks Tienda nueva detectada: FARMATADO
+INFO 2025-12-22 12:53:11,534 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 12:53:18,991 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 12:53:25,081 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:53:29,065 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 12:53:31,773 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 12:53:51,287 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 12:53:53,283 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 12:54:03,521 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMILARES -> FARMACIA GUADALAJARA
+INFO 2025-12-22 12:54:03,564 tasks Tienda nueva detectada: TGM PEDREGAL
+INFO 2025-12-22 12:54:13,512 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 12:54:14,871 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 13:26:28,739 tasks Tienda nueva detectada: DESCONOCIDO
+INFO 2025-12-22 13:26:41,401 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 13:26:54,080 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 13:27:00,566 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 13:27:09,647 tasks Tienda nueva detectada: MOYO
+INFO 2025-12-22 13:27:13,819 tasks Tienda reconocida por IA: WALMART
+INFO 2025-12-22 13:27:19,924 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 13:27:26,418 tasks Tienda reconocida por IA: FARMACIAS DEL AHORRO
+INFO 2025-12-22 13:27:35,259 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 13:27:38,993 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 13:27:40,849 tasks Tienda reconocida por IA: MCDONALD'S
+INFO 2025-12-22 13:27:51,310 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 13:27:54,851 tasks Tienda reconocida por IA: CINEMEX
+INFO 2025-12-22 13:27:59,853 tasks Tienda reconocida por IA: FARMACIA GUADALAJARA
+INFO 2025-12-22 13:28:16,103 tasks Tienda nueva detectada: TAQUEARTE
+INFO 2025-12-22 13:28:17,799 tasks Tienda nueva detectada: CIELITO QUERIDO CAFÉ
+INFO 2025-12-22 13:28:20,434 tasks Tienda normalizada por Fuzzy: FARMACIAS SIMITLA -> FARMACIA GUADALAJARA
+INFO 2025-12-22 13:28:32,353 tasks Tienda nueva detectada: TGM PEDREGAL
+INFO 2025-12-22 13:28:38,789 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-22 13:28:40,177 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-26 19:08:07,821 tasks Tienda nueva detectada: MERCADO PAGO
+INFO 2025-12-26 19:08:19,550 tasks Tienda nueva detectada: G500
+ERROR 2025-12-30 22:08:40,945 views Error de validación en TransaccionesForm: {"cuenta_origen": [{"message": "This field is required.", "code": "required"}], "tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-30 22:08:43,827 views Error de validación en TransaccionesForm: {"categoria": [{"message": "This field is required.", "code": "required"}], "cuenta_origen": [{"message": "This field is required.", "code": "required"}], "tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-30 22:09:17,515 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-30 22:09:54,758 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-31 15:47:31,285 views Error en get_initial_task_result: Error 10061 connecting to localhost:6379. No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión.
+INFO 2025-12-31 15:49:35,915 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO
+INFO 2025-12-31 15:49:38,493 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 15:49:50,541 tasks Tienda nueva detectada: FARMACIAS SIMITLA
+INFO 2025-12-31 16:16:29,683 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 16:16:30,030 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2025-12-31 16:16:38,974 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO
+INFO 2025-12-31 16:19:03,652 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2025-12-31 16:19:08,161 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 16:19:27,947 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO
+INFO 2025-12-31 16:25:39,332 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 16:25:43,739 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2025-12-31 16:25:51,045 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO
+INFO 2025-12-31 21:13:47,961 tasks Tienda nueva detectada: FARMACIAS SIMITLA
+INFO 2025-12-31 21:13:54,266 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 21:14:41,982 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO

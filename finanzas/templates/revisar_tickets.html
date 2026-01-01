@@ -1,93 +1,156 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block content %}
-<div class="container mx-auto mt-10 p-5">
+<div class="max-w-7xl mx-auto">
 
-    <div class="md:flex md:items-center md:justify-between mb-6">
-        <div class="min-w-0 flex-1">
-            <h1 class="text-3xl font-bold leading-7 text-gray-900 sm:truncate sm:tracking-tight">
-                Revisar Tickets Pendientes
-            </h1>
-            <p class="mt-2 text-sm text-gray-600">
-                Ajusta cada ticket y luego aprueba individualmente o todos juntos.
-            </p>
-        </div>
+    <div class="mb-6 flex justify-end">
+        <a href="{% url 'lista_transacciones' %}"
+            class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
+            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12">
+                </path>
+            </svg>
+            Volver a Transacciones
+        </a>
     </div>
 
     <form method="POST">
         {% csrf_token %}
 
-        <div class="bg-white shadow-lg rounded-lg p-4 mb-6 flex justify-end space-x-4">
-            <button type="submit" formaction="{% url 'aprobar_todos_tickets' %}" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg">
-                Aprobar Tickets Preparados
-            </button>
-            <button type="submit" formaction="{% url 'rechazar_todos_tickets' %}" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg">
-                Rechazar Todos
-            </button>
+        {# --- Header Section --- #}
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 font-display">Revisar Tickets Pendientes</h1>
+                <p class="mt-1 text-sm text-gray-500">
+                    Clasifica y confirma tus gastos recientes.
+                </p>
+            </div>
+
+            {# --- Actions Toolbar --- #}
+            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-0">
+                <button type="submit" formaction="{% url 'aprobar_todos_tickets' %}"
+                    class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Aprobar Tickets Preparados
+                </button>
+                <button type="submit" formaction="{% url 'rechazar_todos_tickets' %}"
+                    class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                        </path>
+                    </svg>
+                    Rechazar Todos
+                </button>
+            </div>
         </div>
-        {% include 'partials/_error_message.html'%}
-        <div class="bg-white shadow-lg rounded-lg overflow-x-auto">
-            <table class="min-w-full leading-normal">
-                <thead>
-                    <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        <th class="px-6 py-3">Fecha</th>
-                        <th class="px-6 py-3">Descripción</th>
-                        <th class="px-6 py-3">Total</th>
-                        <th class="px-6 py-3">Cuenta Origen</th>
-                        <th class="px-6 py-3">Categoría</th>
-                        <th class="px-6 py-3">Tipo</th>
-                        <th class="px-6 py-3">Cuenta Destino</th>
-                        <th class="px-6 py-3">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                {% for ticket in tickets %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">{{ ticket.datos_json.fecha }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">
-                        {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
-                            {{ ticket.datos_json.establecimiento }}
-                        {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
-                            {{ ticket.datos_json.descripcion_corta }}
-                        {% else %}
-                            {# Opcional: Muestra algo si no es ninguna de las dos #}
-                            {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta }}
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 align-middle">${{ ticket.datos_json.total }}</td>
-                        
-                        <td class="px-6 py-4 align-middle">
-                            <select name="cuenta_origen_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
-                                {% include 'partials/_ticket_select_options.html' %}
-                            </select>
-                        </td>
-                        <td class="px-6 py-4 align-middle">
-                            <select name="categoria_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
-                                {% include 'partials/_ticket_category_options.html' %}
-                            </select>
-                        </td>
-                        <td class="px-6 py-4 align-middle">
-                            <select name="tipo_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
-                                {% include 'partials/_ticket_tipo_options.html' %}
-                            </select>
-                        </td>
-                        <td class="px-6 py-4 align-middle">
-                            <select name="cuenta_destino_{{ ticket.id }}" class="block w-full border-gray-300 rounded-md shadow-sm">
-                                {% include 'partials/_ticket_cuentadestino_options.html' %}
-                            </select>
-                        </td>
-                        <td class="px-6 py-4 align-middle flex items-center space-x-2">
-                            <button type="submit" formaction="{% url 'aprobar_ticket' ticket.id %}" class="text-green-600 hover:text-green-900 font-semibold">Aprobar</button>
-                            <a href="{% url 'rechazar_ticket' ticket.id %}" class="text-red-600 hover:text-red-900 font-semibold">Rechazar</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">No hay tickets pendientes por revisar.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+        {# --- Tickets Table Card --- #}
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+            <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+                <h3 class="font-bold text-lg text-gray-800">Detalle de Movimientos</h3>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr
+                            class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <th class="px-6 py-4">Fecha</th>
+                            <th class="px-6 py-4">Descripción</th>
+                            <th class="px-6 py-4">Total</th>
+                            <th class="px-6 py-4">Cuenta Origen</th>
+                            <th class="px-6 py-4">Categoría</th>
+                            <th class="px-6 py-4">Tipo</th>
+                            <th class="px-6 py-4">Cuenta Destino</th>
+                            <th class="px-6 py-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for ticket in tickets %}
+                        <tr class="hover:bg-gray-50/80 transition-colors">
+                            <td class="px-6 py-4 bg-white text-sm text-gray-700 font-medium">
+                                {{ ticket.datos_json.fecha }}
+                            </td>
+                            <td class="px-6 py-4 bg-white text-sm text-gray-900">
+                                {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
+                                <span class="font-semibold">{{ ticket.datos_json.establecimiento }}</span>
+                                {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
+                                <span class="italic text-gray-600">{{ ticket.datos_json.descripcion_corta }}</span>
+                                {% else %}
+                                {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta }}
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 bg-white text-sm font-bold text-gray-900">
+                                ${{ ticket.datos_json.total }}
+                            </td>
+
+                            <td class="px-6 py-4 bg-white">
+                                <select name="cuenta_origen_{{ ticket.id }}"
+                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    {% include 'partials/_ticket_select_options.html' %}
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 bg-white">
+                                <select name="categoria_{{ ticket.id }}"
+                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    {% include 'partials/_ticket_category_options.html' %}
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 bg-white">
+                                <select name="tipo_{{ ticket.id }}"
+                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    {% include 'partials/_ticket_tipo_options.html' %}
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 bg-white">
+                                <select name="cuenta_destino_{{ ticket.id }}"
+                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    {% include 'partials/_ticket_cuentadestino_options.html' %}
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 bg-white text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button type="submit" formaction="{% url 'aprobar_ticket' ticket.id %}"
+                                        class="p-1.5 rounded-lg text-green-600 hover:bg-green-100 focus:outline-none transition-colors"
+                                        title="Aprobar individualmente">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </button>
+                                    <a href="{% url 'rechazar_ticket' ticket.id %}"
+                                        class="p-1.5 rounded-lg text-red-600 hover:bg-red-100 focus:outline-none transition-colors"
+                                        title="Rechazar individualmente">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                <div class="flex flex-col items-center justify-center">
+                                    <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <p class="text-gray-500 font-medium">Todo al día</p>
+                                    <p class="text-sm mt-1 text-gray-400">No hay tickets pendientes por revisar.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </form>
 </div>

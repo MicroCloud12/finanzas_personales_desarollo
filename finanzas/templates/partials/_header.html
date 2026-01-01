@@ -1,79 +1,106 @@
 {% load static %}
-{% load humanize %}
-<header class="bg-white shadow-md sticky top-0 z-40">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8">
-    <div class="flex items-center justify-between h-16 gap-6">
-      <div class="flex-shrink-0">
-        <a href="{% if user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'home' %}{% endif %}"
-          class="flex items-center space-x-2">
-          <img src="{% static 'img/Prisma.svg' %}" alt="Logo de FinanzasApp" class="h-18 w-auto">
-        </a>
-      </div>
-      <nav class="hidden md:flex flex-1">
-        <div
-          class="flex space-x-6 text-gray-700 {% if not user.is_authenticated %}w-full justify-end items-center{% endif %}">
-          {% if user.is_authenticated %}
-          <a href="{% url 'dashboard' %}"
-            class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Dashboard</a>
-          <a href="{% url 'lista_transacciones' %}"
-            class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Transacciones</a>
-          <a href="{% url 'lista_inversiones' %}"
-            class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Inversiones</a>
-          <a href="{% url 'lista_deudas' %}"
-            class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Deudas</a>
-          <a href="{% url 'facturacion' %}"
-            class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Facturación</a>
-          {% else %}
-          <a href="{% url 'registro_usuarios' %}"
-            class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Registrarse</a>
-          <a href="{% url 'login' %}"
-            class="bg-indigo-600 text-white hover:bg-indigo-700 font-semibold px-4 py-2 rounded-md text-sm shadow-md transition-all duration-200">Iniciar
-            Sesión</a>
-          {% endif %}
-        </div>
-      </nav>
-      {% if user.is_authenticated %}
-      <div class="hidden md:flex items-center ml-4">
-        <div class="relative inline-block text-left">
-          <div>
-            <button type="button" id="profile-menu-button"
-              class="p-2 rounded-full text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition cursor-pointer">
-              <span class="sr-only">Abrir menú de usuario</span>
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </button>
-          </div>
-          <div id="profile-menu"
-            class="hidden absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-            role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-            <div class="py-1" role="none">
-              <a href="{% url 'mi_perfil' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mi
-                Perfil</a>
-              <form action="{% url 'logout' %}" method="post" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                  Cerrar Sesión
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-      {% endif %}
-      <div class="-mr-2 flex md:hidden">
+<header class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 border-b border-gray-100">
+  <div class=" px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+
+      {# --- Mobile Menu Button & Mobile Logo --- #}
+      <div class="flex items-center md:hidden">
         <button type="button" id="mobile-menu-button" aria-controls="mobile-menu" aria-expanded="false"
           class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 focus:outline-none">
           <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
+        <a href="{% url 'dashboard' %}" class="ml-4 flex items-center gap-2">
+          <img src="{% static 'img/Prisma.svg' %}" alt="Logo" class="h-8 w-auto">
+          <span class="text-lg font-bold text-gray-800">Prisma</span>
+        </a>
       </div>
+
+      {# --- Desktop Top Bar Content (Search & Actions) --- #}
+      <div class="hidden md:flex flex-1 justify-between items-center ml-4">
+
+        {# --- Search Bar (Visual Only) --- #}
+        {% if user.is_authenticated %}
+        {# --- Search Bar (Visual Only) --- #}
+        <div class="relative w-full max-w-md">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+              fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clip-rule="evenodd" />
+            </svg>
+          </div>
+          <input type="text" name="search" id="search"
+            class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out"
+            placeholder="Search for transaction, item, etc.">
+        </div>
+        {% else %}
+        {# --- Logo for Unauthenticated Users --- #}
+        <a href="{% url 'home' %}" class="flex items-center gap-2">
+          <img src="{% static 'img/Prisma.svg' %}" alt="Logo" class="h-16 w-auto">
+        </a>
+        {% endif %}
+
+        {# --- Right Side Actions --- #}
+        <div class="flex items-center space-x-4">
+          {# Notification Icon #}
+          <button
+            class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100 relative">
+            <span class="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 border border-white"></span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </button>
+
+          {% if user.is_authenticated %}
+          <div class="relative inline-block text-left">
+            <div>
+              <button type="button" id="profile-menu-button"
+                class="flex items-center max-w-xs bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                aria-expanded="false" aria-haspopup="true">
+                <span class="sr-only">Open user menu</span>
+                <!-- Replaced Generic Icon with Avatar Placeholder if no image -->
+                <div
+                  class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold border border-indigo-200">
+                  {{ user.username|make_list|first|upper }}
+                </div>
+              </button>
+            </div>
+            <!-- Profile Dropdown -->
+            <div id="profile-menu"
+              class="hidden absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+              role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
+              <div class="py-1" role="none">
+                <a href="{% url 'mi_perfil' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  role="menuitem">Mi Perfil</a>
+                <form action="{% url 'logout' %}" method="post" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem">
+                    Cerrar Sesión
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <a href="{% url 'login' %}" class="text-sm font-medium text-gray-500 hover:text-indigo-600">Login</a>
+          <a href="{% url 'registro_usuarios' %}"
+            class="ml-4 px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Register</a>
+          {% endif %}
+        </div>
+      </div>
+
     </div>
   </div>
-  <div id="mobile-menu" class="md:hidden hidden px-2 pt-2 pb-3 space-y-1 border-t border-gray-200 bg-white">
+
+  {# --- Mobile Menu (Visible on Click) --- #}
+  <div id="mobile-menu"
+    class="md:hidden hidden px-2 pt-2 pb-3 space-y-1 border-t border-gray-200 bg-white shadow-lg absolute w-full z-50">
     {% if user.is_authenticated %}
     <a href="{% url 'dashboard' %}"
       class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Dashboard</a>
@@ -85,13 +112,16 @@
       class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Deudas</a>
     <a href="{% url 'gestionar_suscripcion' %}"
       class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Mi Suscripción</a>
-    <a href="" class="hover:text-indigo-600 transition-colors duration-200 text-sm font-medium">Facturación</a>
-    <form action="{% url 'logout' %}" method="post">
-      {% csrf_token %}
-      <button type="submit"
-        class="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Cerrar
-        Sesión</button>
-    </form>
+    <a href="{% url 'facturacion' %}"
+      class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Facturación</a>
+    <div class="border-t border-gray-200 mt-2 pt-2">
+      <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit"
+          class="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Cerrar
+          Sesión</button>
+      </form>
+    </div>
     {% else %}
     <a href="{% url 'registro_usuarios' %}"
       class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Registrarse</a>

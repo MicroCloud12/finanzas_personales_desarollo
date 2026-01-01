@@ -1,5 +1,6 @@
 # finanzas/services.py
 import os
+import re
 import json
 import jwt
 import base64
@@ -13,7 +14,11 @@ from twelvedata import TDClient
 from jwt import PyJWKClient
 from cachetools import TTLCache
 from django.conf import settings
+from django.conf import settings
 import google.generativeai as genai
+from mistralai import Mistral
+import numpy as np
+import cv2
 from django.http import JsonResponse
 from .utils import parse_date_safely
 from allauth.socialaccount.models import SocialAccount
@@ -25,6 +30,9 @@ from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
 from allauth.socialaccount.models import SocialApp, SocialToken
 from .models import registro_transacciones, TransaccionPendiente, User, inversiones, PendingInvestment
+import re
+from difflib import get_close_matches
+
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +276,68 @@ class GeminiService:
             "sucursal": "...",
             # ... otros campos encontrados ...
             }
+            """,
+            "facturacion_from_text": """
+            Eres un experto en extracción de datos de facturación.
+            Analiza el siguiente TEXTO CRUDO obtenido de un OCR (Mistral) de un ticket de compra.
+            
+            Tu objetivo es extraer:
+            1. **tienda**: El nombre comercial del establecimiento. (Ej. "STARBUCKS", "COSTCO", "OXXO"). Importante: Si no es claro, infiérelo por el contexto del texto.
+            2. **fecha**: Fecha de la compra en formato YYYY-MM-DD.
+            3. **total**: El monto total pagado (numérico).
+            
+            Devuelve un JSON con esta estructura:
+            {
+                "tienda": "NOMBRE",
+                "fecha": "YYYY-MM-DD",
+                "total": 0.0
+            }
+            
+            Texto OCR:
+            {text_content}
+            """,
+            "facturacion_from_text_with_context": """
+            Eres un auditor fiscal experto en CFDI 4.0 de México.
+            Tu trabajo es extraer datos de tickets de compra con una precisión del 100%.
+
+            ### ENTRADA:
+            1. **LISTA DE TIENDAS CONOCIDAS (CONTEXTO):**
+            {context_str}
+
+            2. **TEXTO DEL TICKET (OCR):**
+            {text_content}
+
+            ### TUS OBJETIVOS CRÍTICOS:
+            1. **IDENTIFICAR LA TIENDA:**
+               - Busca coincidencias en la lista de tiendas conocidas.
+               - Si encuentras una coincidencia, USA ESE NOMBRE EXACTO y el ID asociado si existe.
+               - Si no, usa el nombre comercial más claro que veas en el ticket (ej. "STARBUCKS", "OXXO").
+
+            2. **EXTRACCIÓN DE CAMPOS (PRIORIDAD ALTA):**
+               - Si la tienda es conocida, **BUSCA SOLO Y EXCLUSIVAMENTE** los campos que esa tienda requiere (listados en el contexto).
+               - Si la tienda NO es conocida, extrae: 'Folio', 'Ticket ID', 'Sucursal', 'Caja', 'Transaccion', 'RFC'.
+
+            3. **VERIFICACIÓN (CHAIN OF THOUGHT):**
+               - Para cada campo extraído, debes justificar DÓNDE lo encontraste.
+               - Si un campo es obligatorio pero NO está claro, devuelve `null` o `""`, NO INVENTES.
+               - **CUIDADO CON LOS FALSOS POSITIVOS:**
+                 - NO confundas el "Número de Cliente Puntos" con el "Número de Ticket".
+                 - NO confundas la "Hora" (12:30) con una "Caja" (12).
+                 - NO confundas el "Total" con el "Subtotal".
+                 - En Caso de ser MCdonald´s, el campo Sucursal debe de ser el número de la sucursal; Ejemplo: "0011".
+
+            ### ESTRUCTURA DE SALIDA (JSON ÚNICO VALIDO):
+            {{
+                "tienda": "NOMBRE_NORMALIZADO",
+                "fecha": "YYYY-MM-DD",
+                "total": 0.00,
+                "es_conocida": true/false,
+                "campos_adicionales": {{
+                    "NombreCampo1": "Valor1",
+                    "NombreCampo2": "Valor2"
+                }},
+                "_razonamiento": "Explica brevemente por qué elegiste estos valores y descarta dudas. Ej: 'Encontré Ticket: 4502 cerca de la fecha. Descarté 888 porque parece ser puntos de lealtad.'"
+            }}
             """
         }
         # Preconfiguramos configs opcionales de generación
@@ -310,6 +380,47 @@ class GeminiService:
         prepared_content = self._prepare_content(file_data, mime_type)
         
         return self._generate_and_parse(prompt, prepared_content)
+
+    def extract_from_text(self, prompt_name: str, text: str, context: str = "") -> dict:
+        """
+        Extrae datos de un texto crudo utilizando un prompt específico.
+        Permite contexto dinámico.
+        """
+        if prompt_name not in self.prompts:
+            raise ValueError(f"El prompt '{prompt_name}' no existe.")
+            
+        raw_prompt = self.prompts[prompt_name]
+        
+        # Inyectamos el texto (y contexto si existe) en el prompt
+        try:
+            # Intentamos formatear con ambos
+            prompt = raw_prompt.format(text_content=text, context_str=context)
+        except KeyError:
+             # Si falla (ej. el prompt viejo no tiene context_str), probamos solo con text_content
+            try:
+                prompt = raw_prompt.format(text_content=text)
+            except KeyError:
+                # Fallback final
+                prompt = raw_prompt + "\n\n" + text
+
+        # Para texto, enviamos solo el prompt string. Gemini lo maneja bien.
+        
+        response = self.model.generate_content(prompt)
+        # Reutilizamos la lógica de limpieza de JSON
+        cleaned_response = response.text.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+        cleaned_response = cleaned_response.strip()
+        
+        try:
+            return json.loads(cleaned_response)
+        except json.JSONDecodeError:
+            logger.error(f"Error: La respuesta de Gemini no es un JSON válido: {cleaned_response}")
+            return {}
 
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Genera la respuesta de Gemini y devuelve el JSON parseado."""
@@ -488,6 +599,32 @@ class StockPriceService:
                 print(f"Error al obtener la serie mensual de {ticker}: {e}")
                 return []
 
+    def get_daily_series(self, ticker: str, start_date, end_date):
+        """Devuelve la serie de precios diarios para un rango de fechas."""
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        cache_key = f"DAILY:{ticker.upper()}:{start_str}:{end_str}"
+        
+        if cache_key in self._series_cache:
+            return self._series_cache[cache_key]
+            
+        try:
+            series = self.client.time_series(
+                symbol=ticker,
+                interval="1day",
+                start_date=start_str,
+                end_date=end_str,
+            )
+            raw = series.as_json()
+            values = raw.get("values") if isinstance(raw, dict) else list(raw)
+            values = values or []
+            
+            self._series_cache[cache_key] = values
+            return values
+        except Exception as e:
+            print(f"Error al obtener datos diarios de {ticker}: {e}")
+            return []
+
     def get_closing_price_for_date(self, ticker: str, target_date):
         """Obtiene el precio de cierre aproximado de un ticker para una fecha."""
         month_start = target_date.replace(day=1)
@@ -665,99 +802,13 @@ class RISCService:
             except SocialAccount.DoesNotExist:
                 logger.warning(f"Se recibió un evento RISC para un usuario de Google con ID {user_google_id} que no existe en el sistema.")
 
-class BillingService:
-    @staticmethod
-    def procesar_datos_facturacion(data_gemini: dict) -> dict:
-        """
-        Toma los datos crudos de Gemini y aplica la 'máscara' de configuración
-        si la tienda ya es conocida en la base de datos.
-        """
-        # 1. Normalizar el nombre de la tienda (Mayúsculas y sin espacios extra)
-        nombre_tienda_raw = data_gemini.get("tienda", "DESCONOCIDO")
-        nombre_tienda = nombre_tienda_raw.strip().upper() if nombre_tienda_raw else "DESCONOCIDO"
-
-        # 2. Buscar si ya tenemos configuración para esta tienda
-        config_tienda = TiendaFacturacion.objects.filter(tienda=nombre_tienda).first()
-        
-        # --- CORRRECCIÓN ESTRUCTURA PLANA ---
-        # El nuevo prompt devuelve todo en la raíz. Separamos los datos "estándar" de los "candidatos".
-        campos_estandar = ['tienda', 'fecha_emision', 'fecha', 'total_pagado', 'total', 'tipo_documento']
-        
-        datos_candidatos = {}
-        # Iteramos sobre todas las llaves que nos dio Gemini
-        for k, v in data_gemini.items():
-            if k.lower() not in campos_estandar and v: # Ignoramos nulos
-                datos_candidatos[k] = v
-
-        # Estructura base del resultado
-        fecha_emision_raw = data_gemini.get('fecha_emision') or data_gemini.get('fecha')
-        total_pagado_raw = data_gemini.get('total_pagado') or data_gemini.get('total')
-
-        resultado = {
-            'tienda': nombre_tienda,
-            'fecha_emision': fecha_emision_raw,
-            'total_pagado': total_pagado_raw,
-            'es_conocida': False,
-            'datos_para_cliente': {},     # Aquí pondremos solo lo necesario
-            'todos_los_datos': datos_candidatos # Respaldo completo para que el usuario elija
-        }
-
-        # --- CASO A: TIENDA CONOCIDA (Ya sabemos qué pedir) ---
-        if config_tienda:
-            resultado['es_conocida'] = True
-            campos_necesarios = config_tienda.campos_requeridos # Ej: ["Folio", "RFC"]
-            
-            for campo in campos_necesarios:
-                # 1. Busqueda exacta
-                valor = datos_candidatos.get(campo)
-                
-                # 2. Busqueda difusa (case insensitive)
-                if not valor:
-                    for k, v in datos_candidatos.items():
-                        if campo.lower() == k.lower():
-                            valor = v
-                            break
-                
-                # 3. Busqueda contenida (por si Gemini devolvió "Folio de Venta" y buscamos "Folio")
-                if not valor:
-                     for k, v in datos_candidatos.items():
-                        if campo.lower() in k.lower():
-                            valor = v
-                            break
-                
-                resultado['datos_para_cliente'][campo] = valor or "NO DETECTADO (Revisar Ticket)"
-
-        # --- CASO B: TIENDA NUEVA (Aprendizaje) ---
-        else:
-            # Si no la conocemos, le mostramos TODO al usuario para que él elija
-            resultado['es_conocida'] = False
-            resultado['datos_para_cliente'] = datos_candidatos
-
-        return resultado
-
-    @staticmethod
-    def guardar_configuracion_tienda(nombre_tienda: str, campos_seleccionados: list):
-        """
-        Guarda o actualiza la configuración de una tienda basada en la selección del usuario.
-        """
-        tienda_obj, created = TiendaFacturacion.objects.get_or_create(
-            tienda=nombre_tienda.strip().upper()
-        )
-        # Guardamos la lista de campos que el usuario marcó como útiles
-        tienda_obj.campos_requeridos = campos_seleccionados
-        tienda_obj.save()
-        return tienda_obj
-
 class MistralOCRService:
     def __init__(self):
-        # Asegúrate de poner MISTRAL_API_KEY en tu .env
         self.api_key = os.getenv("MISTRAL_API_KEY") 
-        if not self.api_key:
-            logger.error("MISTRAL_API_KEY no configurada.")
         self.client = Mistral(api_key=self.api_key) if self.api_key else None
 
-    # --- Funciones Auxiliares de OpenCV (Tu lógica) ---
     def order_points(self, pts):
+        """Ordena coordenadas: arriba-izq, arriba-der, abajo-der, abajo-izq."""
         rect = np.zeros((4, 2), dtype="float32")
         s = pts.sum(axis=1)
         rect[0] = pts[np.argmin(s)]
@@ -768,117 +819,144 @@ class MistralOCRService:
         return rect
 
     def four_point_transform(self, image, pts):
+        """Transformación de perspectiva para 'aplanar' el ticket."""
         rect = self.order_points(pts)
         (tl, tr, br, bl) = rect
+
         widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
         widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
         maxWidth = max(int(widthA), int(widthB))
+
         heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
         heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
         maxHeight = max(int(heightA), int(heightB))
-        dst = np.array([[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]], dtype="float32")
-        M = cv2.getPerspectiveTransform(rect, dst)
-        return cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
-    def preprocess_image_bytes(self, image_bytes):
-        """Versión adaptada de tu preprocess_image para trabajar con bytes en memoria."""
+        dst = np.array([
+            [0, 0],
+            [maxWidth - 1, 0],
+            [maxWidth - 1, maxHeight - 1],
+            [0, maxHeight - 1]], dtype="float32")
+
+        M = cv2.getPerspectiveTransform(rect, dst)
+        warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+        return warped
+
+    def preprocess_image_advanced(self, file_bytes):
+        """
+        Aplica procesamiento avanzado de imagen usando OpenCV (en memoria).
+        Basado en el código proporcionado por el usuario:
+        - Redimensionamiento
+        - Thresholding Otsu
+        - Detección de contornos y Perspective Transform
+        - Denoising y Threshold Adaptativo
+        - Morfología para rellenar caracteres
+        """
         try:
-            # Convertir bytes a numpy array para OpenCV
-            nparr = np.frombuffer(image_bytes, np.uint8)
+            # 1. Leer imagen desde bytes
+            nparr = np.frombuffer(file_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
-            if img is None: return None
+            if img is None:
+                logger.error("No se pudo decodificar la imagen con cv2")
+                return None
 
-            # 1. PREPARACIÓN
+            # 2. PREPARACIÓN (Resize)
             detect_h = 800.0
-            ratio = img.shape[0] / detect_h
+            h, w = img.shape[:2]
+            ratio = h / detect_h
             orig = img.copy()
-            if img.shape[0] > detect_h:
-                image_resized = cv2.resize(img, (int(img.shape[1] / ratio), int(detect_h)))
+            
+            if h > detect_h:
+                image_resized = cv2.resize(img, (int(w / ratio), int(detect_h)))
             else:
                 image_resized = img.copy()
                 ratio = 1.0
 
-            # 2. DETECCIÓN (OTSU)
+            # 3. DETECCIÓN (OTSU)
             gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
             blur = cv2.GaussianBlur(gray, (5, 5), 0)
+            
             _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
             thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
             thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-            # 3. CONTORNOS
+            # 4. ENCONTRAR CONTORNOS
             cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cnts = sorted(cnts[0] if len(cnts) == 2 else cnts[1], key=cv2.contourArea, reverse=True)[:5]
+            cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+            cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+            
             pts_for_transform = None
+            
             if len(cnts) > 0:
                 c = cnts[0]
                 peri = cv2.arcLength(c, True)
                 approx = cv2.approxPolyDP(c, 0.04 * peri, True)
+                
                 if len(approx) == 4:
                     pts_for_transform = approx.reshape(4, 2) * ratio
                 else:
+                    # Fallback a bounding box rotada si no es un cuadrado perfecto
                     rect = cv2.minAreaRect(c)
                     box = cv2.boxPoints(rect)
-                    pts_for_transform = np.int32(box).astype("float32") * ratio
+                    box = np.int32(box)
+                    pts_for_transform = box.astype("float32") * ratio
 
-            # 4. RECORTAR
+            # 5. RECORTAR (Perspective Transform)
             if pts_for_transform is not None:
                 warped = self.four_point_transform(orig, pts_for_transform)
             else:
+                # Si no se detectó contorno claro, usamos imagen original
                 warped = orig
 
-            # 5. FILTROS
-            if len(warped.shape) == 3: warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-            else: warped_gray = warped
-            
-            denoised = cv2.fastNlMeansDenoising(warped_gray, None, 10, 7, 21)
-            processed_img = cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 10)
+            # 6. FILTROS DE MEJORA
+            if len(warped.shape) == 3:
+                warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+            else:
+                warped_gray = warped
 
-            # 6. RELLENADO
+            denoised = cv2.fastNlMeansDenoising(warped_gray, None, 10, 7, 21)
+            
+            processed_img = cv2.adaptiveThreshold(
+                denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                cv2.THRESH_BINARY_INV, 21, 10
+            )
+
+            # 7. RELLENADO DE CARACTERES (AGRESIVO)
             fill_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
             processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_CLOSE, fill_kernel, iterations=2)
-            processed_img = cv2.dilate(processed_img, fill_kernel, iterations=1)
 
-            # Convertir de vuelta a base64 para Mistral
+            dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+            processed_img = cv2.dilate(processed_img, dilate_kernel, iterations=1)
+            
+            # 8. Codificar resultado a base64
             _, buffer = cv2.imencode('.jpg', processed_img)
             return base64.b64encode(buffer).decode('utf-8')
+
         except Exception as e:
-            logger.error(f"Error en preprocessing OpenCV: {e}")
+            logger.error(f"Error en preprocesamiento avanzado de imagen: {e}")
             return None
 
-    def post_process_text(self, text):
-        """Tu lógica de regex para limpiar el texto."""
-        if not text: return ""
-        text = re.sub(r'\b0XX0\b', 'OXXO', text, flags=re.IGNORECASE)
-        text = re.sub(r'\b0xxo\b', 'OXXO', text, flags=re.IGNORECASE)
-        text = re.sub(r'PE50S', 'PESOS', text, flags=re.IGNORECASE)
-        text = re.sub(r'PE5OS', 'PESOS', text, flags=re.IGNORECASE)
-        text = re.sub(r'202S', '2025', text)
-        text = re.sub(r'202Z', '2025', text)
-        text = text.replace("Cadena Conercial", "Cadena Comercial")
-        return text
-
-    def process_ticket(self, file_content_bytes, mime_type="image/jpeg"):
-        """
-        Orquesta todo el proceso: Imagen -> OpenCV -> Mistral OCR -> JSON Limpio
-        """
+    def get_text_from_image(self, file_content_bytes, mime_type="image/jpeg"):
         if not self.client:
             return {"error": "Mistral API Key missing"}
 
-        # 1. Preprocesar (Solo si es imagen, si es PDF pasamos directo o convertimos)
+        # 1. Optimización (Avanzada vs Simple)
         if 'pdf' in mime_type:
-             # Para PDF, codificamos directo los bytes originales
+             # Los PDFs no se redimensionan igual, se mandan directo
              base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
         else:
-             # Para imágenes, aplicamos tu filtro OpenCV
-             base64_image = self.preprocess_image_bytes(file_content_bytes)
+             # Intentamos el procesamiento avanzado
+             base64_image = self.preprocess_image_advanced(file_content_bytes)
+             
+             # Fallback si falló cv2
              if not base64_image:
-                 # Fallback: usar original si falla OpenCV
+                 logger.warning("Falló preprocess_image_advanced, usando fallback simple.")
                  base64_image = base64.b64encode(file_content_bytes).decode('utf-8')
 
-        # 2. Llamada a Mistral OCR
         try:
+            # 2. Llamada a Mistral
             ocr_response = self.client.ocr.process(
                 model="mistral-ocr-latest",
                 document={
@@ -888,49 +966,223 @@ class MistralOCRService:
                 include_image_base64=False
             )
             
-            # 3. Procesar Respuesta
-            # Convertimos la respuesta pydantic a dict
             json_data = json.loads(ocr_response.model_dump_json())
             
-            # Extraemos y limpiamos el Markdown de todas las páginas
             full_markdown = ""
             if "pages" in json_data:
                 for page in json_data["pages"]:
                     if "markdown" in page:
-                        cleaned = self.post_process_text(page["markdown"])
-                        page["markdown"] = cleaned # Actualizamos el JSON original
-                        full_markdown += cleaned + "\n"
+                        text = page["markdown"]
+                        # NO HACEMOS regex replacements aquí a petición del usuario.
+                        # Dejamos que Gemini interprete el texto tal cual viene.
+                        full_markdown += text + "\n"
 
-            # 4. Extracción "Dummy" de campos clave para llenar el modelo Factura
-            # (El usuario configurará el parseo real después, pero necesitamos una base)
-            extracted_fields = self._extract_basic_fields_regex(full_markdown)
-
-            return {
-                "raw_json": json_data,      # El JSON estructura completo de Mistral
-                "text_content": full_markdown, # El texto plano para búsquedas simples
-                "extracted_fields": extracted_fields # Fecha, Total, Tienda (intentos)
-            }
+            return {"text_content": full_markdown, "raw_json": json_data}
 
         except Exception as e:
             logger.error(f"Error Mistral API: {e}")
             return {"error": str(e)}
 
-    def _extract_basic_fields_regex(self, text):
-        """Intenta extraer Fecha y Total con Regex simple para pre-llenar la Factura."""
-        data = {}
-        # Intento de Total (busca formato $ 123.00 o 123.00 al final de linea)
-        total_match = re.search(r'[\$]?\s?(\d{1,3}(?:,\d{3})*\.\d{2})', text)
-        if total_match:
-            try: data['total'] = float(total_match.group(1).replace(',', ''))
-            except: data['total'] = 0.0
+class BillingService:
+    @staticmethod
+    def guardar_configuracion_tienda(nombre_tienda, campos_seleccionados):
+        """
+        Guarda o actualiza la configuración de campos requeridos para una tienda.
+        """
+        if not nombre_tienda:
+            return
+
+        nombre_tienda = nombre_tienda.upper().strip()
         
-        # Intento de Fecha (YYYY-MM-DD o DD/MM/YYYY)
-        date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(\d{2}/\d{2}/\d{4})', text)
-        if date_match:
-            data['fecha'] = date_match.group(0)
+        obj, created = TiendaFacturacion.objects.update_or_create(
+            tienda=nombre_tienda,
+            defaults={'campos_requeridos': campos_seleccionados}
+        )
+        return obj
+
+    @staticmethod
+    def buscar_tienda_fuzzy(nombre_detectado):
+        """
+        Busca una tienda en la base de datos que coincida similitud con el nombre detectado.
+        Retorna el objeto TiendaFacturacion o None.
+        """
+        if not nombre_detectado:
+            return None
             
-        # Tienda (muy difícil con regex genérico, se deja vacío o se busca OXXO explícito)
-        if "OXXO" in text.upper(): data['tienda'] = "OXXO"
-        elif "WALMART" in text.upper(): data['tienda'] = "WALMART"
+        nombre_detectado = nombre_detectado.strip().upper()
         
-        return data
+        # 1. Intento exacto rápido
+        try:
+            return TiendaFacturacion.objects.get(tienda=nombre_detectado)
+        except TiendaFacturacion.DoesNotExist:
+            pass
+            
+        # 2. Diccionario de correcciones manuales conocidas (Hardcoded fixes)
+        # Esto soluciona errores OCR comunes y recurrentes que el fuzzy no capta o confunde
+        correcciones = {
+            "SIMITLA": "FARMACIAS SIMILARES",
+            "SIMILARES": "FARMACIAS SIMILARES",
+            "FARMACIAS SIMITLA": "FARMACIAS SIMILARES",
+            "MCDONALDS": "MCDONALD'S",
+            "MCDONALD´S": "MCDONALD'S",
+            "0XX0": "OXXO",
+            "WAL MART": "WALMART",
+            "WAL-MART": "WALMART",
+            "STARBUCKS COFFEE": "STARBUCKS",
+        }
+        
+        if nombre_detectado in correcciones:
+            nombre_corregido = correcciones[nombre_detectado]
+            try:
+                # Intentamos buscar el nombre corregido
+                return TiendaFacturacion.objects.get(tienda=nombre_corregido)
+            except TiendaFacturacion.DoesNotExist:
+                # Si no existe la tienda "oficial" corregida, intentamos buscarla fuzzy con el nombre corregido
+                nombre_detectado = nombre_corregido
+                
+        # 3. Limpieza de ruido para mejorar el Match
+        # Quitamos palabras genéricas que ensucian la comparación
+        palabras_ruido = ["FARMACIAS", "TIENDA", "SUPERMERCADO", "RESTAURANTE", "S.A. DE C.V.", "SA DE CV", "SUCURSAL"]
+        nombre_limpio = nombre_detectado
+        for p in palabras_ruido:
+            nombre_limpio = nombre_limpio.replace(p, "").strip()
+            
+        todas_las_tiendas_objs = list(TiendaFacturacion.objects.all())
+        nombres_tiendas = [t.tienda for t in todas_las_tiendas_objs]
+        
+        # 4. Intento difuso con umbral más estricto (0.8)
+        # Se subió de 0.6 a 0.8 para evitar que "FARMACIAS SIMILARES" (ratio 0.65) coincida con "FARMACIAS GUADALAJARA"
+        coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.8)
+        
+        if coincidencias:
+            return TiendaFacturacion.objects.get(tienda=coincidencias[0])
+            
+        # 5. Intento difuso con nombre LIMPIO (si falló el completo)
+        if nombre_limpio and nombre_limpio != nombre_detectado:
+            coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.8)
+            if coincidencias_limpias:
+                 return TiendaFacturacion.objects.get(tienda=coincidencias_limpias[0])
+            
+        return None
+
+    @staticmethod
+    def procesar_datos_facturacion(datos_json: dict) -> dict:
+        """
+        Analiza los datos y devuelve el contexto para el Template.
+        CORRECCIÓN: Ahora respeta la bandera 'es_conocida' si viene desde la Tarea.
+        """
+        tienda_detectada = datos_json.get('tienda') or datos_json.get('establecimiento') or 'DESCONOCIDO'
+        tienda_detectada = tienda_detectada.upper().strip()
+        
+        # --- LÓGICA CORREGIDA ---
+        # 1. Verificamos si la Tarea (Celery) ya validó esta tienda
+        ya_validada_por_ia = datos_json.get('es_conocida') is True
+
+        config_tienda = None
+        
+        if ya_validada_por_ia:
+            # Si la IA ya dijo que es conocida, confiamos y buscamos directo por nombre exacto
+            try:
+                config_tienda = TiendaFacturacion.objects.get(tienda=tienda_detectada)
+            except TiendaFacturacion.DoesNotExist:
+                # Fallback: Si por alguna razón extraña no existe, intentamos fuzzy
+                config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
+        else:
+            # Si no viene validada, hacemos la búsqueda tradicional
+            config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
+        
+        # 2. Establecemos las variables base según si encontramos la config
+        if config_tienda:
+            # ¡CAMBIO CLAVE! Solo consideramos "conocida" si la config está FINALIZADA.
+            # Si solo tiene campos agregados manualmente (configuracion_finalizada=False), 
+            # sigue tratándose como "aprendiendo" (Draft), para no bloquear la UI.
+            es_conocida = getattr(config_tienda, 'configuracion_finalizada', False)
+            
+            tienda_nombre = config_tienda.tienda 
+            campos_requeridos = config_tienda.campos_requeridos
+            url_portal = config_tienda.url_portal
+        else:
+            es_conocida = False
+            tienda_nombre = tienda_detectada
+            campos_requeridos = []
+            url_portal = None
+
+        # 3. Extracción de campos (El resto de la lógica se mantiene igual)
+        # Extraemos campos comunes del JSON
+        campos_encontrados = datos_json.get('campos_adicionales') or datos_json 
+        
+        datos_para_cliente = {}
+        campos_faltantes = []
+        
+        if campos_requeridos:
+            # Si hay campos configurados (sea tienda conocida o en borrador),
+            # priorizamos mostrar esos campos.
+            for campo in campos_requeridos:
+                # Buscamos el campo con varias estrategias
+                valor = (campos_encontrados.get(campo) or 
+                         campos_encontrados.get(campo.lower()) or 
+                         campos_encontrados.get(campo.replace(' ', '_').lower()) or
+                         campos_encontrados.get(campo.upper()))
+                
+                if valor:
+                    datos_para_cliente[campo] = valor
+                else:
+                    campos_faltantes.append(campo)
+            
+            # Adicionalmente, si NO es conocida (es borrador), también queremos ver 
+            # qué OTROS campos encontró el OCR que no hemos agregado aún, para sugerirlos.
+            # Esto se maneja en el bloque #4 "Sugerencia de campos", así que aquí solo
+            # nos aseguramos de que 'datos_para_cliente' tenga lo que el usuario configuró.
+
+        else:
+            # Si NO hay configuración (ni borrador ni final), mostramos todo lo que encontramos
+            claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales', '_razonamiento']
+            
+            for k, v in campos_encontrados.items():
+                if k not in claves_ignorar and isinstance(v, (str, int, float)) and v:
+                     datos_para_cliente[k] = v
+
+        # 4. Sugerencia de campos (Campos detectados que NO están en la configuración ni como encontrados ni como faltantes)
+        claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'campos_adicionales', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', '_razonamiento']
+        
+        campos_en_config = set(datos_para_cliente.keys()) | set(campos_faltantes)
+        campos_extra_detectados = {}
+        
+        for k, v in campos_encontrados.items():
+            if k not in claves_ignorar and k not in campos_en_config:
+                 if isinstance(v, (str, int, float)) and v:
+                     campos_extra_detectados[k] = v
+
+        return {
+            'tienda': tienda_nombre,
+            'tienda_original': tienda_detectada if tienda_detectada != tienda_nombre else None,
+            'es_conocida': es_conocida,
+            'url_portal': url_portal,
+            'datos_para_cliente': datos_para_cliente,
+            'campos_faltantes': campos_faltantes,
+            # 'claves_sugeridas': claves_sugeridas, # Obsoleto, reemplazado por campos_extra_detectados más inteligente
+            'campos_extra_detectados': campos_extra_detectados,
+            'raw_json': datos_json
+        }
+
+    @staticmethod
+    def preparar_contexto_para_gemini(texto_ticket: str) -> str:
+        """
+        Genera el contexto con LA LISTA COMPLETA de tiendas y sus reglas.
+        SOLUCIÓN DEFINITIVA: No filtramos en Python. Dejamos que la IA decida.
+        """
+        # Obtenemos TODAS las tiendas configuradas.
+        tiendas = TiendaFacturacion.objects.all()
+        
+        if not tiendas.exists():
+            return "No hay tiendas conocidas configuradas. Extrae los datos estándar."
+
+        # Construimos el "Menú" de opciones para Gemini
+        contexto_str = "### BASE DE DATOS DE TIENDAS CONOCIDAS (USAR ESTOS NOMBRES EXACTOS):\n"
+        
+        for t in tiendas:
+            # Convertimos la lista de campos a string JSON
+            campos_json = json.dumps(t.campos_requeridos, ensure_ascii=False)
+            contexto_str += f"- ID: '{t.tienda}' | REQUIERE EXTRACCIÓN DE: {campos_json}\n"
+            
+        return contexto_str

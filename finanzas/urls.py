@@ -10,6 +10,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='iniciosesion.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('dashboard/', views.vista_dashboard, name='dashboard'),
+    path('portafolio/', views.vista_portafolio, name='portafolio'),
     path('listatransacciones/', views.lista_transacciones, name='lista_transacciones'),
     path('transacciones/<int:transaccion_id>/editar/', views.editar_transaccion, name='editar_transaccion'),
     path('transacciones/<int:transaccion_id>/eliminar/', views.eliminar_transaccion, name='eliminar_transaccion'),
@@ -83,4 +84,6 @@ urlpatterns = [
     # ... tus otras urls ...
     path('api/guardar-config-tienda/', views.guardar_configuracion_tienda, name='guardar_config_tienda'),
     path('api/confirmar-factura/', views.confirmar_datos_factura, name='confirmar_factura'),
+    path('api/agregar-campo-tienda/', views.agregar_campo_tienda, name='agregar_campo_tienda'),
+    path('api/eliminar-campo-tienda/', views.eliminar_campo_tienda, name='eliminar_campo_tienda'),
 ]
