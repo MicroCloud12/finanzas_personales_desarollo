@@ -349,6 +349,12 @@ class TiendaFacturacion(models.Model):
         null=True, 
         help_text="Link directo al portal de facturación de esta tienda"
     )
+    
+    # Campo NUEVO: Para distinguir borrador de final
+    configuracion_finalizada = models.BooleanField(
+        default=False, 
+        help_text="Indica si el usuario ya confirmó que esta configuración es correcta/completa."
+    )
 
     def __str__(self):
         return f"Configuración para {self.tienda}"

@@ -1094,3 +1094,16 @@ ERROR 2025-12-30 22:08:40,945 views Error de validación en TransaccionesForm: {"
 ERROR 2025-12-30 22:08:43,827 views Error de validación en TransaccionesForm: {"categoria": [{"message": "This field is required.", "code": "required"}], "cuenta_origen": [{"message": "This field is required.", "code": "required"}], "tipo_pago": [{"message": "This field is required.", "code": "required"}]}
 ERROR 2025-12-30 22:09:17,515 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "This field is required.", "code": "required"}]}
 ERROR 2025-12-30 22:09:54,758 views Error de validación en TransaccionesForm: {"tipo_pago": [{"message": "This field is required.", "code": "required"}]}
+ERROR 2025-12-31 15:47:31,285 views Error en get_initial_task_result: Error 10061 connecting to localhost:6379. No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión.
+INFO 2025-12-31 15:49:35,915 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO
+INFO 2025-12-31 15:49:38,493 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 15:49:50,541 tasks Tienda nueva detectada: FARMACIAS SIMITLA
+INFO 2025-12-31 16:16:29,683 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 16:16:30,030 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2025-12-31 16:16:38,974 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO
+INFO 2025-12-31 16:19:03,652 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2025-12-31 16:19:08,161 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 16:19:27,947 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO
+INFO 2025-12-31 16:25:39,332 tasks Tienda reconocida por IA: OXXO
+INFO 2025-12-31 16:25:43,739 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2025-12-31 16:25:51,045 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN ANTOJO

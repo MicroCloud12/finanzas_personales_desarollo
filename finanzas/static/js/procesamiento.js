@@ -114,9 +114,13 @@ async function guardarConfiguracion(btn) {
     console.log("guardarConfiguracion function triggered");
     // Obtenemos los datos desde los atributos data- del botón HTML
     const tienda = btn.dataset.tienda;
-    // Buscamos los checkboxes marcados dentro de la tarjeta de esta tienda
-    const card = btn.closest('.card'); // Asumiendo que tu ticket está en un div con clase 'card'
-    const inputs = card.querySelectorAll('input[type="checkbox"]:checked');
+    // Buscamos los checkboxes marcados dentro de la sección de campos sugeridos
+    const container = document.getElementById('seccion-campos-sugeridos');
+    if (!container) {
+        alert("Error: No se encontró la sección de campos para guardar.");
+        return;
+    }
+    const inputs = container.querySelectorAll('input[type="checkbox"]:checked');
     const campos = Array.from(inputs).map(input => input.value);
 
     // Removed prompt as requested
@@ -146,6 +150,7 @@ async function guardarConfiguracion(btn) {
         const data = await response.json();
         if (data.status === 'success') {
             alert(data.message);
+            window.location.reload();
         } else {
             alert('Error del servidor: ' + data.message);
         }

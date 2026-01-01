@@ -351,7 +351,9 @@ def vista_dashboard(request):
 
     balance = ingresos - gastos - gastos_ahorro
     disponible_banco = ingresos - gastos - transferencias - ahorro_total
-    ahorro = ahorro_total - gastos_ahorro + ingresos_ahorro + transferencias
+    
+    # --- CORRECCIÓN: Usamos el acumulado del año (igual que la gráfica) ---
+    ahorro = ahorro_acumulado
 
     context = {
         'ingresos': ingresos,
@@ -1278,7 +1280,8 @@ def guardar_configuracion_tienda(request):
             tienda=nombre_tienda,
             defaults={
                 'campos_requeridos': campos_seleccionados,
-                'url_portal': url_portal
+                'url_portal': url_portal,
+                'configuracion_finalizada': True # ¡CAMBIO CLAVE! El usuario confirmó, así que "cerramos" la config.
             }
         )
 

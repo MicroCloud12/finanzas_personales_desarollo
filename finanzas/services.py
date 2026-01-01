@@ -1050,15 +1050,16 @@ class BillingService:
         todas_las_tiendas_objs = list(TiendaFacturacion.objects.all())
         nombres_tiendas = [t.tienda for t in todas_las_tiendas_objs]
         
-        # 4. Intento difuso con umbral más permisivo (0.6)
-        coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.6)
+        # 4. Intento difuso con umbral más estricto (0.8)
+        # Se subió de 0.6 a 0.8 para evitar que "FARMACIAS SIMILARES" (ratio 0.65) coincida con "FARMACIAS GUADALAJARA"
+        coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.8)
         
         if coincidencias:
             return TiendaFacturacion.objects.get(tienda=coincidencias[0])
             
         # 5. Intento difuso con nombre LIMPIO (si falló el completo)
         if nombre_limpio and nombre_limpio != nombre_detectado:
-            coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.6)
+            coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.8)
             if coincidencias_limpias:
                  return TiendaFacturacion.objects.get(tienda=coincidencias_limpias[0])
             
@@ -1092,7 +1093,11 @@ class BillingService:
         
         # 2. Establecemos las variables base según si encontramos la config
         if config_tienda:
-            es_conocida = True
+            # ¡CAMBIO CLAVE! Solo consideramos "conocida" si la config está FINALIZADA.
+            # Si solo tiene campos agregados manualmente (configuracion_finalizada=False), 
+            # sigue tratándose como "aprendiendo" (Draft), para no bloquear la UI.
+            es_conocida = getattr(config_tienda, 'configuracion_finalizada', False)
+            
             tienda_nombre = config_tienda.tienda 
             campos_requeridos = config_tienda.campos_requeridos
             url_portal = config_tienda.url_portal
@@ -1109,7 +1114,9 @@ class BillingService:
         datos_para_cliente = {}
         campos_faltantes = []
         
-        if es_conocida and campos_requeridos:
+        if campos_requeridos:
+            # Si hay campos configurados (sea tienda conocida o en borrador),
+            # priorizamos mostrar esos campos.
             for campo in campos_requeridos:
                 # Buscamos el campo con varias estrategias
                 valor = (campos_encontrados.get(campo) or 
@@ -1121,8 +1128,14 @@ class BillingService:
                     datos_para_cliente[campo] = valor
                 else:
                     campos_faltantes.append(campo)
+            
+            # Adicionalmente, si NO es conocida (es borrador), también queremos ver 
+            # qué OTROS campos encontró el OCR que no hemos agregado aún, para sugerirlos.
+            # Esto se maneja en el bloque #4 "Sugerencia de campos", así que aquí solo
+            # nos aseguramos de que 'datos_para_cliente' tenga lo que el usuario configuró.
+
         else:
-            # Si NO es conocida, mostramos todo (modo aprendizaje)
+            # Si NO hay configuración (ni borrador ni final), mostramos todo lo que encontramos
             claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales', '_razonamiento']
             
             for k, v in campos_encontrados.items():
