@@ -762,7 +762,8 @@ def eliminar_inversion(request, inversion_id):
     inversion = get_object_or_404(inversiones, id=inversion_id, propietario=request.user)
     if request.method == 'POST':
         inversion.delete()
-        return redirect('lista_inversiones')
+        next_url = request.POST.get('next', request.GET.get('next', 'lista_inversiones'))
+        return redirect(next_url)
     return render(request, 'confirmar_eliminar_inversion.html', {'inversion': inversion})
 
 @login_required
