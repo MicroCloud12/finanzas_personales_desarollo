@@ -1106,6 +1106,26 @@ def revisar_factura_detalle(request, ticket_id):
             
             return redirect('revisar_factura', ticket_id=ticket_id)
             
+        # --- FLUJO DE EDICIÓN (Corregir datos originales) ---
+        elif accion == 'editar_datos':
+            nuevo_tienda = request.POST.get('tienda')
+            nueva_fecha = request.POST.get('fecha_emision')
+            nuevo_total = request.POST.get('total')
+
+            if nuevo_tienda and nueva_fecha and nuevo_total:
+                factura_obj.tienda = nuevo_tienda
+                try:
+                    factura_obj.fecha_emision = parse_date_safely(nueva_fecha)
+                    factura_obj.total = Decimal(nuevo_total)
+                    factura_obj.save()
+                    messages.success(request, f"Datos actualizados para {nuevo_tienda}.")
+                except Exception as e:
+                    messages.error(request, f"Error al guardar los datos: {e}")
+            else:
+                 messages.error(request, "Faltan datos para actualizar la factura.")
+            
+            return redirect('revisar_factura', ticket_id=ticket_id)
+            
         # --- FLUJO DE CONFIRMACIÓN (Datos Correctos) ---
         elif accion == 'confirmar_datos':
             # ACTUALIZAMOS el objeto Factura existente
