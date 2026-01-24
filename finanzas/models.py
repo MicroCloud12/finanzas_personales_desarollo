@@ -7,16 +7,19 @@ from django.contrib.auth.models import User
 
 class registro_transacciones(models.Model):
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    fecha = models.DateField()
+    # Indices para búsquedas rápidas por fecha y categoría
+    fecha = models.DateField(db_index=True)
     descripcion = models.CharField(max_length=100)
-    categoria = models.CharField(max_length=100)
-    monto = models.DecimalField(max_digits=65, decimal_places=3)
+    categoria = models.CharField(max_length=100, db_index=True)
+    # Validamos max_digits a 20, suficiente para trillones, más eficiente que 65
+    monto = models.DecimalField(max_digits=20, decimal_places=3)
     TIPO_CHOICES = [
         ('INGRESO', 'Ingreso'),
         ('GASTO', 'Gasto'),
         ('TRANSFERENCIA','Transferencia'),
     ]
-    tipo = models.CharField(max_length=15, choices=TIPO_CHOICES)
+    # Index para filtrar ingresos vs gastos rápidamente
+    tipo = models.CharField(max_length=15, choices=TIPO_CHOICES, db_index=True)
     cuenta_origen = models.CharField(max_length=100)
     cuenta_destino = models.CharField(max_length=100)
     deuda_asociada = models.ForeignKey('Deuda', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
@@ -33,6 +36,9 @@ class registro_transacciones(models.Model):
     # Campo para guardar metadatos extra (como RFC, Folio de factura, etc.)
     datos_extra = models.JSONField(null=True, blank=True)
 
+    # Conectamos nuestro Manager personalizado
+    from .managers import TransaccionManager
+    objects = TransaccionManager()
 
     def __str__(self):
         return f"{self.id} - {self.descripcion}"
@@ -382,8 +388,8 @@ class Factura(models.Model):
         related_name='facturas_generadas'
     )
     
-    tienda = models.CharField(max_length=150, help_text="Nombre extraído del establecimiento")
-    fecha_emision = models.DateField(help_text="Fecha detectada en el ticket", null=True, blank=True)
+    tienda = models.CharField(max_length=150, help_text="Nombre extraído del establecimiento", db_index=True)
+    fecha_emision = models.DateField(help_text="Fecha detectada en el ticket", null=True, blank=True, db_index=True)
     total = models.DecimalField(max_digits=12, decimal_places=2, help_text="Monto total del consumo")
     
     # Aquí vive la magia: El JSON con los campos específicos que pidió la Tabla 1

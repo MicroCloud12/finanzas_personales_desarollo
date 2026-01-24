@@ -1041,27 +1041,43 @@ class BillingService:
                 nombre_detectado = nombre_corregido
                 
         # 3. Limpieza de ruido para mejorar el Match
-        # Quitamos palabras genéricas que ensucian la comparación
         palabras_ruido = ["FARMACIAS", "TIENDA", "SUPERMERCADO", "RESTAURANTE", "S.A. DE C.V.", "SA DE CV", "SUCURSAL"]
         nombre_limpio = nombre_detectado
         for p in palabras_ruido:
             nombre_limpio = nombre_limpio.replace(p, "").strip()
             
-        todas_las_tiendas_objs = list(TiendaFacturacion.objects.all())
-        nombres_tiendas = [t.tienda for t in todas_las_tiendas_objs]
+        # --- OPTIMIZACIÓN ESCALABLE ---
+        # En lugar de cargar TODAS las tiendas (O(N) memoria), filtramos primero por la inicial.
+        # Esto reduce drásticamente el espacio de búsqueda.
+        # "WALMART" -> buscamos solo tiendas que empiecen con "W" o que contengan "WAL"
+        
+        inicial = nombre_limpio[0] if nombre_limpio else ""
+        if inicial:
+            # Traemos solo candidatos plausibles (empiezan con la misma letra)
+            # Esto es mucho más ligero que TiendaFacturacion.objects.all()
+            candidatos_qs = TiendaFacturacion.objects.filter(tienda__istartswith=inicial)
+            
+            # Si son muy pocos, ampliamos un poco (contiene la primera palabra)
+            if candidatos_qs.count() < 5:
+                primera_palabra = nombre_limpio.split()[0]
+                candidatos_qs = TiendaFacturacion.objects.filter(tienda__icontains=primera_palabra)
+
+            nombres_tiendas = list(candidatos_qs.values_list('tienda', flat=True))
+        else:
+            nombres_tiendas = []
         
         # 4. Intento difuso con umbral más estricto (0.8)
-        # Se subió de 0.6 a 0.8 para evitar que "FARMACIAS SIMILARES" (ratio 0.65) coincida con "FARMACIAS GUADALAJARA"
-        coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.8)
-        
-        if coincidencias:
-            return TiendaFacturacion.objects.get(tienda=coincidencias[0])
+        if nombres_tiendas:
+            coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.8)
             
-        # 5. Intento difuso con nombre LIMPIO (si falló el completo)
-        if nombre_limpio and nombre_limpio != nombre_detectado:
-            coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.8)
-            if coincidencias_limpias:
-                 return TiendaFacturacion.objects.get(tienda=coincidencias_limpias[0])
+            if coincidencias:
+                return TiendaFacturacion.objects.get(tienda=coincidencias[0])
+                
+            # 5. Intento difuso con nombre LIMPIO (si falló el completo)
+            if nombre_limpio and nombre_limpio != nombre_detectado:
+                coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.8)
+                if coincidencias_limpias:
+                     return TiendaFacturacion.objects.get(tienda=coincidencias_limpias[0])
             
         return None
 
