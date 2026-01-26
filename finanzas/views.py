@@ -349,6 +349,10 @@ def vista_dashboard(request):
     
     # --- CORRECCIÓN: Usamos el acumulado del año (igual que la gráfica) ---
     ahorro = ahorro_acumulado
+    
+    # --- NUEVO: Cálculo de Deuda Total ---
+    # Sumamos el saldo pendiente de todas las deudas activas del usuario
+    deuda_total = Deuda.objects.filter(propietario=request.user).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0.00')
 
     context = {
         'ingresos': ingresos,
@@ -362,6 +366,7 @@ def vista_dashboard(request):
         'years': range(current_year, current_year - 5, -1),
         'months': range(1, 13),
         'es_usuario_premium': es_usuario_premium,
+        'deuda_total': deuda_total,
         'investment_chart_labels': chart_labels,
         'investment_chart_data': chart_data,
     }
