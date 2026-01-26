@@ -10,6 +10,8 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='iniciosesion.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('dashboard/', views.vista_dashboard, name='dashboard'),
+    path('password_change/', auth_views.PasswordChangeView.as_view(template_name='password_change.html'), name='password_change'),
+    path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='password_change_done.html'), name='password_change_done'),
     path('portafolio/', views.vista_portafolio, name='portafolio'),
     path('listatransacciones/', views.lista_transacciones, name='lista_transacciones'),
     path('transacciones/<int:transaccion_id>/editar/', views.editar_transaccion, name='editar_transaccion'),

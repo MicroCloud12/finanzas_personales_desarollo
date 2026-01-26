@@ -33,7 +33,8 @@ from .services import TransactionService, MercadoPagoService, StockPriceService,
 from .models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
     inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory
+    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory,
+    GoogleCredentials
 )
 from django.http import JsonResponse
 from .models import TiendaFacturacion # Asegúrate de tener los modelos importados
@@ -1055,7 +1056,22 @@ def mi_perfil(request):
     """
     Muestra y permite editar el perfil del usuario.
     """
-    return render(request, 'mi_perfil.html')
+    try:
+        suscripcion = request.user.suscripcion
+    except Suscripcion.DoesNotExist:
+        suscripcion = None
+        
+    try:
+        google_creds = GoogleCredentials.objects.get(user=request.user)
+    except GoogleCredentials.DoesNotExist:
+        google_creds = None
+
+    context = {
+        'suscripcion': suscripcion,
+        'google_creds': google_creds,
+        'today': timezone.now().date(),
+    }
+    return render(request, 'mi_perfil.html', context)
 
 @login_required
 def facturacion(request):
