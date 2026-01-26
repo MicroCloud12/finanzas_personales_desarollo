@@ -351,8 +351,22 @@ def vista_dashboard(request):
     ahorro = ahorro_acumulado
     
     # --- NUEVO: Cálculo de Deuda Total ---
-    # Sumamos el saldo pendiente de todas las deudas activas del usuario
-    deuda_total = Deuda.objects.filter(propietario=request.user).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0.00')
+    # --- NUEVO: Cálculo de Deuda Total ---
+    # Sumamos el saldo pendiente de todas las deudas activas del usuario,
+    # pero distinguimos entre Tarjetas de Crédito y Préstamos.
+    todas_deudas = Deuda.objects.filter(propietario=request.user)
+    deuda_total = Decimal('0.00')
+    
+    for d in todas_deudas:
+        if d.tipo_deuda == 'TARJETA_CREDITO':
+            # Para TC: Deuda Real = Límite (monto_total) - Disponible (saldo_pendiente)
+            deuda_real = d.monto_total - d.saldo_pendiente
+            # Solo sumamos si es positivo (por si acaso el saldo pendiente es mayor al límite, aunque raro)
+            if deuda_real > 0:
+                deuda_total += deuda_real
+        else:
+            # Para Préstamos: Deuda Real = Saldo Pendiente
+            deuda_total += d.saldo_pendiente
 
     context = {
         'ingresos': ingresos,
