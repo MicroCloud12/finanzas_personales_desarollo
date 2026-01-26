@@ -292,15 +292,16 @@ def vista_dashboard(request):
     ahorro_por_mes = {s['mes'].strftime('%Y-%m'): s['total'] for s in savings_qs}
     
     # Generamos los meses hasta el actual
-    current_date = datetime.now()
+    # Generamos los meses para todo el año
+    # Se muestra todo el año para ver la proyección (Growth Plan)
     for m in range(1, 13):
-        # Si queremos proyectar todo el año o solo hasta hoy:
-        # Para "Growth Plan" se suele mostrar todo el año, pero solo tenemos datos hasta hoy.
-        # Mostremos hasta el mes actual para no tener una línea plana al final.
-        if m > current_date.month:
-            break
+        # Usamos 'year' (el año seleccionado) en lugar de current_date.year
+        try:
+            mes_fecha = datetime(year, m, 1)
+        except ValueError:
+             # Caso borde: si el usuario selecciona un año bisiesto o similar y hay error (raro en día 1)
+            continue
             
-        mes_fecha = datetime(current_date.year, m, 1)
         mes_key = mes_fecha.strftime('%Y-%m')
         
         monto_mes = ahorro_por_mes.get(mes_key, Decimal('0.0'))
