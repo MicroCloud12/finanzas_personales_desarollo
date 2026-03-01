@@ -60,11 +60,13 @@
                         <tr
                             class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             <th class="px-6 py-4">Fecha</th>
-                            <th class="px-6 py-4">Descripción</th>
+                            <th class="px-6 py-4 min-w-[200px]">Descripción</th>
                             <th class="px-6 py-4">Total</th>
                             <th class="px-6 py-4">Cuenta Origen</th>
                             <th class="px-6 py-4">Categoría</th>
                             <th class="px-6 py-4">Tipo</th>
+                            <th class="px-6 py-4 text-center leading-tight">Deuda / Pago<br><span
+                                    class="text-[10px] font-normal text-gray-500">(Opcional)</span></th>
                             <th class="px-6 py-4">Cuenta Destino</th>
                             <th class="px-6 py-4 text-center">Acciones</th>
                         </tr>
@@ -73,9 +75,9 @@
                         {% for ticket in tickets %}
                         <tr class="hover:bg-gray-50/80 transition-colors">
                             <td class="px-6 py-4 bg-white text-sm text-gray-700 font-medium whitespace-nowrap">
-                                {{ ticket.datos_json.fecha|slice:"8:10" }}/{{ ticket.datos_json.fecha|slice:"5:7"}}/{{ticket.datos_json.fecha|slice:"0:4" }}
+                                {{ ticket.datos_json.fecha|slice:"8:10" }}/{{ ticket.datos_json.fecha|slice:"5:7" }}/{{ticket.datos_json.fecha|slice:"0:4" }}
                             </td>
-                            <td class="px-6 py-4 bg-white text-sm text-gray-900">
+                            <td class="px-6 py-4 bg-white text-sm text-gray-900 min-w-[200px]">
                                 {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
                                 <span>{{ ticket.datos_json.establecimiento|lower|capfirst }}</span>
                                 {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
@@ -106,7 +108,25 @@
                                     {% include 'partials/_ticket_tipo_options.html' %}
                                 </select>
                             </td>
-                            <td class="px-6 py-4 bg-white">
+                            <td class="px-6 py-4 bg-white align-top">
+                                <div class="space-y-2 min-w-[170px]">
+                                    <select name="deuda_{{ ticket.id }}"
+                                        class="block w-full pl-2 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
+                                        <option value="">Deuda: Ninguna</option>
+                                        {% for deuda in deudas %}
+                                        <option value="{{ deuda.id }}">{{ deuda.nombre }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select name="tipo_pago_{{ ticket.id }}"
+                                        class="block w-full pl-2 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
+                                        <option value="">Tipo: Seleccionar...</option>
+                                        {% for valor, etiqueta in tipos_pago %}
+                                        <option value="{{ valor }}">{{ etiqueta }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 bg-white align-top">
                                 <select name="cuenta_destino_{{ ticket.id }}"
                                     class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_cuentadestino_options.html' %}
@@ -135,7 +155,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                            <td colspan="9" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">

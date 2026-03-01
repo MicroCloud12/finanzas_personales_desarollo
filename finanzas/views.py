@@ -98,12 +98,16 @@ def aprobar_todos_tickets(request):
             categoria_key = f'categoria_{ticket.id}'
             tipo_key = f'tipo_{ticket.id}'
             cuenta_destino_key = f'cuenta_destino_{ticket.id}'
+            deuda_key = f'deuda_{ticket.id}'
+            tipo_pago_key = f'tipo_pago_{ticket.id}'
 
             # Extraemos los datos de ESE ticket en particular del POST
             cuenta = request.POST.get(cuenta_key)
             categoria = request.POST.get(categoria_key)
             tipo = request.POST.get(tipo_key, 'GASTO')
             cuenta_destino = request.POST.get(cuenta_destino_key)
+            deuda_asociada_id = request.POST.get(deuda_key)
+            tipo_pago = request.POST.get(tipo_pago_key)
 
             # Si se proporcionaron los datos necesarios, procesamos el ticket
             if cuenta and categoria and tipo and cuenta_destino:
@@ -113,7 +117,9 @@ def aprobar_todos_tickets(request):
                     cuenta=cuenta,
                     categoria=categoria,
                     tipo_transaccion=tipo,
-                    cuenta_destino=cuenta_destino
+                    cuenta_destino=cuenta_destino,
+                    deuda_asociada_id=deuda_asociada_id,
+                    tipo_pago=tipo_pago
                 )
                 tickets_aprobados_count += 1
         
@@ -142,12 +148,16 @@ def aprobar_ticket(request, ticket_id):
         categoria_key = f'categoria_{ticket_id}'
         tipo_key = f'tipo_{ticket_id}'
         cuenta_destino_key = f'cuenta_destino_{ticket_id}'
+        deuda_key = f'deuda_{ticket_id}'
+        tipo_pago_key = f'tipo_pago_{ticket_id}'
 
         # Extraemos los valores del POST usando esos nombres únicos
         cuenta_seleccionada = request.POST.get(cuenta_key)
         categoria_seleccionada = request.POST.get(categoria_key)
         tipo_seleccionado = request.POST.get(tipo_key, 'GASTO') # 'GASTO' como valor por defecto
         cuenta_destino_seleccionada = request.POST.get(cuenta_destino_key)
+        deuda_asociada_id = request.POST.get(deuda_key)
+        tipo_pago = request.POST.get(tipo_pago_key)
 
         # Usamos el servicio para manejar la aprobación del ticket individual
         TransactionService.approve_pending_transaction(
@@ -156,7 +166,9 @@ def aprobar_ticket(request, ticket_id):
             cuenta=cuenta_seleccionada,
             categoria=categoria_seleccionada,
             tipo_transaccion=tipo_seleccionado,
-            cuenta_destino=cuenta_destino_seleccionada
+            cuenta_destino=cuenta_destino_seleccionada,
+            deuda_asociada_id=deuda_asociada_id,
+            tipo_pago=tipo_pago
         )
         messages.success(request, "Ticket aprobado correctamente.")
         
@@ -231,7 +243,13 @@ def eliminar_transaccion(request, transaccion_id):
 @login_required
 def revisar_tickets(request):
     tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-    return render(request, 'revisar_tickets.html', {'tickets': tickets_pendientes})
+    deudas = Deuda.objects.filter(propietario=request.user)
+    tipos_pago = registro_transacciones.TIPO_PAGO_CHOICES
+    return render(request, 'revisar_tickets.html', {
+        'tickets': tickets_pendientes,
+        'deudas': deudas,
+        'tipos_pago': tipos_pago
+    })
 
 @login_required
 def rechazar_ticket(request, ticket_id):

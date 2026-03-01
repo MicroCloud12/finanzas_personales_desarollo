@@ -471,7 +471,7 @@ class TransactionService:
         )
 
     @staticmethod
-    def approve_pending_transaction(ticket_id: int, user: User, cuenta: str, categoria: str, tipo_transaccion: str, cuenta_destino: str):
+    def approve_pending_transaction(ticket_id: int, user: User, cuenta: str, categoria: str, tipo_transaccion: str, cuenta_destino: str, deuda_asociada_id: str = None, tipo_pago: str = None):
         try:
             ticket = TransaccionPendiente.objects.get(id=ticket_id, propietario=user)
             datos = ticket.datos_json
@@ -493,18 +493,30 @@ class TransactionService:
             # Validamos el monto (puede venir como 'total' o 'total_pagado')
             monto_str = str(datos.get("total") or datos.get("total_pagado") or 0.0)
 
-            registro_transacciones.objects.create(
-                propietario=user,
-                fecha=fecha_segura, # Usamos la fecha limpia y validada
-                #descripcion=datos.get("descripcion_corta", datos.get("establecimiento", "Sin descripción")),
-                descripcion=descripcion_final.upper(),
-                categoria=categoria,
-                monto=Decimal(monto_str), # Convertir a string primero para mayor precisión con Decimal
-                tipo=tipo_transaccion,
-                cuenta_origen=cuenta,
-                cuenta_destino=cuenta_destino,
-                datos_extra=datos  # Guardamos TODOS los datos originales (RFC, Folio, etc.)
-            )
+            from .models import Deuda
+            deuda_asociada = None
+            if deuda_asociada_id:
+                try:
+                    deuda_asociada = Deuda.objects.get(id=deuda_asociada_id, propietario=user)
+                except Deuda.DoesNotExist:
+                    pass
+
+            registro_kwargs = {
+                'propietario': user,
+                'fecha': fecha_segura,
+                'descripcion': descripcion_final.upper(),
+                'categoria': categoria,
+                'monto': Decimal(monto_str),
+                'tipo': tipo_transaccion,
+                'cuenta_origen': cuenta,
+                'cuenta_destino': cuenta_destino,
+                'deuda_asociada': deuda_asociada,
+                'datos_extra': datos
+            }
+            if tipo_pago:
+                registro_kwargs['tipo_pago'] = tipo_pago
+
+            registro_transacciones.objects.create(**registro_kwargs)
             
             ticket.estado = 'aprobada'
             ticket.save()
