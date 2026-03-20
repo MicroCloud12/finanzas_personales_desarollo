@@ -59,25 +59,27 @@
                     <thead>
                         <tr
                             class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            <th class="px-6 py-4">Fecha</th>
-                            <th class="px-6 py-4 min-w-[200px]">Descripción</th>
-                            <th class="px-6 py-4">Total</th>
-                            <th class="px-6 py-4">Cuenta Origen</th>
-                            <th class="px-6 py-4">Categoría</th>
-                            <th class="px-6 py-4">Tipo</th>
-                            <th class="px-6 py-4 text-center leading-tight">Deuda / Pago<br><span
-                                    class="text-[10px] font-normal text-gray-500">(Opcional)</span></th>
-                            <th class="px-6 py-4">Cuenta Destino</th>
-                            <th class="px-6 py-4 text-center">Acciones</th>
+                            <th class="px-2 py-3 text-center">Fecha</th>
+                            <th class="px-2 py-3 min-w-[150px] text-center">Descripción</th>
+                            <th class="px-2 py-3 text-center">Total</th>
+                            <th class="px-2 py-3 text-center">Cuenta Origen</th>
+                            <th class="px-2 py-3 text-center">Categoría</th>
+                            <th class="px-2 py-3 text-center">Tipo</th>
+                            <th class="px-2 py-3 min-w-[130px] leading-tight text-center">Deuda Asociada<br><span
+                                    class="text-[10px] font-normal text-gray-400">(Opcional)</span></th>
+                            <th class="px-2 py-3 min-w-[130px] text-center">Tipo de Pago</th>
+                            <th class="px-2 py-3 text-center">Cuenta Destino</th>
+                            <th class="px-2 py-3 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         {% for ticket in tickets %}
                         <tr class="hover:bg-gray-50/80 transition-colors">
-                            <td class="px-6 py-4 bg-white text-sm text-gray-700 font-medium whitespace-nowrap">
-                                {{ ticket.datos_json.fecha|slice:"8:10" }}/{{ ticket.datos_json.fecha|slice:"5:7" }}/{{ticket.datos_json.fecha|slice:"0:4" }}
+                            <td
+                                class="px-2 py-3 bg-white text-sm text-gray-700 font-medium whitespace-nowrap text-center">
+                                {{ ticket.datos_json.fecha|slice:"8:10" }}/{{ ticket.datos_json.fecha|slice:"5:7" }}/{{ ticket.datos_json.fecha|slice:"0:4" }}
                             </td>
-                            <td class="px-6 py-4 bg-white text-sm text-gray-900 min-w-[200px]">
+                            <td class="px-2 py-3 bg-white text-sm text-gray-900 min-w-[150px] text-center">
                                 {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
                                 <span>{{ ticket.datos_json.establecimiento|lower|capfirst }}</span>
                                 {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
@@ -86,53 +88,53 @@
                                 {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta|lower|capfirst }}
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-4 bg-white text-sm font-bold text-gray-900">
+                            <td class="px-2 py-3 bg-white text-sm font-bold text-gray-900 text-center">
                                 ${{ ticket.datos_json.total }}
                             </td>
 
-                            <td class="px-6 py-4 bg-white">
+                            <td class="px-2 py-3 bg-white text-center">
                                 <select name="cuenta_origen_{{ ticket.id }}"
-                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    class="block w-full pl-2 pr-6 py-1.5 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_select_options.html' %}
                                 </select>
                             </td>
-                            <td class="px-6 py-4 bg-white">
+                            <td class="px-2 py-3 bg-white text-center">
                                 <select name="categoria_{{ ticket.id }}"
-                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    class="block w-full pl-2 pr-6 py-1.5 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_category_options.html' %}
                                 </select>
                             </td>
-                            <td class="px-6 py-4 bg-white">
+                            <td class="px-2 py-3 bg-white text-center">
                                 <select name="tipo_{{ ticket.id }}"
-                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    class="block w-full pl-2 pr-6 py-1.5 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_tipo_options.html' %}
                                 </select>
                             </td>
-                            <td class="px-6 py-4 bg-white align-top">
-                                <div class="space-y-2 min-w-[170px]">
-                                    <select name="deuda_{{ ticket.id }}"
-                                        class="block w-full pl-2 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
-                                        <option value="">Deuda: Ninguna</option>
-                                        {% for deuda in deudas %}
-                                        <option value="{{ deuda.id }}">{{ deuda.nombre }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <select name="tipo_pago_{{ ticket.id }}"
-                                        class="block w-full pl-2 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
-                                        <option value="">Tipo: Seleccionar...</option>
-                                        {% for valor, etiqueta in tipos_pago %}
-                                        <option value="{{ valor }}">{{ etiqueta }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
+                            <td class="px-2 py-3 bg-white align-middle text-center">
+                                <select name="deuda_{{ ticket.id }}"
+                                    class="block w-full min-w-[110px] pl-2 pr-6 py-1.5 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
+                                    <option value="">Ninguna</option>
+                                    {% for deuda in deudas %}
+                                    <option value="{{ deuda.id }}">{{ deuda.nombre }}</option>
+                                    {% endfor %}
+                                </select>
                             </td>
-                            <td class="px-6 py-4 bg-white align-top">
+                            <td class="px-2 py-3 bg-white align-middle text-center">
+                                <select name="tipo_pago_{{ ticket.id }}"
+                                    class="block w-full min-w-[120px] pl-2 pr-6 py-1.5 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
+                                    <option value="">Seleccionar...</option>
+                                    {% for valor, etiqueta in tipos_pago %}
+                                    <option value="{{ valor }}">{{ etiqueta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td class="px-2 py-3 bg-white align-middle text-center">
                                 <select name="cuenta_destino_{{ ticket.id }}"
-                                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                                    class="block w-full pl-2 pr-6 py-1.5 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_cuentadestino_options.html' %}
                                 </select>
                             </td>
-                            <td class="px-6 py-4 bg-white text-center">
+                            <td class="px-2 py-3 bg-white text-center">
                                 <div class="flex items-center justify-center gap-2">
                                     <button type="submit" formaction="{% url 'aprobar_ticket' ticket.id %}"
                                         class="p-1.5 rounded-lg text-green-600 hover:bg-green-100 focus:outline-none transition-colors"
@@ -155,7 +157,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                            <td colspan="10" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
