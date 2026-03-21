@@ -82,54 +82,45 @@ Views relacionadas a las transacciones
 '''
 @login_required
 def aprobar_todos_tickets(request):
-    """
-    Aprueba TODOS los tickets pendientes que estaban en la página, cada uno
-    con su propia configuración seleccionada.
-    """
+    """Aprueba SOLO los tickets que el usuario ha clasificado (Categoría o Deuda)"""
     if request.method == 'POST':
-        # Primero, obtenemos una lista de todos los IDs de tickets pendientes del usuario.
-        tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-        tickets_aprobados_count = 0
+        # Buscamos todos los tickets en pantalla
+        tickets = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
+        procesados = 0
 
-        # Iteramos sobre cada ticket pendiente
-        for ticket in tickets_pendientes:
-            # Para cada ticket, construimos los nombres de sus campos de formulario
-            cuenta_key = f'cuenta_origen_{ticket.id}'
-            categoria_key = f'categoria_{ticket.id}'
-            tipo_key = f'tipo_{ticket.id}'
-            cuenta_destino_key = f'cuenta_destino_{ticket.id}'
-            deuda_key = f'deuda_{ticket.id}'
-            tipo_pago_key = f'tipo_pago_{ticket.id}'
-
-            # Extraemos los datos de ESE ticket en particular del POST
-            cuenta = request.POST.get(cuenta_key)
-            categoria = request.POST.get(categoria_key)
-            tipo = request.POST.get(tipo_key, 'GASTO')
-            cuenta_destino = request.POST.get(cuenta_destino_key)
-            deuda_asociada_id = request.POST.get(deuda_key)
-            tipo_pago = request.POST.get(tipo_pago_key)
-
-            # Si se proporcionaron los datos necesarios, procesamos el ticket
-            if cuenta and categoria and tipo and cuenta_destino:
+        for ticket in tickets:
+            categoria = request.POST.get(f'categoria_{ticket.id}', '')
+            deuda_id = request.POST.get(f'deuda_{ticket.id}', '')
+            
+            # --- NUEVO FILTRO INTELIGENTE ---
+            # Un ticket está "preparado" si elegiste una Categoría O una Deuda
+            if categoria != '' or deuda_id != '':
+                
+                cuenta_origen = request.POST.get(f'cuenta_origen_{ticket.id}', '')
+                tipo = request.POST.get(f'tipo_{ticket.id}', '')
+                tipo_pago = request.POST.get(f'tipo_pago_{ticket.id}', '')
+                cuenta_destino = request.POST.get(f'cuenta_destino_{ticket.id}', '')
+                
                 TransactionService.approve_pending_transaction(
                     ticket_id=ticket.id,
                     user=request.user,
-                    cuenta=cuenta,
+                    cuenta=cuenta_origen,
                     categoria=categoria,
                     tipo_transaccion=tipo,
                     cuenta_destino=cuenta_destino,
-                    deuda_asociada_id=deuda_asociada_id,
+                    deuda_asociada_id=deuda_id if deuda_id else None,
                     tipo_pago=tipo_pago
                 )
-                tickets_aprobados_count += 1
-        
-        if tickets_aprobados_count > 0:
-            messages.success(request, f"{tickets_aprobados_count} tickets han sido aprobados correctamente.")
+                procesados += 1
+
+        # Mensajes de respuesta para el usuario
+        if procesados > 0:
+            messages.success(request, f'¡Éxito! Se aprobaron {procesados} tickets preparados.')
         else:
-            messages.warning(request, "No se seleccionaron tickets para aprobar o faltaron datos.")
+            messages.warning(request, 'No se aprobó ningún ticket. Recuerda seleccionar una Categoría o Deuda en los tickets que quieras procesar.')
 
     return redirect('revisar_tickets')
-
+    
 @login_required
 def rechazar_todos_tickets(request):
     if request.method == 'POST':
@@ -138,39 +129,26 @@ def rechazar_todos_tickets(request):
 
 @login_required
 def aprobar_ticket(request, ticket_id):
-    """
-    Aprueba un SOLO ticket. Esta vista ahora es más inteligente y sabe
-    buscar los datos específicos de este ticket dentro del gran formulario.
-    """
+    """Aprueba un solo ticket (Botón de la palomita verde individual)"""
     if request.method == 'POST':
-        # Construimos los nombres únicos de los campos para este ticket específico
-        cuenta_key = f'cuenta_origen_{ticket_id}'
-        categoria_key = f'categoria_{ticket_id}'
-        tipo_key = f'tipo_{ticket_id}'
-        cuenta_destino_key = f'cuenta_destino_{ticket_id}'
-        deuda_key = f'deuda_{ticket_id}'
-        tipo_pago_key = f'tipo_pago_{ticket_id}'
+        categoria = request.POST.get(f'categoria_{ticket_id}', '')
+        deuda_id = request.POST.get(f'deuda_{ticket_id}', '')
+        cuenta_origen = request.POST.get(f'cuenta_origen_{ticket_id}', '')
+        tipo = request.POST.get(f'tipo_{ticket_id}', '')
+        tipo_pago = request.POST.get(f'tipo_pago_{ticket_id}', '')
+        cuenta_destino = request.POST.get(f'cuenta_destino_{ticket_id}', '')
 
-        # Extraemos los valores del POST usando esos nombres únicos
-        cuenta_seleccionada = request.POST.get(cuenta_key)
-        categoria_seleccionada = request.POST.get(categoria_key)
-        tipo_seleccionado = request.POST.get(tipo_key, 'GASTO') # 'GASTO' como valor por defecto
-        cuenta_destino_seleccionada = request.POST.get(cuenta_destino_key)
-        deuda_asociada_id = request.POST.get(deuda_key)
-        tipo_pago = request.POST.get(tipo_pago_key)
-
-        # Usamos el servicio para manejar la aprobación del ticket individual
         TransactionService.approve_pending_transaction(
             ticket_id=ticket_id,
             user=request.user,
-            cuenta=cuenta_seleccionada,
-            categoria=categoria_seleccionada,
-            tipo_transaccion=tipo_seleccionado,
-            cuenta_destino=cuenta_destino_seleccionada,
-            deuda_asociada_id=deuda_asociada_id,
+            cuenta=cuenta_origen,
+            categoria=categoria,
+            tipo_transaccion=tipo,
+            cuenta_destino=cuenta_destino,
+            deuda_asociada_id=deuda_id if deuda_id else None,
             tipo_pago=tipo_pago
         )
-        messages.success(request, "Ticket aprobado correctamente.")
+        messages.success(request, '¡Ticket aprobado correctamente!')
         
     return redirect('revisar_tickets')
 
