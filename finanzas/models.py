@@ -45,50 +45,15 @@ class registro_transacciones(models.Model):
 
     # Tu método save que modificamos anteriormente va aquí...
     def save(self, *args, **kwargs):
-        # 1. SEGURO CRÍTICO: Evitar doble resta de la deuda si editas el ticket mañana
-        es_nueva = self.pk is None 
-
-        # =========================================================
-        # AUTO-CORRECTOR UNIVERSAL (A PRUEBA DE BALAS)
-        # =========================================================
-
-        # A) Si seleccionaste una Deuda, APLASTAMOS los datos ocultos del HTML
-        # para que el Dashboard cuadre perfecto y la lógica matemática no falle.
-        if self.deuda_asociada:
-            self.tipo = 'GASTO'
-            self.categoria = 'Pago de Deuda'
-            self.cuenta_origen = 'Efectivo Quincena' 
-            self.cuenta_destino = 'Sin Cuenta'
-            
-            # Inferimos el tipo de pago correcto automáticamente
-            if self.deuda_asociada.tipo_deuda == 'TARJETA_CREDITO':
-                self.tipo_pago = 'TARJETA_CREDITO'
-            else:
-                self.tipo_pago = 'MENSUALIDAD'
-
-        # B) Si es una transacción normal (compras), aseguramos defaults para que
-        # el dashboard no las ignore si Gemini las mandó vacías.
-        else:
-            if not self.cuenta_origen or self.cuenta_origen == 'Sin Cuenta':
-                self.cuenta_origen = 'Efectivo Quincena'
-            if not self.cuenta_destino:
-                self.cuenta_destino = 'Sin Cuenta'
-            if not self.tipo:
-                self.tipo = 'GASTO' 
-            if not self.categoria:
-                self.categoria = 'General'
-
-        # 2. Guardamos la transacción ya corregida en la BD
         super().save(*args, **kwargs)
 
-        # =========================================================
-        # LÓGICA MATEMÁTICA DE DEUDAS (Protegida)
-        # =========================================================
-        # SOLO restamos a la deuda si es una transacción nueva (es_nueva = True)
-        if es_nueva and self.deuda_asociada:
+        if self.deuda_asociada:
             deuda = self.deuda_asociada
             
+            # --- NUEVA LÓGICA: COMPRA CON TARJETA ---
             if self.tipo_pago == 'TARJETA_CREDITO':
+                # Si es una compra, RESTATAMOS al saldo disponible (o aumentamos la deuda si se viera así)
+                # Dado el requerimiento: "se haga la resta... se actualice el saldo", asumimos que reduce el 'Disponible'.
                 deuda.saldo_pendiente -= self.monto
                 deuda.save()
 
@@ -97,21 +62,33 @@ class registro_transacciones(models.Model):
                 deuda.save()
 
                 monto_pago_capital = self.monto
+                # --- ¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE! ---
+                # Ordenamos de la primera a la última para pagar las cuotas en orden.
                 cuotas_pendientes = PagoAmortizacion.objects.filter(
                     deuda=deuda, pagado=False
-                ).order_by('numero_cuota')
+                ).order_by('numero_cuota') # Quitamos el signo '-'
 
                 for cuota in cuotas_pendientes:
                     if monto_pago_capital <= 0:
                         break
+                    
+                    # Comparamos con el capital de la cuota
                     if monto_pago_capital >= cuota.capital:
                         cuota.pagado = True
                         cuota.save()
                         monto_pago_capital -= cuota.capital
                     else:
+                        # Si el pago no cubre toda la cuota, nos detenemos.
+                        # Una mejora futura podría ser manejar pagos parciales a capital.
                         break
 
+            elif deuda.tipo_deuda == 'TARJETA_CREDITO':
+                # Esta lógica sigue igual
+                deuda.saldo_pendiente -= self.monto
+                deuda.save()
+
             elif deuda.tipo_deuda == 'PRESTAMO' and self.tipo_pago == 'MENSUALIDAD':
+                # Esta lógica sigue igual
                 cuota_a_pagar = PagoAmortizacion.objects.filter(deuda=deuda, pagado=False).order_by('numero_cuota').first()
                 if cuota_a_pagar:
                     cuota_a_pagar.pagado = True
@@ -119,7 +96,7 @@ class registro_transacciones(models.Model):
                     cuota_a_pagar.save()
                     deuda.saldo_pendiente = F('saldo_pendiente') - cuota_a_pagar.capital
                     deuda.save()
-                    
+ 
 class GoogleCredentials(models.Model):
     # Un enlace uno-a-uno con el usuario de Django. Cada usuario solo puede tener un set de credenciales.
     user = models.OneToOneField(User, on_delete=models.CASCADE)

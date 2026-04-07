@@ -1,3 +1,21 @@
+// Función para automatizar el Tipo según la Categoría seleccionada
+function actualizarTipo(selectElement, ticketId) {
+    const categoriaSeleccionada = selectElement.value;
+    const selectTipo = document.querySelector(`select[name="tipo_${ticketId}"]`);
+
+    if (selectTipo) {
+        if (categoriaSeleccionada === 'Nomina') {
+            selectTipo.value = 'INGRESO';
+        }
+        else if (categoriaSeleccionada === 'Ahorro') {
+            selectTipo.value = 'TRANSFERENCIA';
+        }
+        else {
+            selectTipo.value = 'GASTO';
+        }
+    }
+}
+
 function fadeFlashMessage() {
     const messageWrapper = document.querySelector('.fixed.top-5.right-5');
     if (messageWrapper) {
@@ -14,18 +32,18 @@ function setupProfileMenu() {
     const dropdownMenu = document.getElementById('profile-menu');
 
     if (menuButton && dropdownMenu) {
-        menuButton.addEventListener('click', function(event) {
+        menuButton.addEventListener('click', function (event) {
             event.stopPropagation();
             dropdownMenu.classList.toggle('hidden');
         });
 
-        window.addEventListener('click', function(event) {
+        window.addEventListener('click', function (event) {
             if (!dropdownMenu.classList.contains('hidden') && !menuButton.contains(event.target)) {
                 dropdownMenu.classList.add('hidden');
             }
         });
 
-        document.addEventListener('keydown', function(event) {
+        document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape' && !dropdownMenu.classList.contains('hidden')) {
                 dropdownMenu.classList.add('hidden');
             }
