@@ -38,10 +38,35 @@ from .models import (
 )
 from django.http import JsonResponse
 from .models import TiendaFacturacion # Asegúrate de tener los modelos importados
-
+from .models import Cuenta
+from .forms import CuentaForm
 
 
 logger = logging.getLogger(__name__)
+
+
+@login_required
+def gestionar_cuentas(request):
+    cuentas = Cuenta.objects.filter(propietario=request.user)
+    
+    if request.method == 'POST':
+        form = CuentaForm(request.POST)
+        if form.is_valid():
+            cuenta = form.save(commit=False)
+            cuenta.propietario = request.user
+            cuenta.save()
+            messages.success(request, f"La cuenta '{cuenta.nombre}' se ha registrado exitosamente.")
+            return redirect('dashboard') # Una vez que guardan, los dejamos ir al dashboard
+    else:
+        form = CuentaForm()
+
+    context = {
+        'form': form,
+        'cuentas': cuentas,
+        # Si no tiene cuentas, le mostramos un mensaje diferente en el HTML
+        'es_onboarding': not cuentas.exists() 
+    }
+    return render(request, 'gestionar_cuentas.html', context)
 
 def enviar_pregunta(request):
     if request.method == "POST":
@@ -231,7 +256,13 @@ def eliminar_transaccion(request, transaccion_id):
 @login_required
 def revisar_tickets(request):
     tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-    return render(request, 'revisar_tickets.html', {'tickets': tickets_pendientes})
+    # --- NUEVO: Obtenemos las cuentas del usuario ---
+    cuentas_usuario = Cuenta.objects.filter(propietario=request.user)
+    
+    return render(request, 'revisar_tickets.html', {
+        'tickets': tickets_pendientes,
+        'cuentas_usuario': cuentas_usuario # Pasamos las cuentas a la plantilla
+    })
 
 @login_required
 def rechazar_ticket(request, ticket_id):
@@ -263,6 +294,14 @@ y ganancias mensuales, e inversiones.
 '''
 @login_required
 def vista_dashboard(request):
+    # --- ONBOARDING OBLIGATORIO ---
+    # Si el usuario no tiene ninguna cuenta registrada, lo forzamos a crear una
+    from .models import Cuenta
+    if not Cuenta.objects.filter(propietario=request.user).exists():
+        messages.info(request, "¡Bienvenido! Para poder analizar tus tickets y automatizar tus gastos, primero necesitamos que registres al menos una cuenta o tarjeta.")
+        return redirect('gestionar_cuentas')
+    # ------------------------------
+
     # Definimos fechas al inicio para usarlas en todo el dashboard
     current_year = datetime.now().year
     current_month = datetime.now().month
@@ -270,9 +309,9 @@ def vista_dashboard(request):
     month = int(request.GET.get('month', current_month))
 
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    
     # --- LÓGICA PARA LA GRÁFICA DE AHORRO (SAVINGS GROWTH) ---
     # Calculamos el ahorro acumulado mes a mes para el año seleccionado
-    # Usamos 'year' obtenido de los params GET (o año actual por defecto)
     savings_qs = registro_transacciones.objects.filter(
         propietario=request.user,
         fecha__year=year
@@ -281,7 +320,7 @@ def vista_dashboard(request):
         (Q(categoria__iexact='Ahorro') & ~Q(tipo__iexact='GASTO')) |
         # 2. Transferencias directas a la Cuenta Ahorro
         Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
-        # 3. Ingresos que entraron directo a Cuenta Ahorro (En Ingresos, 'cuenta_origen' suele ser destino/cuenta)
+        # 3. Ingresos que entraron directo a Cuenta Ahorro 
         Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
     ).annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
 
@@ -292,15 +331,12 @@ def vista_dashboard(request):
     # Mapa de ahorro por mes
     ahorro_por_mes = {s['mes'].strftime('%Y-%m'): s['total'] for s in savings_qs}
     
-    # Generamos los meses hasta el actual
     # Generamos los meses para todo el año
-    # Se muestra todo el año para ver la proyección (Growth Plan)
     for m in range(1, 13):
-        # Usamos 'year' (el año seleccionado) en lugar de current_date.year
         try:
             mes_fecha = datetime(year, m, 1)
         except ValueError:
-             # Caso borde: si el usuario selecciona un año bisiesto o similar y hay error (raro en día 1)
+             # Caso borde
             continue
             
         mes_key = mes_fecha.strftime('%Y-%m')
@@ -314,20 +350,14 @@ def vista_dashboard(request):
     chart_labels = savings_labels
     chart_data = savings_data
     # ----------------------------------------------
+    
     # Verificamos si la suscripción está activa con nuestro método del modelo.
     es_usuario_premium = suscripcion.is_active()
-    transacciones = registro_transacciones.objects.filter(
-        propietario=request.user, 
-        fecha__year=year, 
-        fecha__month=month
-    )
 
-     # --- LA MAGIA DE LA OPTIMIZACIÓN (VIA MANAGER) ---
-    # Delegamos toda la lógica compleja al Manager (SOLID: Single Responsibility)
-    # la view solo se encarga de recibir datos y pasarlos al template.
+    # --- LA MAGIA DE LA OPTIMIZACIÓN (VIA MANAGER) ---
     bal = registro_transacciones.objects.balance_dashboard(request.user, year, month)
     
-    # Igualmente, hacemos UNA SOLA CONSULTA para las inversiones
+    # Hacemos UNA SOLA CONSULTA para las inversiones
     agregados_inversion = inversiones.objects.filter(propietario=request.user).aggregate(
         total_inicial=Sum('costo_total_adquisicion'),
         total_actual=Sum('valor_actual_mercado')
@@ -348,13 +378,9 @@ def vista_dashboard(request):
     balance = ingresos - gastos - gastos_ahorro
     disponible_banco = ingresos - gastos - transferencias - ahorro_total
     
-    # --- CORRECCIÓN: Usamos el acumulado del año (igual que la gráfica) ---
     ahorro = ahorro_acumulado
     
-    # --- NUEVO: Cálculo de Deuda Total ---
-    # --- NUEVO: Cálculo de Deuda Total ---
-    # Sumamos el saldo pendiente de todas las deudas activas del usuario,
-    # pero distinguimos entre Tarjetas de Crédito y Préstamos.
+    # --- Cálculo de Deuda Total ---
     todas_deudas = Deuda.objects.filter(propietario=request.user)
     deuda_total = Decimal('0.00')
     
@@ -362,7 +388,6 @@ def vista_dashboard(request):
         if d.tipo_deuda == 'TARJETA_CREDITO':
             # Para TC: Deuda Real = Límite (monto_total) - Disponible (saldo_pendiente)
             deuda_real = d.monto_total - d.saldo_pendiente
-            # Solo sumamos si es positivo (por si acaso el saldo pendiente es mayor al límite, aunque raro)
             if deuda_real > 0:
                 deuda_total += deuda_real
         else:
@@ -373,8 +398,8 @@ def vista_dashboard(request):
         'ingresos': ingresos,
         'gastos': gastos,
         'balance': balance,
-        'transferencias':transferencias,
-        'disponible_banco':disponible_banco,
+        'transferencias': transferencias,
+        'disponible_banco': disponible_banco,
         'ahorro': ahorro,
         'selected_year': year,
         'selected_month': month,

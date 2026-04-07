@@ -365,7 +365,6 @@ class TiendaFacturacion(models.Model):
     def __str__(self):
         return f"Configuración para {self.tienda}"
 
-
 class Factura(models.Model):
     """
     TABLA 2: RESULTADOS (La Memoria)
@@ -446,3 +445,24 @@ class PortfolioHistory(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.fecha}: ${self.valor_total}"
+
+class Cuenta(models.Model):
+    TIPO_CUENTA = (
+        ('EFECTIVO', 'Efectivo'),
+        ('DEBITO', 'Tarjeta de Débito'),
+        ('CREDITO', 'Tarjeta de Crédito'),
+        ('INVERSION', 'Cuenta de Inversión'),
+    )
+    
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE)
+    nombre = models.CharField(max_length=50, help_text="Ej. Tarjeta Banamex, Efectivo Quincena, NuBank")
+    terminacion = models.CharField(max_length=4, blank=True, null=True, help_text="Últimos 4 dígitos de la tarjeta (opcional)")
+    tipo = models.CharField(max_length=15, choices=TIPO_CUENTA, default='DEBITO')
+    
+    class Meta:
+        unique_together = ['propietario', 'nombre']
+
+    def __str__(self):
+        if self.terminacion:
+            return f"{self.nombre} (**{self.terminacion})"
+        return self.nombre

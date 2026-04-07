@@ -25,40 +25,62 @@ def load_and_optimize_image(file_content, max_width: int = 1024, quality: int = 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime_type: str):
+    """
+    Procesa un único ticket: lo descarga, obtiene el contexto del usuario (sus cuentas
+    y categorías), lo analiza con Gemini y lo guarda como pendiente con sugerencias.
+    """
     try:
+        from django.contrib.auth.models import User
+        # Importamos los modelos necesarios para construir el contexto
+        from .models import Cuenta, registro_transacciones
+        
         user = User.objects.get(id=user_id)
         gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service() 
+        gemini_service = get_gemini_service()
         transaction_service = TransactionService()
-        file_content = gdrive_service.get_file_content(file_id)
         
-        # --- NUEVO: OBTENER CONTEXTO DEL USUARIO ---
-        from .models import registro_transacciones
-        cuentas = list(registro_transacciones.objects.filter(propietario=user).values_list('cuenta_origen', flat=True).distinct()[:10])
+        # Descargamos el archivo de Drive
+        file_content = gdrive_service.get_file_content(file_id)
+
+        # --- LA MAGIA: OBTENER CONTEXTO DEL USUARIO ---
+        
+        # 1. Obtenemos las tarjetas/cuentas registradas por el usuario
+        cuentas = Cuenta.objects.filter(propietario=user)
+        lista_cuentas_str = ", ".join([f"'{c.nombre}' (Terminación: {c.terminacion or 'N/A'})" for c in cuentas])
+        
+        # 2. Obtenemos las categorías que el usuario suele usar para que la IA no invente nombres nuevos
+        # Tomamos las categorías únicas de sus últimas transacciones
         categorias = list(registro_transacciones.objects.filter(propietario=user).values_list('categoria', flat=True).distinct()[:20])
         
-        contexto_usuario = f"Cuentas del usuario: {cuentas}. Categorías del usuario: {categorias}."
+        # 3. Construimos el texto de contexto para instruir a Gemini
+        contexto_usuario = f"Cuentas disponibles del usuario: [{lista_cuentas_str}]. Categorías conocidas del usuario: {categorias}."
+        
         # -------------------------------------------
 
+        # Preparamos la imagen (compresión) o PDF
         file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
         
+        # --- LLAMADA A GEMINI CON EL CONTEXTO INYECTADO ---
         extracted_data = gemini_service.extract_data(
             prompt_name="tickets",
             file_data=file_data,
             mime_type=mime_type,
-            context=contexto_usuario # Pasamos el contexto a la IA
+            context=contexto_usuario  # <-- Aquí le pasamos sus tarjetas y categorías
         )
         
+        # Verificamos si Gemini devolvió un error de procesamiento
         if extracted_data.get("error"):
-             return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data['raw_response']}
+             return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data.get('raw_response', 'Error desconocido')}
 
+        # Guardamos el ticket pendiente para que el usuario lo revise (ya con los dropdowns pre-seleccionados)
         transaction_service.create_pending_transaction(user, extracted_data)
-        return {'status': 'SUCCESS', 'file_name': file_name}
         
+        return {'status': 'SUCCESS', 'file_name': file_name}
+
     except Exception as e:
+        # Si algo falla (ej. error de red con Drive o Gemini), la tarea se reintentará automáticamente
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
-
 @shared_task
 def process_drive_tickets(user_id: int):
     """

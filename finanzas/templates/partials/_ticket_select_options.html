@@ -1,5 +1,10 @@
-<option value="">Seleccionar...</option>
-<option value="Efectivo Quincena" {% if ticket.datos_json.cuenta_origen_sugerida == 'Efectivo Quincena' %}selected{% endif %}>Efectivo Quincena</option>
-<option value="Cuenta Ahorro" {% if ticket.datos_json.cuenta_origen_sugerida == 'Cuenta Ahorro' %}selected{% endif %}>Cuenta Ahorro</option>
-<option value="Tarjeta de Crédito" {% if ticket.datos_json.cuenta_origen_sugerida == 'Tarjeta de Crédito' %}selected{% endif %}>Tarjeta de Crédito</option>
-<option value="Otra Cuenta" {% if ticket.datos_json.cuenta_origen_sugerida == 'Otra Cuenta' %}selected{% endif %}>Otra Cuenta</option>
+<option value="">Seleccionar cuenta...</option>
+
+{% for cuenta in cuentas_usuario %}
+    <option value="{{ cuenta.nombre }}" 
+        {% if ticket.datos_json.cuenta_origen_sugerida == cuenta.nombre %}selected{% endif %}>
+        {{ cuenta.nombre }} {% if cuenta.terminacion %}(**{{ cuenta.terminacion }}){% endif %}
+    </option>
+{% endfor %}
+
+<option value="Otra Cuenta">Otra Cuenta</option>

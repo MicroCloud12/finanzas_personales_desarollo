@@ -88,4 +88,5 @@ urlpatterns = [
     path('api/confirmar-factura/', views.confirmar_datos_factura, name='confirmar_factura'),
     path('api/agregar-campo-tienda/', views.agregar_campo_tienda, name='agregar_campo_tienda'),
     path('api/eliminar-campo-tienda/', views.eliminar_campo_tienda, name='eliminar_campo_tienda'),
+    path('cuentas/', views.gestionar_cuentas, name='gestionar_cuentas'),
 ]

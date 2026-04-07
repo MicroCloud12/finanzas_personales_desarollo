@@ -114,7 +114,7 @@ class GeminiService:
               "total": 0.00,
               "tipo_movimiento": "(GASTO|INGRESO|TRANSFERENCIA)",
               "categoria_sugerida": "Elige la categoría más lógica del contexto, o sugiere una genérica",
-              "cuenta_origen_sugerida": "Infiere de las cuentas del contexto (ej. si ves terminación de tarjeta), si no, usa 'Efectivo' o 'Desconocida'",
+              "cuenta_origen_sugerida": "Revisa el ticket. Si menciona una tarjeta con una terminación (ej. 4512), busca en 'Cuentas disponibles del usuario' y devuelve EXACTAMENTE el nombre de la cuenta que coincida. Si dice 'Efectivo', busca su cuenta de efectivo. Si no hay coincidencia clara, devuelve un string vacío ''",
               "cuenta_destino_sugerida": "Infiere del contexto si es transferencia, si es Gasto usa 'Sin Cuenta'",
               "confianza_extraccion": "(ALTA|MEDIA|BAJA)"
             }}
