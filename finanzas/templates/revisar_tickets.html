@@ -72,16 +72,16 @@
                     <tbody class="divide-y divide-gray-100">
                         {% for ticket in tickets %}
                         <tr class="hover:bg-gray-50/80 transition-colors">
-                            <td class="px-6 py-4 bg-white text-sm text-gray-700 font-medium">
-                                {{ ticket.datos_json.fecha }}
+                            <td class="px-6 py-4 bg-white text-sm text-gray-700 font-medium whitespace-nowrap">
+                                {{ ticket.datos_json.fecha|slice:"8:10" }}/{{ ticket.datos_json.fecha|slice:"5:7"}}/{{ticket.datos_json.fecha|slice:"0:4" }}
                             </td>
                             <td class="px-6 py-4 bg-white text-sm text-gray-900">
                                 {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
-                                <span class="font-semibold">{{ ticket.datos_json.establecimiento }}</span>
+                                <span>{{ ticket.datos_json.establecimiento|lower|capfirst }}</span>
                                 {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
-                                <span class="italic text-gray-600">{{ ticket.datos_json.descripcion_corta }}</span>
+                                <span class="italic text-gray-600">{{ ticket.datos_json.descripcion_corta|lower|capfirst }}</span>
                                 {% else %}
-                                {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta }}
+                                {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta|lower|capfirst }}
                                 {% endif %}
                             </td>
                             <td class="px-6 py-4 bg-white text-sm font-bold text-gray-900">

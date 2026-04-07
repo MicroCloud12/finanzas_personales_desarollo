@@ -92,56 +92,39 @@ class GeminiService:
     """
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-2.5-pro")
+        self.model = genai.GenerativeModel("gemini-2.0-flash")
         
         # --- CAMBIO EN EL PROMPT ---
         # Reforzamos la instrucción de la fecha.
         self.prompts = { 
             "tickets": """
             Eres un asistente experto en contabilidad para un sistema de finanzas personales.
-            Tu tarea es analizar la imagen lo mas detallado posible de un documento y extraer la información clave con la máxima precisión.
+            Tu tarea es analizar la imagen de un documento, extraer la información clave y CLASIFICARLA con precisión.
             Devuelve SIEMPRE la respuesta en formato JSON, sin absolutamente ningún texto adicional.
 
-            ### CONTEXTO:
-            El usuario ha subido una imagen de un ticket de compra o un comprobante de transferencia.
-            Necesito que identifiques el tipo de documento y extraigas los siguientes campos:
+            ### CONTEXTO DINÁMICO DEL USUARIO (Tus opciones):
+            {context_str}
 
             ### FORMATO DE SALIDA ESTRICTO (JSON):
-            {
+            {{
               "tipo_documento": "(TICKET_COMPRA|TRANSFERENCIA|OTRO)",
               "fecha": "YYYY-MM-DD",
               "establecimiento": "Nombre del comercio o beneficiario",
-              "descripcion_corta": "Un resumen breve del gasto (ej. 'Renta depto', 'Supermercado', 'Cena con amigos')",
+              "descripcion_corta": "Resumen breve (ej. 'Supermercado')",
               "total": 0.00,
+              "tipo_movimiento": "(GASTO|INGRESO|TRANSFERENCIA)",
+              "categoria_sugerida": "Elige la categoría más lógica del contexto, o sugiere una genérica",
+              "cuenta_origen_sugerida": "Revisa el ticket. Si menciona una tarjeta con una terminación (ej. 4512), busca en 'Cuentas disponibles del usuario' y devuelve EXACTAMENTE el nombre de la cuenta que coincida. Si dice 'Efectivo', busca su cuenta de efectivo. Si no hay coincidencia clara, devuelve un string vacío ''",
+              "cuenta_destino_sugerida": "Infiere del contexto si es transferencia, si es Gasto usa 'Sin Cuenta'",
               "confianza_extraccion": "(ALTA|MEDIA|BAJA)"
-            }
+            }}
             
-            ### REGLAS DE EXTRACCIÓN:
-            1.  **fecha**: Busca la fecha principal. Si no la encuentras, usa la fecha actual. Formato YYYY-MM-DD.
-            2.  **establecimiento**: El nombre principal de la tienda (ej. "Walmart", "Starbucks", "CFE"). Si es una transferencia, el nombre del beneficiario.
-            3.  **descripcion_corta**: Si es un ticket con muchos artículos, pon "Supermercado" o "Compra tienda". Si es una transferencia, usa el concepto.
-            4.  **total**: El monto TOTAL final. Debe ser un número (float), sin el símbolo de moneda.
-            5.  **confianza_extraccion**: Evalúa tu propia certeza.
-                - **ALTA**: Si la imagen es clara y todos los campos son obvios.
-                - **MEDIA**: Si la imagen es un poco borrosa o un campo es ambiguo.
-                - **BAJA**: Si la imagen es muy difícil de leer o faltan datos clave.
-
-            ### EJEMPLOS:
-            - **Ejemplo 1 (Ticket claro):**
-              { "tipo_documento": "TICKET_COMPRA", "fecha": "2025-07-03", "establecimiento": "La Comer", "descripcion_corta": "Supermercado", "total": 854.50, "confianza_extraccion": "ALTA" }
-            - **Ejemplo 2 (Transferencia):**
-              { "tipo_documento": "TRANSFERENCIA", "fecha": "2025-07-01", "establecimiento": "N/A", "descripcion_corta": "Digitt002", "total": 7500.00, "confianza_extraccion": "ALTA" }
-            - **Ejemplo 3 (Ticket borroso):**
-              { "tipo_documento": "TICKET_COMPRA", "fecha": "2025-06-28", "establecimiento": "Restaurante El Sol", "descripcion_corta": "Comida", "total": 450.00, "confianza_extraccion": "MEDIA" }
-
-            ### Nota importante:
-            - Quiero que revices bien si es ticket o transferencia, ya que la extracción de datos es diferente. y lo has estado haciendo mal.
-            Por ejemplo, en las transferencias estas poniendo el nombre del usuario con el nombre del banco, y no es correcto.
-            Lo correcto seria que pongas el concepto de la transferencia, que es lo que el usuario pone en la app de su banco. Y eso normalmente lo pone tal cual en la transferencia.
-            - En caso de que el Establecimiento sea Express, sustituyelo por DIDI e igual en caso de que sea Tickets ponlos en mayusculas.
-
-            Ahora, analiza la siguiente imagen:
-        """,
+            ### REGLAS DE EXTRACCIÓN Y CLASIFICACIÓN:
+            1. (Mantén tus reglas de fecha, establecimiento, total, etc...)
+            2. NUEVO - tipo_movimiento: Si es un TICKET_COMPRA, casi siempre es GASTO. Si es TRANSFERENCIA, determina por el concepto si es pago (GASTO) o abono (INGRESO).
+            3. NUEVO - categoria_sugerida: REVISA la lista de 'Categorías del usuario' en el contexto y elige la que mejor encaje. (Ej. Si es CFE, elige 'Servicios').
+            4. NUEVO - cuenta_origen_sugerida: Revisa las 'Cuentas del usuario'. Si el ticket menciona "VISA 4512" y el usuario tiene una cuenta llamada "Bancomer 4512", elígela.
+            """,
         "inversion": """
             Eres un asistente experto en finanzas, especializado en extraer datos clave de comprobantes de inversión (compra de acciones o criptomonedas). 
             Tu tarea es analizar la imagen lo mas detallado posible de un documento y extraer la información clave con la máxima precisión.
@@ -1041,27 +1024,43 @@ class BillingService:
                 nombre_detectado = nombre_corregido
                 
         # 3. Limpieza de ruido para mejorar el Match
-        # Quitamos palabras genéricas que ensucian la comparación
         palabras_ruido = ["FARMACIAS", "TIENDA", "SUPERMERCADO", "RESTAURANTE", "S.A. DE C.V.", "SA DE CV", "SUCURSAL"]
         nombre_limpio = nombre_detectado
         for p in palabras_ruido:
             nombre_limpio = nombre_limpio.replace(p, "").strip()
             
-        todas_las_tiendas_objs = list(TiendaFacturacion.objects.all())
-        nombres_tiendas = [t.tienda for t in todas_las_tiendas_objs]
+        # --- OPTIMIZACIÓN ESCALABLE ---
+        # En lugar de cargar TODAS las tiendas (O(N) memoria), filtramos primero por la inicial.
+        # Esto reduce drásticamente el espacio de búsqueda.
+        # "WALMART" -> buscamos solo tiendas que empiecen con "W" o que contengan "WAL"
+        
+        inicial = nombre_limpio[0] if nombre_limpio else ""
+        if inicial:
+            # Traemos solo candidatos plausibles (empiezan con la misma letra)
+            # Esto es mucho más ligero que TiendaFacturacion.objects.all()
+            candidatos_qs = TiendaFacturacion.objects.filter(tienda__istartswith=inicial)
+            
+            # Si son muy pocos, ampliamos un poco (contiene la primera palabra)
+            if candidatos_qs.count() < 5:
+                primera_palabra = nombre_limpio.split()[0]
+                candidatos_qs = TiendaFacturacion.objects.filter(tienda__icontains=primera_palabra)
+
+            nombres_tiendas = list(candidatos_qs.values_list('tienda', flat=True))
+        else:
+            nombres_tiendas = []
         
         # 4. Intento difuso con umbral más estricto (0.8)
-        # Se subió de 0.6 a 0.8 para evitar que "FARMACIAS SIMILARES" (ratio 0.65) coincida con "FARMACIAS GUADALAJARA"
-        coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.8)
-        
-        if coincidencias:
-            return TiendaFacturacion.objects.get(tienda=coincidencias[0])
+        if nombres_tiendas:
+            coincidencias = get_close_matches(nombre_detectado, nombres_tiendas, n=1, cutoff=0.8)
             
-        # 5. Intento difuso con nombre LIMPIO (si falló el completo)
-        if nombre_limpio and nombre_limpio != nombre_detectado:
-            coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.8)
-            if coincidencias_limpias:
-                 return TiendaFacturacion.objects.get(tienda=coincidencias_limpias[0])
+            if coincidencias:
+                return TiendaFacturacion.objects.get(tienda=coincidencias[0])
+                
+            # 5. Intento difuso con nombre LIMPIO (si falló el completo)
+            if nombre_limpio and nombre_limpio != nombre_detectado:
+                coincidencias_limpias = get_close_matches(nombre_limpio, nombres_tiendas, n=1, cutoff=0.8)
+                if coincidencias_limpias:
+                     return TiendaFacturacion.objects.get(tienda=coincidencias_limpias[0])
             
         return None
 

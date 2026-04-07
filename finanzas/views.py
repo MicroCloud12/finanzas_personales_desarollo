@@ -33,14 +33,40 @@ from .services import TransactionService, MercadoPagoService, StockPriceService,
 from .models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
     inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory
+    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory,
+    GoogleCredentials
 )
 from django.http import JsonResponse
 from .models import TiendaFacturacion # Asegúrate de tener los modelos importados
-
+from .models import Cuenta
+from .forms import CuentaForm
 
 
 logger = logging.getLogger(__name__)
+
+
+@login_required
+def gestionar_cuentas(request):
+    cuentas = Cuenta.objects.filter(propietario=request.user)
+    
+    if request.method == 'POST':
+        form = CuentaForm(request.POST)
+        if form.is_valid():
+            cuenta = form.save(commit=False)
+            cuenta.propietario = request.user
+            cuenta.save()
+            messages.success(request, f"La cuenta '{cuenta.nombre}' se ha registrado exitosamente.")
+            return redirect('dashboard') # Una vez que guardan, los dejamos ir al dashboard
+    else:
+        form = CuentaForm()
+
+    context = {
+        'form': form,
+        'cuentas': cuentas,
+        # Si no tiene cuentas, le mostramos un mensaje diferente en el HTML
+        'es_onboarding': not cuentas.exists() 
+    }
+    return render(request, 'gestionar_cuentas.html', context)
 
 def enviar_pregunta(request):
     if request.method == "POST":
@@ -230,7 +256,13 @@ def eliminar_transaccion(request, transaccion_id):
 @login_required
 def revisar_tickets(request):
     tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-    return render(request, 'revisar_tickets.html', {'tickets': tickets_pendientes})
+    # --- NUEVO: Obtenemos las cuentas del usuario ---
+    cuentas_usuario = Cuenta.objects.filter(propietario=request.user)
+    
+    return render(request, 'revisar_tickets.html', {
+        'tickets': tickets_pendientes,
+        'cuentas_usuario': cuentas_usuario # Pasamos las cuentas a la plantilla
+    })
 
 @login_required
 def rechazar_ticket(request, ticket_id):
@@ -262,6 +294,14 @@ y ganancias mensuales, e inversiones.
 '''
 @login_required
 def vista_dashboard(request):
+    # --- ONBOARDING OBLIGATORIO ---
+    # Si el usuario no tiene ninguna cuenta registrada, lo forzamos a crear una
+    from .models import Cuenta
+    if not Cuenta.objects.filter(propietario=request.user).exists():
+        messages.info(request, "¡Bienvenido! Para poder analizar tus tickets y automatizar tus gastos, primero necesitamos que registres al menos una cuenta o tarjeta.")
+        return redirect('gestionar_cuentas')
+    # ------------------------------
+
     # Definimos fechas al inicio para usarlas en todo el dashboard
     current_year = datetime.now().year
     current_month = datetime.now().month
@@ -269,9 +309,9 @@ def vista_dashboard(request):
     month = int(request.GET.get('month', current_month))
 
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
+    
     # --- LÓGICA PARA LA GRÁFICA DE AHORRO (SAVINGS GROWTH) ---
     # Calculamos el ahorro acumulado mes a mes para el año seleccionado
-    # Usamos 'year' obtenido de los params GET (o año actual por defecto)
     savings_qs = registro_transacciones.objects.filter(
         propietario=request.user,
         fecha__year=year
@@ -280,7 +320,7 @@ def vista_dashboard(request):
         (Q(categoria__iexact='Ahorro') & ~Q(tipo__iexact='GASTO')) |
         # 2. Transferencias directas a la Cuenta Ahorro
         Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
-        # 3. Ingresos que entraron directo a Cuenta Ahorro (En Ingresos, 'cuenta_origen' suele ser destino/cuenta)
+        # 3. Ingresos que entraron directo a Cuenta Ahorro 
         Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
     ).annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
 
@@ -291,16 +331,14 @@ def vista_dashboard(request):
     # Mapa de ahorro por mes
     ahorro_por_mes = {s['mes'].strftime('%Y-%m'): s['total'] for s in savings_qs}
     
-    # Generamos los meses hasta el actual
-    current_date = datetime.now()
+    # Generamos los meses para todo el año
     for m in range(1, 13):
-        # Si queremos proyectar todo el año o solo hasta hoy:
-        # Para "Growth Plan" se suele mostrar todo el año, pero solo tenemos datos hasta hoy.
-        # Mostremos hasta el mes actual para no tener una línea plana al final.
-        if m > current_date.month:
-            break
+        try:
+            mes_fecha = datetime(year, m, 1)
+        except ValueError:
+             # Caso borde
+            continue
             
-        mes_fecha = datetime(current_date.year, m, 1)
         mes_key = mes_fecha.strftime('%Y-%m')
         
         monto_mes = ahorro_por_mes.get(mes_key, Decimal('0.0'))
@@ -312,39 +350,27 @@ def vista_dashboard(request):
     chart_labels = savings_labels
     chart_data = savings_data
     # ----------------------------------------------
+    
     # Verificamos si la suscripción está activa con nuestro método del modelo.
     es_usuario_premium = suscripcion.is_active()
-    transacciones = registro_transacciones.objects.filter(
-        propietario=request.user, 
-        fecha__year=year, 
-        fecha__month=month
-    )
 
-     # --- LA MAGIA DE LA OPTIMIZACIÓN ---
-    # Hacemos UNA SOLA CONSULTA para obtener todos los totales
-    agregados = transacciones.aggregate(
-        ingresos_efectivo=Sum('monto', filter=Q(tipo='INGRESO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-        gastos_efectivo=Sum('monto', filter=Q(tipo='GASTO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-        ahorro_total=Sum('monto', filter=Q(tipo='Transferencia', categoria='Ahorro', cuenta_origen='Efectivo Quincena', cuenta_destino='Cuenta Ahorro')),
-        transferencias_efectivo=Sum('monto', filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-        gastos_ahorro=Sum('monto', filter=Q(tipo='GASTO', cuenta_origen='Cuenta Ahorro')),
-        ingresos_ahorro=Sum('monto', filter=Q(tipo='INGRESO', cuenta_origen='Cuenta Ahorro')),
-    )
-
-    # Igualmente, hacemos UNA SOLA CONSULTA para las inversiones
+    # --- LA MAGIA DE LA OPTIMIZACIÓN (VIA MANAGER) ---
+    bal = registro_transacciones.objects.balance_dashboard(request.user, year, month)
+    
+    # Hacemos UNA SOLA CONSULTA para las inversiones
     agregados_inversion = inversiones.objects.filter(propietario=request.user).aggregate(
         total_inicial=Sum('costo_total_adquisicion'),
         total_actual=Sum('valor_actual_mercado')
     )
     # --- FIN DE LA OPTIMIZACIÓN ---
 
-    # El resto de tu lógica para calcular y asignar valores es correcta y se mantiene
-    ingresos = agregados.get('ingresos_efectivo') or Decimal('0.00')
-    gastos = agregados.get('gastos_efectivo') or Decimal('0.00')
-    ahorro_total = agregados.get('ahorro_total') or Decimal('0.00')
-    transferencias = agregados.get('transferencias_efectivo') or Decimal('0.00')
-    gastos_ahorro = agregados.get('gastos_ahorro') or Decimal('0.00')
-    ingresos_ahorro = agregados.get('ingresos_ahorro') or Decimal('0.00')
+    # Asignamos valores desde el diccionario 'bal'
+    ingresos = bal['ingresos_efectivo']
+    gastos = bal['gastos_efectivo']
+    ahorro_total = bal['ahorro_total']
+    transferencias = bal['transferencias_efectivo']
+    gastos_ahorro = bal['gastos_ahorro']
+    ingresos_ahorro = bal['ingresos_ahorro']
 
     inversion_inicial_usd = agregados_inversion.get('total_inicial') or Decimal('0.00')
     inversion_actual = agregados_inversion.get('total_actual') or Decimal('0.00')
@@ -352,21 +378,35 @@ def vista_dashboard(request):
     balance = ingresos - gastos - gastos_ahorro
     disponible_banco = ingresos - gastos - transferencias - ahorro_total
     
-    # --- CORRECCIÓN: Usamos el acumulado del año (igual que la gráfica) ---
     ahorro = ahorro_acumulado
+    
+    # --- Cálculo de Deuda Total ---
+    todas_deudas = Deuda.objects.filter(propietario=request.user)
+    deuda_total = Decimal('0.00')
+    
+    for d in todas_deudas:
+        if d.tipo_deuda == 'TARJETA_CREDITO':
+            # Para TC: Deuda Real = Límite (monto_total) - Disponible (saldo_pendiente)
+            deuda_real = d.monto_total - d.saldo_pendiente
+            if deuda_real > 0:
+                deuda_total += deuda_real
+        else:
+            # Para Préstamos: Deuda Real = Saldo Pendiente
+            deuda_total += d.saldo_pendiente
 
     context = {
         'ingresos': ingresos,
         'gastos': gastos,
         'balance': balance,
-        'transferencias':transferencias,
-        'disponible_banco':disponible_banco,
+        'transferencias': transferencias,
+        'disponible_banco': disponible_banco,
         'ahorro': ahorro,
         'selected_year': year,
         'selected_month': month,
         'years': range(current_year, current_year - 5, -1),
         'months': range(1, 13),
         'es_usuario_premium': es_usuario_premium,
+        'deuda_total': deuda_total,
         'investment_chart_labels': chart_labels,
         'investment_chart_data': chart_data,
     }
@@ -762,7 +802,8 @@ def eliminar_inversion(request, inversion_id):
     inversion = get_object_or_404(inversiones, id=inversion_id, propietario=request.user)
     if request.method == 'POST':
         inversion.delete()
-        return redirect('lista_inversiones')
+        next_url = request.POST.get('next', request.GET.get('next', 'lista_inversiones'))
+        return redirect(next_url)
     return render(request, 'confirmar_eliminar_inversion.html', {'inversion': inversion})
 
 @login_required
@@ -775,22 +816,28 @@ def crear_inversion(request):
         if form.is_valid():
             nueva_inversion = form.save(commit=False)
             nueva_inversion.propietario = request.user
-            price_service = StockPriceService()
-            ticker = form.cleaned_data.get('emisora_ticker').upper()
-
-            # Obtenemos el precio como float desde el servicio
-            precio_actual_float = price_service.get_current_price(ticker)
+            # --- OPTIMIZACIÓN: EVITAR BLOQUEOS LARGOS ---
+            # 1. Intentamos obtener precio de caché (instantáneo)
+            # 2. Si no está en caché, usamos el precio de compra del usuario TEMPORALMENTE para no hacer esperar al navegador.
+            # 3. Lanzamos una tarea async para actualizar el precio real después (Mejora futura: Celery task).
             
-            # --- PASO 2: AQUÍ ESTÁ LA CORRECCIÓN ---
+            ticker = form.cleaned_data.get('emisora_ticker').upper()
+            try:
+                # Modificamos get_current_price para que tenga un timeout corto internamente o confiamos en el cache
+                precio_actual_float = price_service.get_current_price(ticker)
+            except Exception as e:
+                logger.warning(f"Timeout o error al obtener precio síncrono para {ticker}: {e}")
+                precio_actual_float = None
+
             if precio_actual_float is not None:
-                # Convertimos el float a un Decimal antes de asignarlo al modelo
-                # Usamos str() en el medio, es la forma más segura de evitar errores de precisión.
                 nueva_inversion.precio_actual_titulo = Decimal(str(precio_actual_float))
             else:
-                # Si la API falla, usamos el precio de compra como respaldo
+                # FALLBACK: Usamos el precio de compra si la API falla o tarda.
+                # Esto asegura que el usuario siempre reciba una respuesta rápida.
                 nueva_inversion.precio_actual_titulo = nueva_inversion.precio_compra_titulo
+                # AQUÍ podríamos disparar una tarea: update_price.delay(nueva_inversion.id)
             
-            nueva_inversion.save() # Ahora la multiplicación será entre dos Decimales
+            nueva_inversion.save()
             messages.success(request, f"Inversión en {ticker} guardada con éxito.")
             return redirect('lista_inversiones')
     else:
@@ -1034,7 +1081,22 @@ def mi_perfil(request):
     """
     Muestra y permite editar el perfil del usuario.
     """
-    return render(request, 'mi_perfil.html')
+    try:
+        suscripcion = request.user.suscripcion
+    except Suscripcion.DoesNotExist:
+        suscripcion = None
+        
+    try:
+        google_creds = GoogleCredentials.objects.get(user=request.user)
+    except GoogleCredentials.DoesNotExist:
+        google_creds = None
+
+    context = {
+        'suscripcion': suscripcion,
+        'google_creds': google_creds,
+        'today': timezone.now().date(),
+    }
+    return render(request, 'mi_perfil.html', context)
 
 @login_required
 def facturacion(request):
@@ -1102,6 +1164,26 @@ def revisar_factura_detalle(request, ticket_id):
                 messages.success(request, f"¡Entendido! Para {nombre_tienda} solo necesitamos: {', '.join(campos_seleccionados)}.")
             else:
                 messages.warning(request, "No seleccionaste ningún campo. La configuración no se guardó.")
+            
+            return redirect('revisar_factura', ticket_id=ticket_id)
+            
+        # --- FLUJO DE EDICIÓN (Corregir datos originales) ---
+        elif accion == 'editar_datos':
+            nuevo_tienda = request.POST.get('tienda')
+            nueva_fecha = request.POST.get('fecha_emision')
+            nuevo_total = request.POST.get('total')
+
+            if nuevo_tienda and nueva_fecha and nuevo_total:
+                factura_obj.tienda = nuevo_tienda
+                try:
+                    factura_obj.fecha_emision = parse_date_safely(nueva_fecha)
+                    factura_obj.total = Decimal(nuevo_total)
+                    factura_obj.save()
+                    messages.success(request, f"Datos actualizados para {nuevo_tienda}.")
+                except Exception as e:
+                    messages.error(request, f"Error al guardar los datos: {e}")
+            else:
+                 messages.error(request, "Faltan datos para actualizar la factura.")
             
             return redirect('revisar_factura', ticket_id=ticket_id)
             

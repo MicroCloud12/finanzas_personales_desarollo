@@ -59,6 +59,16 @@
                         </td>
                         <td class="px-6 py-4 bg-white text-sm text-center">
                             <div class="flex items-center justify-center gap-2">
+                                <button type="button"
+                                    onclick="abrirModalEditar('{{ ticket.id }}', '{{ ticket.tienda|escapejs }}', '{{ ticket.fecha_emision|date:'Y-m-d' }}', '{{ ticket.total|floatformat:2 }}')"
+                                    class="p-1.5 rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none transition-colors"
+                                    title="Editar datos">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                        </path>
+                                    </svg>
+                                </button>
                                 <a href="{% url 'revisar_factura' ticket.id %}"
                                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     Revisar
@@ -127,6 +137,15 @@
             </div>
 
             <div class="mt-4 flex flex-wrap gap-2 justify-end">
+                <button type="button"
+                    onclick="abrirModalEditar('{{ ticket.id }}', '{{ ticket.tienda|escapejs }}', '{{ ticket.fecha_emision|date:'Y-m-d' }}', '{{ ticket.total|floatformat:2 }}')"
+                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                        </path>
+                    </svg>
+                </button>
                 <a href="{% url 'revisar_factura' ticket.id %}"
                     class="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors">
                     Revisar
@@ -374,6 +393,103 @@
     {% endif %}
 </div>
 {% endblock %}
+
+{# --- Modal Editar Factura (Global) --- #}
+<div id="modal-editar-factura" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title"
+    role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
+            onclick="document.getElementById('modal-editar-factura').classList.add('hidden')"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+            class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+            <div>
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100">
+                    <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                        </path>
+                    </svg>
+                </div>
+                <div class="mt-3 text-center sm:mt-5">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Editar Datos de Factura
+                    </h3>
+                    <div class="mt-2">
+                        <p class="text-sm text-gray-500">
+                            Modifica los datos originales del ticket.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <form action="" method="POST" class="mt-5 sm:mt-6" id="form-editar-factura">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar_datos">
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="tienda" class="block text-sm font-medium text-gray-700">Tienda /
+                            Establecimiento</label>
+                        <input type="text" name="tienda" id="tienda" required
+                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    </div>
+
+                    <div>
+                        <label for="fecha_emision" class="block text-sm font-medium text-gray-700">Fecha de
+                            Emisión</label>
+                        <input type="date" name="fecha_emision" id="fecha_emision" required
+                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    </div>
+
+                    <div>
+                        <label for="total" class="block text-sm font-medium text-gray-700">Total Pagado</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">$</span>
+                            </div>
+                            <input type="number" step="0.01" name="total" id="total" required
+                                class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                    <button type="submit"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm">
+                        Guardar Cambios
+                    </button>
+                    <button type="button"
+                        onclick="document.getElementById('modal-editar-factura').classList.add('hidden')"
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirModalEditar(id, tienda, fecha, total) {
+        const modal = document.getElementById('modal-editar-factura');
+        if (!modal) return;
+
+        // Update inputs
+        document.getElementById('tienda').value = tienda;
+        // Format date if needed, but the template already passes Y-m-d
+        document.getElementById('fecha_emision').value = fecha;
+        // Ensure total uses point as decimal separator (standard for input type number)
+        document.getElementById('total').value = total.replace(',', '.');
+
+        // Update form action dynamically
+        const form = document.getElementById('form-editar-factura');
+        // Point to the specific invoice URL (revisar_factura_detalle)
+        // We construct the URL manually or use a base.
+        // URL pattern: /facturacion/pendientes/<id>/
+        form.action = "/facturacion/pendientes/" + id + "/";
+
+        modal.classList.remove('hidden');
+    }
+</script>
 
 {% block javascript %}
 <script src="{% static 'js/procesamiento.js' %}?v=1.5"></script>

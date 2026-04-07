@@ -385,11 +385,12 @@ function initSavingsGrowthChart() {
             responsive: true,
             maintainAspectRatio: false,
             layout: {
-                padding: { top: 20, right: 20, left: 10, bottom: 10 }
+                padding: { top: 50, right: 20, left: 10, bottom: 10 }
             },
             scales: {
                 y: {
                     beginAtZero: false,
+                    grace: '10%', // Add breathing room at the top
                     grid: {
                         color: '#f3f4f6',
                         drawBorder: false,
@@ -438,9 +439,22 @@ function initSavingsGrowthChart() {
                         return value;
                     },
                     display: function (context) {
-                        // Only show label for the last point or significant peaks if crowded
-                        // For now, show all but ensure enough space
-                        return true;
+                        // Logic to reduce clutter:
+                        // 1. Always show the last point
+                        let index = context.dataIndex;
+                        let count = context.dataset.data.length;
+                        if (index === count - 1) return true;
+
+                        // 2. Always show the first point
+                        if (index === 0) return true;
+
+                        // 3. Show if value differs from the previous point (a "step" or change)
+                        let current = Number(context.dataset.data[index]);
+                        let prev = Number(context.dataset.data[index - 1]);
+                        if (current !== prev) return 'auto';
+
+                        // 4. Otherwise hide
+                        return false;
                     }
                 }
             }

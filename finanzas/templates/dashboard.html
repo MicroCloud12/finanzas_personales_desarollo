@@ -33,7 +33,7 @@
     </div>
 
     {# --- Top Cards Row --- #}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
 
         <!-- Balance Card (Highlighted) -->
         <div class="card-premium gradient-blue text-white shadow-xl shadow-indigo-200">
@@ -127,6 +127,43 @@
             <div>
                 <h3 class="text-2xl font-bold text-gray-900 mb-1">${{ gastos|floatformat:2 | intcomma }}</h3>
                 <p class="text-gray-500 text-sm font-medium">Expenses</p>
+            </div>
+        </div>
+
+        <!-- Debt Card -->
+        <div class="card-premium">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 bg-orange-50 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <!-- Optional: Add link to debt details page if exists -->
+                <button class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z">
+                        </path>
+                    </svg></button>
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-1">${{ deuda_total|floatformat:2 | intcomma }}</h3>
+                <div class="flex items-center gap-2">
+                    <p class="text-gray-500 text-sm font-medium">Total Debt</p>
+                    {% if deuda_total > 0 %}
+                    <span
+                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                        Active
+                    </span>
+                    {% else %}
+                    <span
+                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        Debt Free
+                    </span>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

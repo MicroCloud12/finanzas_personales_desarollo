@@ -1,5 +1,10 @@
-<option value="">Seleccionar...</option>
-<option>Efectivo Quincena</option>
-<option>Cuenta Ahorro</option>
-<option>Tarjeta de Crédito</option>
-<option>Otra Cuenta</option>
+<option value="">Seleccionar cuenta...</option>
+
+{% for cuenta in cuentas_usuario %}
+    <option value="{{ cuenta.nombre }}" 
+        {% if ticket.datos_json.cuenta_origen_sugerida == cuenta.nombre %}selected{% endif %}>
+        {{ cuenta.nombre }} {% if cuenta.terminacion %}(**{{ cuenta.terminacion }}){% endif %}
+    </option>
+{% endfor %}
+
+<option value="Otra Cuenta">Otra Cuenta</option>

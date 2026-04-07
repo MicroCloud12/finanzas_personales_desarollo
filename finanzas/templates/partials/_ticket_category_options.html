@@ -1,26 +1,26 @@
 <option value="">Seleccionar categoría...</option>
-<option>Comida</option>
-<option>Transporte</option>
-<option>Carro</option>
-<option>Combustible</option>
-<option>Supermercado</option>
-<option>Entretenimiento</option>
-<option>Servicios</option>
-<option>Nomina</option>
-<option>Mascotas</option>
-<option>Ahorro</option>
-<option>Suscripciones</option>
-<option>Salud</option>
-<option>Educación</option>
-<option>Impuestos</option>
-<option>Inversion</option>
-<option>Tiendas de conveniencia</option>
-<option>Ropa</option>
-<option>Alquiler</option>
-<option>Pareja</option>
-<option>Viajes</option>
-<option>Regalos</option>
-<option>Gastos varios</option>
-<option>Tecnología</option>
-<option>Deudas</option>
-<option>Otro</option>
+<option value="Comida" {% if ticket.datos_json.categoria_sugerida == 'Comida' %}selected{% endif %}>Comida</option>
+<option value="Transporte" {% if ticket.datos_json.categoria_sugerida == 'Transporte' %}selected{% endif %}>Transporte</option>
+<option value="Carro" {% if ticket.datos_json.categoria_sugerida == 'Carro' %}selected{% endif %}>Carro</option>
+<option value="Combustible" {% if ticket.datos_json.categoria_sugerida == 'Combustible' %}selected{% endif %}>Combustible</option>
+<option value="Supermercado" {% if ticket.datos_json.categoria_sugerida == 'Supermercado' %}selected{% endif %}>Supermercado</option>
+<option value="Entretenimiento" {% if ticket.datos_json.categoria_sugerida == 'Entretenimiento' %}selected{% endif %}>Entretenimiento</option>
+<option value="Servicios" {% if ticket.datos_json.categoria_sugerida == 'Servicios' %}selected{% endif %}>Servicios</option>
+<option value="Nomina" {% if ticket.datos_json.categoria_sugerida == 'Nomina' %}selected{% endif %}>Nomina</option>
+<option value="Mascotas" {% if ticket.datos_json.categoria_sugerida == 'Mascotas' %}selected{% endif %}>Mascotas</option>
+<option value="Ahorro" {% if ticket.datos_json.categoria_sugerida == 'Ahorro' %}selected{% endif %}>Ahorro</option>
+<option value="Suscripciones" {% if ticket.datos_json.categoria_sugerida == 'Suscripciones' %}selected{% endif %}>Suscripciones</option>
+<option value="Salud" {% if ticket.datos_json.categoria_sugerida == 'Salud' %}selected{% endif %}>Salud</option>
+<option value="Educación" {% if ticket.datos_json.categoria_sugerida == 'Educación' %}selected{% endif %}>Educación</option>
+<option value="Impuestos" {% if ticket.datos_json.categoria_sugerida == 'Impuestos' %}selected{% endif %}>Impuestos</option>
+<option value="Inversion" {% if ticket.datos_json.categoria_sugerida == 'Inversion' %}selected{% endif %}>Inversion</option>
+<option value="Tiendas de conveniencia" {% if ticket.datos_json.categoria_sugerida == 'Tiendas de conveniencia' %}selected{% endif %}>Tiendas de conveniencia</option>
+<option value="Ropa" {% if ticket.datos_json.categoria_sugerida == 'Ropa' %}selected{% endif %}>Ropa</option>
+<option value="Alquiler" {% if ticket.datos_json.categoria_sugerida == 'Alquiler' %}selected{% endif %}>Alquiler</option>
+<option value="Pareja" {% if ticket.datos_json.categoria_sugerida == 'Pareja' %}selected{% endif %}>Pareja</option>
+<option value="Viajes" {% if ticket.datos_json.categoria_sugerida == 'Viajes' %}selected{% endif %}>Viajes</option>
+<option value="Regalos" {% if ticket.datos_json.categoria_sugerida == 'Regalos' %}selected{% endif %}>Regalos</option>
+<option value="Gastos varios" {% if ticket.datos_json.categoria_sugerida == 'Gastos varios' %}selected{% endif %}>Gastos varios</option>
+<option value="Tecnología" {% if ticket.datos_json.categoria_sugerida == 'Tecnología' %}selected{% endif %}>Tecnología</option>
+<option value="Deudas" {% if ticket.datos_json.categoria_sugerida == 'Deudas' %}selected{% endif %}>Deudas</option>
+<option value="Otro" {% if ticket.datos_json.categoria_sugerida == 'Otro' %}selected{% endif %}>Otro</option>
