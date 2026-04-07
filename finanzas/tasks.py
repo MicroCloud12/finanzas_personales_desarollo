@@ -25,25 +25,28 @@ def load_and_optimize_image(file_content, max_width: int = 1024, quality: int = 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime_type: str):
-    """
-    Procesa un único ticket: lo descarga, lo analiza con Gemini y lo guarda como pendiente.
-    """
     try:
         user = User.objects.get(id=user_id)
         gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service() # Correcto, usando el singleton
+        gemini_service = get_gemini_service() 
         transaction_service = TransactionService()
         file_content = gdrive_service.get_file_content(file_id)
+        
+        # --- NUEVO: OBTENER CONTEXTO DEL USUARIO ---
+        from .models import registro_transacciones
+        cuentas = list(registro_transacciones.objects.filter(propietario=user).values_list('cuenta_origen', flat=True).distinct()[:10])
+        categorias = list(registro_transacciones.objects.filter(propietario=user).values_list('categoria', flat=True).distinct()[:20])
+        
+        contexto_usuario = f"Cuentas del usuario: {cuentas}. Categorías del usuario: {categorias}."
+        # -------------------------------------------
 
-        
-        
-        # --- LÓGICA DE EXTRACCIÓN UNIFICADA ---
         file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
         
         extracted_data = gemini_service.extract_data(
-            prompt_name="tickets", # Usamos la clave del prompt
+            prompt_name="tickets",
             file_data=file_data,
-            mime_type=mime_type
+            mime_type=mime_type,
+            context=contexto_usuario # Pasamos el contexto a la IA
         )
         
         if extracted_data.get("error"):
@@ -51,7 +54,7 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
 
         transaction_service.create_pending_transaction(user, extracted_data)
         return {'status': 'SUCCESS', 'file_name': file_name}
-
+        
     except Exception as e:
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
