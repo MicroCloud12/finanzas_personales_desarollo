@@ -356,6 +356,10 @@ class Deuda(models.Model):
         super().save(*args, **kwargs)
 
     @property
+    def total_gastado(self):
+        return (self.monto_total or 0) - (self.saldo_pendiente or 0)
+
+    @property
     def proxima_fecha_corte(self):
         if not self.dia_corte:
             return None

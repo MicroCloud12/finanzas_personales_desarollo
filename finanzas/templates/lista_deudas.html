@@ -66,6 +66,7 @@
                         <th class="px-6 py-4">Tipo</th>
                         <th class="px-6 py-4">Monto / Límite</th>
                         <th class="px-6 py-4">Saldo Pendiente</th>
+                        <th class="px-6 py-4">Gastado / Pagado</th>
                         <th class="px-6 py-4">Progreso</th>
                         <th class="px-6 py-4 text-right">Acciones</th>
                     </tr>
@@ -119,6 +120,12 @@
                             {% if deuda.proxima_fecha_pago %}
                             <div class="text-[10px] text-gray-500">Pago: {{ deuda.proxima_fecha_pago|date:"d M" }}</div>
                             {% endif %}
+                        </td>
+                        <td class="px-6 py-4 bg-white text-sm">
+                            <span class="font-bold text-gray-800">${{ deuda.total_gastado|floatformat:2|intcomma }}</span>
+                            <div class="text-[10px] text-gray-500 mt-1">
+                                {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Total gastado{% else %}Total pagado{% endif %}
+                            </div>
                         </td>
                         <td class="px-6 py-4 bg-white text-sm align-middle">
                             {# Simple visual bar for debt usage/remaining #}
@@ -234,6 +241,8 @@
                 <div class="text-right">
                     <p class="text-xs text-gray-500">Saldo</p>
                     <p class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Gastado{% else %}Pagado{% endif %}</p>
+                    <p class="font-bold text-gray-800">${{ deuda.total_gastado|floatformat:2|intcomma }}</p>
                     {% if deuda.proxima_fecha_corte %}
                     <p class="text-[10px] text-gray-500 mt-1">Corte: {{ deuda.proxima_fecha_corte|date:"d M" }}</p>
                     {% endif %}
