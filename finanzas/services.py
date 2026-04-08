@@ -99,10 +99,10 @@ class GeminiService:
         self.prompts = { 
             "tickets": """
             Eres un asistente experto en contabilidad para un sistema de finanzas personales.
-            Tu tarea es analizar la imagen de un documento, extraer la información clave y CLASIFICARLA con precisión.
+            Tu tarea es analizar la imagen lo mas detallado posible de un documento, extraer la información clave y CLASIFICARLA con precisión.
             Devuelve SIEMPRE la respuesta en formato JSON, sin absolutamente ningún texto adicional.
 
-            ### CONTEXTO DINÁMICO DEL USUARIO (Tus opciones):
+            ### CONTEXTO DINÁMICO DEL USUARIO (Sus cuentas y opciones):
             {context_str}
 
             ### FORMATO DE SALIDA ESTRICTO (JSON):
@@ -110,21 +110,27 @@ class GeminiService:
               "tipo_documento": "(TICKET_COMPRA|TRANSFERENCIA|OTRO)",
               "fecha": "YYYY-MM-DD",
               "establecimiento": "Nombre del comercio o beneficiario",
-              "descripcion_corta": "Resumen breve (ej. 'Supermercado')",
+              "descripcion_corta": "Un resumen breve del gasto (ej. 'Renta depto', 'Supermercado')",
               "total": 0.00,
               "tipo_movimiento": "(GASTO|INGRESO|TRANSFERENCIA)",
-              "categoria_sugerida": "Elige la categoría más lógica del contexto, o sugiere una genérica",
-              "cuenta_origen_sugerida": "Revisa el ticket. Si menciona una tarjeta con una terminación (ej. 4512), busca en 'Cuentas disponibles del usuario' y devuelve EXACTAMENTE el nombre de la cuenta que coincida. Si dice 'Efectivo', busca su cuenta de efectivo. Si no hay coincidencia clara, devuelve un string vacío ''",
-              "cuenta_destino_sugerida": "Infiere del contexto si es transferencia, si es Gasto usa 'Sin Cuenta'",
+              "categoria_sugerida": "Elige la categoría más lógica del contexto",
+              "cuenta_origen_sugerida": "Nombre EXACTO de la cuenta o string vacío",
+              "cuenta_destino_sugerida": "Nombre EXACTO de la cuenta o 'N/A'",
               "confianza_extraccion": "(ALTA|MEDIA|BAJA)"
             }}
             
             ### REGLAS DE EXTRACCIÓN Y CLASIFICACIÓN:
-            1. (Mantén tus reglas de fecha, establecimiento, total, etc...)
-            2. NUEVO - tipo_movimiento: Si es un TICKET_COMPRA, casi siempre es GASTO. Si es TRANSFERENCIA, determina por el concepto si es pago (GASTO) o abono (INGRESO).
-            3. NUEVO - categoria_sugerida: REVISA la lista de 'Categorías del usuario' en el contexto y elige la que mejor encaje. (Ej. Si es CFE, elige 'Servicios').
-            4. NUEVO - cuenta_origen_sugerida: Revisa las 'Cuentas del usuario'. Si el ticket menciona "VISA 4512" y el usuario tiene una cuenta llamada "Bancomer 4512", elígela.
-            """,
+            1.  **fecha**: Busca la fecha de la transacción exhaustivamente. Conviértela SIEMPRE al formato ISO estricto YYYY-MM-DD.
+            2.  **establecimiento**: El nombre principal de la tienda (ej. "Walmart", "Starbucks", "CFE"). NUNCA pongas el nombre del banco de la terminal (ignora BBVA, BANAMEX, CLIP, POINT, etc.). Si es Express, sustitúyelo por DIDI.
+            3.  **total**: El monto TOTAL final. Número (float), sin símbolo de moneda.
+            4.  **tipo_movimiento**: Si es un TICKET_COMPRA, casi siempre es GASTO. Si es TRANSFERENCIA, determina por el concepto si es un pago (GASTO) o un abono a favor (INGRESO).
+            5.  **categoria_sugerida**: OBLIGATORIO elegir una de la lista de 'Categorías conocidas del usuario' del CONTEXTO. (Ej. Si es CFE, usa la que más se parezca a Servicios).
+            6.  **cuenta_origen_sugerida**: REGLA CRÍTICA. Revisa el recibo buscando terminaciones de tarjeta (ej. "VISA 1234", "MASTERCARD ****5678", "AUT: 1234"). Compara esa terminación de 4 dígitos con la lista de 'Cuentas disponibles del usuario' en el CONTEXTO. Si los números coinciden, devuelve EXACTAMENTE el nombre de esa cuenta (ej. "Tarjeta Nu"). Si el recibo indica pago en "Efectivo", busca su cuenta de efectivo. Si no hay coincidencia clara, devuelve "".
+            7.  **cuenta_destino_sugerida**: Infiere del contexto si es transferencia a cuentas propias. Si es un gasto normal en tienda, devuelve "N/A".
+            8.  **confianza_extraccion**: ALTA, MEDIA o BAJA según la claridad.
+
+            Ahora, analiza la siguiente imagen:
+        """,
         "inversion": """
             Eres un asistente experto en finanzas, especializado en extraer datos clave de comprobantes de inversión (compra de acciones o criptomonedas). 
             Tu tarea es analizar la imagen lo mas detallado posible de un documento y extraer la información clave con la máxima precisión.
