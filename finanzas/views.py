@@ -68,6 +68,28 @@ def gestionar_cuentas(request):
     }
     return render(request, 'gestionar_cuentas.html', context)
 
+@login_required
+def editar_cuenta(request, cuenta_id):
+    cuenta = get_object_or_404(Cuenta, id=cuenta_id, propietario=request.user)
+    if request.method == 'POST':
+        form = CuentaForm(request.POST, instance=cuenta)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"La cuenta '{cuenta.nombre}' ha sido actualizada.")
+            return redirect('gestionar_cuentas')
+    else:
+        form = CuentaForm(instance=cuenta)
+    return render(request, 'editar_cuenta.html', {'form': form, 'cuenta': cuenta})
+
+@login_required
+@require_POST
+def eliminar_cuenta(request, cuenta_id):
+    cuenta = get_object_or_404(Cuenta, id=cuenta_id, propietario=request.user)
+    nombre = cuenta.nombre
+    cuenta.delete()
+    messages.success(request, f"La cuenta '{nombre}' ha sido eliminada correctamente.")
+    return redirect('gestionar_cuentas')
+
 def enviar_pregunta(request):
     if request.method == "POST":
         email = request.POST.get("email")

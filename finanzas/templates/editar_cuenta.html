@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mt-10">
+    <div class="mb-6 flex justify-start">
+        <a href="{% url 'gestionar_cuentas' %}"
+            class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
+            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+            </svg>
+            Cancelar y volver
+        </a>
+    </div>
+
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-8">
+            <div class="mb-8 text-center">
+                <h1 class="text-3xl font-bold text-gray-900 font-display mb-2">Editar Cuenta</h1>
+                <p class="text-gray-500">Actualiza los detalles de "{{ cuenta.nombre }}".</p>
+            </div>
+
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Cuenta o Tarjeta</label>
+                    {{ form.nombre }}
+                    {% if form.nombre.help_text %}
+                    <p class="mt-1 text-xs text-gray-400">{{ form.nombre.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Terminación (Opcional)</label>
+                        {{ form.terminacion }}
+                        <p class="mt-1 text-xs text-gray-400">Ejemplo: Para visas es 4 dígitos finales.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Cuenta</label>
+                        {{ form.tipo }}
+                    </div>
+                </div>
+
+                <div class="pt-4 flex gap-4">
+                    <button type="submit"
+                        class="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
