@@ -43,6 +43,46 @@ class registro_transacciones(models.Model):
     def __str__(self):
         return f"{self.id} - {self.descripcion}"
 
+    def delete(self, *args, **kwargs):
+        # 1. Revertimos el saldo si afectó a la cuenta de tarjeta de crédito (por su nombre)
+        if self.tipo == 'GASTO':
+            try:
+                deuda_tarjeta = Deuda.objects.get(
+                    propietario=self.propietario,
+                    nombre=self.cuenta_origen,
+                    tipo_deuda='TARJETA_CREDITO'
+                )
+                if not (self.deuda_asociada == deuda_tarjeta and self.tipo_pago == 'TARJETA_CREDITO'):
+                    deuda_tarjeta.saldo_pendiente = (deuda_tarjeta.saldo_pendiente or 0) + self.monto
+                    deuda_tarjeta.save()
+            except Deuda.DoesNotExist:
+                pass
+
+        # 2. Revertimos el saldo si la transacción estaba explícitamente asociada a una deuda
+        if self.deuda_asociada:
+            deuda = self.deuda_asociada
+            if self.tipo_pago == 'TARJETA_CREDITO':
+                deuda.saldo_pendiente = (deuda.saldo_pendiente or 0) + self.monto
+                deuda.save()
+            elif self.tipo_pago == 'CAPITAL':
+                deuda.saldo_pendiente = (deuda.saldo_pendiente or 0) + self.monto
+                deuda.save()
+            elif deuda.tipo_deuda == 'TARJETA_CREDITO':
+                deuda.saldo_pendiente = (deuda.saldo_pendiente or 0) + self.monto
+                deuda.save()
+            elif deuda.tipo_deuda == 'PRESTAMO' and self.tipo_pago == 'MENSUALIDAD':
+                cuota_pagada = PagoAmortizacion.objects.filter(transaccion_pago=self).first()
+                if cuota_pagada:
+                    cuota_pagada.pagado = False
+                    cuota_pagada.transaccion_pago = None
+                    cuota_pagada.save()
+                    # Revertimos restando usando la función F importada
+                    # O simplemente sumando el capital
+                    deuda.saldo_pendiente = F('saldo_pendiente') + cuota_pagada.capital
+                    deuda.save()
+        
+        super().delete(*args, **kwargs)
+
     # Tu método save que modificamos anteriormente va aquí...
     def save(self, *args, **kwargs):
         is_new = self.pk is None
