@@ -272,6 +272,10 @@ class Deuda(models.Model):
         blank=True,
         help_text="El monto que se debe actualmente. Se actualiza con cada pago."
     )
+    requiere_configuracion_adicional = models.BooleanField(
+        default=False,
+        help_text="Indica si la deuda se generó automáticamente y necesita que se configuren sus detalles (monto, tasa, etc.)"
+    )
 
     # --- PASO 2: Añadimos la clase Meta con la nueva regla ---
     class Meta:

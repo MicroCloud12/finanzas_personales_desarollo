@@ -171,7 +171,7 @@ class DeudaForm(forms.ModelForm):
     class Meta:
         model = Deuda
         # Excluimos los campos que se calculan automáticamente o los asigna el sistema.
-        exclude = ('propietario', 'saldo_pendiente')
+        exclude = ('propietario', 'saldo_pendiente', 'requiere_configuracion_adicional')
         
         # Textos de ayuda para guiar al usuario
         help_texts = {

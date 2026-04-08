@@ -55,6 +55,20 @@ def gestionar_cuentas(request):
             cuenta = form.save(commit=False)
             cuenta.propietario = request.user
             cuenta.save()
+            
+            if cuenta.tipo == 'CREDITO':
+                Deuda.objects.get_or_create(
+                    propietario=request.user,
+                    nombre=cuenta.nombre,
+                    defaults={
+                        'tipo_deuda': 'TARJETA_CREDITO',
+                        'monto_total': Decimal('0.00'),
+                        'tasa_interes': Decimal('0.00'),
+                        'plazo_meses': 1,
+                        'requiere_configuracion_adicional': True
+                    }
+                )
+
             messages.success(request, f"La cuenta '{cuenta.nombre}' se ha registrado exitosamente.")
             return redirect('dashboard') # Una vez que guardan, los dejamos ir al dashboard
     else:
@@ -966,10 +980,20 @@ def detalle_deuda(request, deuda_id):
 
 @login_required
 def editar_deuda(request, deuda_id):
-    # Lógica para editar (la haremos después)
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    # ... (lógica del formulario de edición)
-    return redirect('lista_deudas')
+    
+    if request.method == 'POST':
+        form = DeudaForm(request.POST, instance=deuda)
+        if form.is_valid():
+            deuda = form.save(commit=False)
+            deuda.requiere_configuracion_adicional = False # Ya se actualizó la configuración
+            deuda.save()
+            messages.success(request, f"La deuda '{deuda.nombre}' ha sido actualizada.")
+            return redirect('lista_deudas')
+    else:
+        form = DeudaForm(instance=deuda)
+        
+    return render(request, 'editar_deuda.html', {'form': form, 'deuda': deuda})
 
 @login_required
 def eliminar_deuda(request, deuda_id):
