@@ -277,6 +277,15 @@ class Deuda(models.Model):
         help_text="Indica si la deuda se generó automáticamente y necesita que se configuren sus detalles (monto, tasa, etc.)"
     )
 
+    dia_corte = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Día del mes en que corta la tarjeta (1-31). Ej: 6"
+    )
+    dia_pago = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Día límite de pago del mes (1-31). Ej: 30"
+    )
+
     # --- PASO 2: Añadimos la clase Meta con la nueva regla ---
     class Meta:
         unique_together = ['propietario', 'nombre']
@@ -288,6 +297,50 @@ class Deuda(models.Model):
         if not self.pk:
             self.saldo_pendiente = self.monto_total
         super().save(*args, **kwargs)
+
+    @property
+    def proxima_fecha_corte(self):
+        if not self.dia_corte:
+            return None
+        import calendar
+        from datetime import timedelta
+        hoy = timezone.now().date()
+        try:
+            fecha_este_mes = hoy.replace(day=self.dia_corte)
+        except ValueError:
+            _, last_day = calendar.monthrange(hoy.year, hoy.month)
+            fecha_este_mes = hoy.replace(day=last_day)
+            
+        if fecha_este_mes < hoy:
+            mes_siguiente = (fecha_este_mes.replace(day=1) + timedelta(days=32)).replace(day=1)
+            try:
+                return mes_siguiente.replace(day=self.dia_corte)
+            except ValueError:
+                _, last_day = calendar.monthrange(mes_siguiente.year, mes_siguiente.month)
+                return mes_siguiente.replace(day=last_day)
+        return fecha_este_mes
+
+    @property
+    def proxima_fecha_pago(self):
+        if not self.dia_pago:
+            return None
+        import calendar
+        from datetime import timedelta
+        hoy = timezone.now().date()
+        try:
+            fecha_este_mes = hoy.replace(day=self.dia_pago)
+        except ValueError:
+            _, last_day = calendar.monthrange(hoy.year, hoy.month)
+            fecha_este_mes = hoy.replace(day=last_day)
+            
+        if fecha_este_mes < hoy:
+            mes_siguiente = (fecha_este_mes.replace(day=1) + timedelta(days=32)).replace(day=1)
+            try:
+                return mes_siguiente.replace(day=self.dia_pago)
+            except ValueError:
+                _, last_day = calendar.monthrange(mes_siguiente.year, mes_siguiente.month)
+                return mes_siguiente.replace(day=last_day)
+        return fecha_este_mes
 
 class PagoAmortizacion(models.Model):
     deuda = models.ForeignKey(Deuda, on_delete=models.CASCADE, related_name='amortizacion')

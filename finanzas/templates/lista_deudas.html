@@ -113,6 +113,12 @@
                         <td class="px-6 py-4 bg-white text-sm text-gray-600 font-medium">${{ deuda.monto_total|floatformat:2|intcomma }}</td>
                         <td class="px-6 py-4 bg-white text-sm">
                             <span class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</span>
+                            {% if deuda.proxima_fecha_corte %}
+                            <div class="text-[10px] text-gray-500 mt-1">Corte: {{ deuda.proxima_fecha_corte|date:"d M" }}</div>
+                            {% endif %}
+                            {% if deuda.proxima_fecha_pago %}
+                            <div class="text-[10px] text-gray-500">Pago: {{ deuda.proxima_fecha_pago|date:"d M" }}</div>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 bg-white text-sm align-middle">
                             {# Simple visual bar for debt usage/remaining #}
@@ -228,6 +234,12 @@
                 <div class="text-right">
                     <p class="text-xs text-gray-500">Saldo</p>
                     <p class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</p>
+                    {% if deuda.proxima_fecha_corte %}
+                    <p class="text-[10px] text-gray-500 mt-1">Corte: {{ deuda.proxima_fecha_corte|date:"d M" }}</p>
+                    {% endif %}
+                    {% if deuda.proxima_fecha_pago %}
+                    <p class="text-[10px] text-gray-500">Pago: {{ deuda.proxima_fecha_pago|date:"d M" }}</p>
+                    {% endif %}
                 </div>
             </div>
 
