@@ -983,9 +983,21 @@ def editar_deuda(request, deuda_id):
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
     
     if request.method == 'POST':
+        monto_total_anterior = deuda.monto_total
+        estaba_pendiente_configuracion = deuda.requiere_configuracion_adicional
+        
         form = DeudaForm(request.POST, instance=deuda)
         if form.is_valid():
             deuda = form.save(commit=False)
+            
+            # --- CORRECCIÓN SALDO PENDIENTE ---
+            # Ya sea la configuración inicial o un cambio de límite posterior,
+            # sumamos la diferencia del límite al saldo pendiente actual.
+            # Esto evita borrar gastos que se hayan hecho antes de configurar el límite.
+            diferencia_monto = (deuda.monto_total or 0) - (monto_total_anterior or 0)
+            if diferencia_monto != 0:
+                deuda.saldo_pendiente = (deuda.saldo_pendiente or 0) + diferencia_monto
+
             deuda.requiere_configuracion_adicional = False # Ya se actualizó la configuración
             deuda.save()
             messages.success(request, f"La deuda '{deuda.nombre}' ha sido actualizada.")

@@ -45,7 +45,24 @@ class registro_transacciones(models.Model):
 
     # Tu método save que modificamos anteriormente va aquí...
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         super().save(*args, **kwargs)
+
+        # Si la transacción es un GASTO nuevo y su cuenta origen es una tarjeta de crédito en Deudas
+        if is_new and self.tipo == 'GASTO':
+            try:
+                # Buscamos la Deuda tipo Tarjeta de Crédito con el mismo nombre que la cuenta origen
+                deuda_tarjeta = Deuda.objects.get(
+                    propietario=self.propietario,
+                    nombre=self.cuenta_origen,
+                    tipo_deuda='TARJETA_CREDITO'
+                )
+                # Evitamos restar 2 veces si ya estuviera manejado por deuda_asociada (precaución)
+                if not (self.deuda_asociada == deuda_tarjeta and self.tipo_pago == 'TARJETA_CREDITO'):
+                    deuda_tarjeta.saldo_pendiente -= self.monto
+                    deuda_tarjeta.save()
+            except Deuda.DoesNotExist:
+                pass
 
         if self.deuda_asociada:
             deuda = self.deuda_asociada
