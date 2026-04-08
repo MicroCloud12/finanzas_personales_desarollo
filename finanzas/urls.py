@@ -89,4 +89,6 @@ urlpatterns = [
     path('api/agregar-campo-tienda/', views.agregar_campo_tienda, name='agregar_campo_tienda'),
     path('api/eliminar-campo-tienda/', views.eliminar_campo_tienda, name='eliminar_campo_tienda'),
     path('cuentas/', views.gestionar_cuentas, name='gestionar_cuentas'),
+    path('cuentas/editar/<int:cuenta_id>/', views.editar_cuenta, name='editar_cuenta'),
+    path('cuentas/eliminar/<int:cuenta_id>/', views.eliminar_cuenta, name='eliminar_cuenta'),
 ]
