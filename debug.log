@@ -1113,3 +1113,15 @@ INFO 2025-12-31 21:14:41,982 tasks Tienda nueva detectada: FLAUTAS MAS QUE UN AN
 INFO 2026-01-23 21:12:39,478 tasks Tienda nueva detectada: 7 ELEVEN
 INFO 2026-01-23 21:13:56,668 tasks Tienda nueva detectada: 7 ELEVEN
 ERROR 2026-03-20 19:14:05,087 views Error en get_initial_task_result: Error 10061 connecting to localhost:6379. No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión.
+INFO 2026-04-08 11:49:58,861 tasks Tienda reconocida por IA: DOMINO'S PIZZA
+INFO 2026-04-08 11:49:59,168 tasks Tienda reconocida por IA: OXXO
+INFO 2026-04-08 11:49:59,318 tasks Tienda reconocida por IA: OXXO
+INFO 2026-04-08 11:49:59,694 tasks Tienda nueva detectada: FARMACIAS BENAVIDES
+INFO 2026-04-08 11:50:11,450 tasks Tienda reconocida por IA: OXXO
+INFO 2026-04-08 11:50:19,275 tasks Tienda nueva detectada: BURRITOS DON NICO
+INFO 2026-04-08 11:50:23,472 tasks Tienda reconocida por IA: WALMART
+INFO 2026-04-08 11:50:24,883 tasks Tienda nueva detectada: ARTE MIGA
+INFO 2026-04-08 11:50:26,197 tasks Tienda nueva detectada: ARTE MIGA
+INFO 2026-04-08 11:50:27,609 tasks Tienda nueva detectada: RESTAURANTE ABURIYA
+INFO 2026-04-08 11:50:31,966 tasks Tienda nueva detectada: BARBACOA CAPULHUAC
+INFO 2026-04-08 11:50:35,237 tasks Tienda reconocida por IA: MCDONALD'S
