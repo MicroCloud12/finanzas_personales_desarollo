@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% load humanize %}
 {% block title %}Dashboard de Finanzas Personales | Tu Resumen Financiero{% endblock %}
-{% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5{% endblock %}
+{% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5 md:p-8 lg:p-10{% endblock %}
 
 {% block content %}
 {% load static %}
 
 {# Contenedor Principal Unificado #}
-<div class="w-full">
+<div class="w-full max-w-[90rem] mx-auto">
 
     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
         <h1 class="text-3xl font-bold text-gray-900 font-display">Dashboard</h1>
@@ -37,7 +37,7 @@
 
         <!-- Balance Card (Styled as requested) -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-6 flex flex-col justify-between">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Total balance</h3>
                 <select
@@ -99,7 +99,7 @@
 
         <!-- Income Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-6 flex flex-col justify-between">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Income</h3>
                 <select
@@ -161,7 +161,7 @@
 
         <!-- Expenses Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-6 flex flex-col justify-between">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Expense</h3>
                 <select
@@ -228,7 +228,7 @@
 
         <!-- Savings Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-6 flex flex-col justify-between">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Savings</h3>
                 <select
@@ -290,7 +290,7 @@
 
         <!-- Debt Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-6 flex flex-col justify-between">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Total Debt</h3>
                 <select
@@ -366,7 +366,7 @@
         </div>
 
         <!-- My Cards Interactive Widget -->
-        <div class="relative rounded-[1.5rem] shadow-[0_4px_20px_-5px_rgba(0,0,0,0.3)] p-6 min-h-[240px] flex flex-col justify-between overflow-visible transition-all duration-300 group" id="myCardsWidget" style="background: linear-gradient(135deg, #0f172a 0%, #172554 40%, #991b1b 100%);">
+        <div class="relative rounded-[1.5rem] shadow-[0_4px_20px_-5px_rgba(0,0,0,0.3)] p-8 min-h-[280px] flex flex-col justify-between overflow-visible transition-all duration-300 group" id="myCardsWidget" style="background: linear-gradient(135deg, #0f172a 0%, #172554 40%, #991b1b 100%);">
             
             <!-- Absolute background glow/blur for premium feel -->
             <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/30 rounded-[1.5rem] pointer-events-none"></div>
@@ -464,7 +464,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="relative h-80 w-full">
+                <div class="relative h-96 w-full">
                     <canvas id="savingsGrowthChart"></canvas>
                 </div>
             </div>
@@ -488,7 +488,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="relative h-80 w-full">
+                <div class="relative h-96 w-full">
                     <canvas id="budgetVsActualChart"></canvas>
                 </div>
             </div>
@@ -519,7 +519,7 @@
                 You have an increase of expences in several categories this month
             </p>
 
-            <div class="relative flex-grow flex items-center justify-center min-h-[16rem]">
+            <div class="relative flex-grow flex items-center justify-center min-h-[22rem]">
                 <canvas id="gastosPorCategoriaChart"
                     data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>
