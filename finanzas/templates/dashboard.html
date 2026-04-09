@@ -35,28 +35,50 @@
     {# --- Top Cards Row --- #}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
 
-        <!-- Balance Card (Highlighted) -->
-        <div class="card-premium gradient-blue text-white shadow-xl shadow-indigo-200">
-            <div class="flex justify-between items-start mb-4">
-                <div class="p-2 bg-white/20 rounded-full backdrop-blur-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                </div>
-                <button class="text-white/70 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z">
-                        </path>
-                    </svg></button>
+        <!-- Balance Card (Styled as requested) -->
+        <div class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-6 flex flex-col justify-between">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-gray-900 font-bold text-lg">Total balance</h3>
+                <select class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
+                    <option>USD</option>
+                    <option>MXN</option>
+                </select>
             </div>
-            <div>
-                <p class="text-indigo-100 text-sm font-medium mb-1">Total Balance</p>
-                <h3 class="text-3xl font-bold tracking-tight">${{ balance|floatformat:2 | intcomma }}</h3>
-                <div class="mt-4 flex items-center text-xs text-indigo-100">
-                    <span class="bg-white/20 px-2 py-0.5 rounded text-white font-medium mr-2">**** 4242</span> VISA
+            
+            <div class="mb-4">
+                <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
+                    ${{ balance|floatformat:0|intcomma }}<span class="text-gray-300 text-3xl font-bold">.00</span>
+                </h2>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-2 h-full">
+                <!-- Left Details -->
+                <div class="flex flex-col justify-end gap-3 pb-1">
+                    <div>
+                        <span class="inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            12.1%
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 font-medium leading-snug">
+                        You have extra <span class="font-bold text-gray-700">$1,700</span><br>compared to last month
+                    </p>
+                </div>
+
+                <!-- Right Stats -->
+                <div class="flex flex-col justify-end gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4 transform rotate-45" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold text-gray-600">50 transactions</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-md bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold text-gray-600">15 categories</span>
+                    </div>
                 </div>
             </div>
         </div>
