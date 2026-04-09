@@ -420,26 +420,35 @@ def vista_dashboard(request):
     todas_deudas = Deuda.objects.filter(propietario=request.user)
     deuda_total = Decimal('0.00')
     
-    tarjetas_list = []
-    
     for d in todas_deudas:
         if d.tipo_deuda == 'TARJETA_CREDITO':
             # Para TC: Deuda Real = Límite (monto_total) - Disponible (saldo_pendiente)
             deuda_real = d.monto_total - d.saldo_pendiente
             if deuda_real > 0:
                 deuda_total += deuda_real
-            
-            tarjetas_list.append({
-                'id': d.id,
-                'nombre': d.nombre,
-                'limite': float(d.monto_total or 0),
-                'gastado': float(deuda_real if deuda_real > 0 else 0),
-                'terminacion': d.nombre[-4:] if len(d.nombre) >= 4 else "****"
-            })
         else:
             # Para Préstamos: Deuda Real = Saldo Pendiente
             deuda_total += d.saldo_pendiente
             
+    # --- Listado de Tarjetas para el Widget ---
+    las_cuentas = Cuenta.objects.filter(propietario=request.user, tipo__in=['DEBITO', 'CREDITO'])
+    tarjetas_list = []
+    for c in las_cuentas:
+        term = c.terminacion.strip() if c.terminacion else ""
+        if len(term) > 4:
+            term = term[-4:]
+        elif len(term) < 4 and len(term) > 0:
+            term = term.zfill(4)
+        else:
+            term = term or "****"
+            
+        tarjetas_list.append({
+            'id': c.id,
+            'nombre': c.nombre,
+            'terminacion': term,
+            'tipo': c.tipo
+        })
+        
     import json
     tarjetas_data_json = json.dumps(tarjetas_list)
 
