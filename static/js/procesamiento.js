@@ -348,3 +348,25 @@ async function eliminarCampoConfigurado(btn) {
     }
 }
 
+// 7. Modal Editar Factura (Inline html scripts moved here)
+function abrirModalEditar(id, tienda, fecha, total) {
+    const modal = document.getElementById('modal-editar-factura');
+    if (!modal) return;
+
+    // Update inputs
+    document.getElementById('tienda').value = tienda;
+    // Format date if needed, but the template already passes Y-m-d
+    document.getElementById('fecha_emision').value = fecha;
+    // Ensure total uses point as decimal separator (standard for input type number)
+    document.getElementById('total').value = total.replace(',', '.');
+
+    // Update form action dynamically
+    const form = document.getElementById('form-editar-factura');
+    // Point to the specific invoice URL (revisar_factura_detalle)
+    // We construct the URL manually or use a base.
+    // URL pattern: /facturacion/pendientes/<id>/
+    form.action = "/facturacion/pendientes/" + id + "/";
+
+    modal.classList.remove('hidden');
+}
+

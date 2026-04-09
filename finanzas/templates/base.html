@@ -111,25 +111,7 @@
         </div>
         {% endfor %}
       </div>
-      <script>
-        document.addEventListener('DOMContentLoaded', function () {
-          const toasts = document.querySelectorAll('.toast-message');
-          toasts.forEach((toast, index) => {
-            setTimeout(() => {
-              toast.classList.remove('translate-x-full', 'opacity-0');
-            }, 100 * index); // Stagger animation
-
-            setTimeout(() => {
-              toast.classList.add('opacity-0', 'translate-x-full');
-              setTimeout(() => {
-                toast.remove();
-              }, 300);
-            }, 5000 + (1000 * index)); // Auto dismiss
-          });
-        });
-      </script>
       {% endif %}
-
     </div>
   </div>
 

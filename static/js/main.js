@@ -80,9 +80,26 @@ function setupMobileMenu() {
     }
 }
 
+function setupToasts() {
+    const toasts = document.querySelectorAll('.toast-message');
+    toasts.forEach((toast, index) => {
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full', 'opacity-0');
+        }, 100 * index); // Stagger animation
+
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-x-full');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 5000 + (1000 * index)); // Auto dismiss
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     fadeFlashMessage();
     setupProfileMenu();
     initScrollAnimations();
     setupMobileMenu();
+    setupToasts();
 });
