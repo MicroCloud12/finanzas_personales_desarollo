@@ -1,14 +1,14 @@
 // Plugin para texto central
 const centerTextPlugin = {
     id: 'centerText',
-    beforeDraw: function(chart) {
+    beforeDraw: function (chart) {
         if (chart.config.type !== 'doughnut') return;
         var width = chart.width,
             height = chart.height,
             ctx = chart.ctx;
 
         ctx.restore();
-        
+
         // Título secundario
         ctx.font = '500 13px Outfit, sans-serif';
         ctx.textBaseline = 'middle';
@@ -25,7 +25,7 @@ const centerTextPlugin = {
         if (chart.data.datasets && chart.data.datasets[0] && chart.data.datasets[0].data) {
             sum = chart.data.datasets[0].data.reduce((a, b) => Number(a) + Number(b), 0);
         }
-        
+
         // Format to split decimal like design: "$6,222.00"
         let formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
         let parts = formatter.formatToParts(sum);
@@ -35,18 +35,18 @@ const centerTextPlugin = {
             if (p.type === 'decimal' || p.type === 'fraction') { decimalPart += p.value; }
             else { integerPart += p.value; }
         });
-        
+
         let text2 = integerPart;
         let textX2 = Math.round((width - ctx.measureText(text2 + decimalPart).width) / 2);
         let textY2 = height / 2 + 20;
         ctx.fillText(text2, textX2, textY2);
-        
+
         // Dibujamos la parte decimal más clara
         let intWidth = ctx.measureText(text2).width;
         ctx.fillStyle = '#D1D5DB'; // text-gray-300
         ctx.font = 'bold 24px Outfit, sans-serif';
         ctx.fillText(decimalPart, textX2 + intWidth, textY2 + 1); // ajustado 1px visual
-        
+
         ctx.save();
     }
 };
@@ -114,9 +114,9 @@ function initGastosChart() {
                             callbacks: {
                                 title: () => null, // Hide title to just show "40% $2,500"
                                 label: function (context) {
-                                    let sum = context.dataset.data.reduce((a,b)=> Number(a)+Number(b), 0);
+                                    let sum = context.dataset.data.reduce((a, b) => Number(a) + Number(b), 0);
                                     let percentage = Math.round((context.parsed * 100) / sum);
-                                    let formattedVal = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', minimumFractionDigits: 0}).format(context.parsed);
+                                    let formattedVal = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(context.parsed);
                                     return [percentage + '%', formattedVal];
                                 }
                             }
@@ -325,7 +325,7 @@ function initBudgetVsActualChart() {
     // Mock data for Budget vs Actual (Comparing of budget and expence)
     const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
     const expenseData = [4000, 2800, 3500, 4800, 2500, 5000, 2200];
-    const budgetData =  [5000, 2800, 3800, 5500, 4000, 6800, 5000];
+    const budgetData = [5000, 2800, 3800, 5500, 4000, 6800, 5000];
 
     new Chart(canvas, {
         type: 'bar',
