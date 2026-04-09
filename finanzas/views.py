@@ -420,15 +420,28 @@ def vista_dashboard(request):
     todas_deudas = Deuda.objects.filter(propietario=request.user)
     deuda_total = Decimal('0.00')
     
+    tarjetas_list = []
+    
     for d in todas_deudas:
         if d.tipo_deuda == 'TARJETA_CREDITO':
             # Para TC: Deuda Real = Límite (monto_total) - Disponible (saldo_pendiente)
             deuda_real = d.monto_total - d.saldo_pendiente
             if deuda_real > 0:
                 deuda_total += deuda_real
+            
+            tarjetas_list.append({
+                'id': d.id,
+                'nombre': d.nombre,
+                'limite': float(d.monto_total or 0),
+                'gastado': float(deuda_real if deuda_real > 0 else 0),
+                'terminacion': d.nombre[-4:] if len(d.nombre) >= 4 else "****"
+            })
         else:
             # Para Préstamos: Deuda Real = Saldo Pendiente
             deuda_total += d.saldo_pendiente
+            
+    import json
+    tarjetas_data_json = json.dumps(tarjetas_list)
 
     context = {
         'ingresos': ingresos,
@@ -443,6 +456,8 @@ def vista_dashboard(request):
         'months': range(1, 13),
         'es_usuario_premium': es_usuario_premium,
         'deuda_total': deuda_total,
+        'tarjetas_data_json': tarjetas_data_json,
+        'tarjetas_list': tarjetas_list,
         'investment_chart_labels': chart_labels,
         'investment_chart_data': chart_data,
     }
