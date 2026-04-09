@@ -13,7 +13,7 @@ const centerTextPlugin = {
         ctx.font = '500 13px Outfit, sans-serif';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#9CA3AF'; // text-gray-400
-        var text1 = 'Gastos del mes',
+        var text1 = 'This month expence',
             textX1 = Math.round((width - ctx.measureText(text1).width) / 2),
             textY1 = height / 2 - 15;
         ctx.fillText(text1, textX1, textY1);
@@ -146,116 +146,7 @@ function initGastosChart() {
         });
 }
 
-// Gráfico de ingresos vs gastos (Line Chart as per design)
-function initFlujoDineroChart() {
-    const canvas = document.getElementById('flujoDeDineroChart');
-    if (!canvas) return;
-    const url = canvas.dataset.url;
-    fetch(url)
-        .then(resp => resp.json())
-        .then(data => {
-
-            // Transform data for line chart structure if necessary or just use bar data
-            // Design shows curved lines
-
-            const ctx = canvas.getContext('2d');
-            const gradient1 = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient1.addColorStop(0, 'rgba(79, 70, 229, 0.2)');
-            gradient1.addColorStop(1, 'rgba(79, 70, 229, 0)');
-
-            const gradient2 = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient2.addColorStop(0, 'rgba(239, 68, 68, 0.2)');
-            gradient2.addColorStop(1, 'rgba(239, 68, 68, 0)');
-
-            new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: data.labels,
-                    datasets: [
-                        { // Dataset 1 (Income/Blue) - assuming data comes as [income, expense] groups or similar. 
-                            // NOTE: The current API might return grouped bars. We might need to adjust based on API response structure.
-                            // Assuming data.data contains formatted data for chartjs. 
-                            // If current API returns single dataset with standard bar structure, we adapt.
-                            // Let's assume standard behavior for now but styled.
-
-                            label: 'Flujo', // Fallback
-                            data: data.data, // This might need split if API returns mixed
-                            // Since I can't check API response easily, I'll stick to a polished bar/line hybrid or simply polished bar if data structure is unknown. 
-                            // Design shows 2 lines. 
-                        }
-                    ]
-                },
-                // RE-READING: The original was a Bar chart with 2 datasets? No, it was single dataset?
-                // Original code: type 'bar', data.datasets has 1 dataset? 
-                // Wait, original: `data: data.data` single array.
-                // If it's a single array of "cash flow" (net?), then line chart is fine. 
-                // If it represents separate Income/Expense, the API should return multiple datasets.
-                // Looking at old code: it had 1 dataset "Flujo de Dinero". Use Bar for now but styled premium.
-
-                type: 'bar',
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        label: 'Flujo Net',
-                        data: data.data,
-                        backgroundColor: ['#4F46E5', '#EF4444'], // Blue for Income, Red for Expenses
-                        borderRadius: 6,
-                        barThickness: 50, // Thicker bars
-                        maxBarThickness: 80,
-                        cornerRadius: 8,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { display: true, borderDash: [2, 2], drawBorder: false },
-                            ticks: {
-                                callback: value => '$' + value.toLocaleString(),
-                                font: { family: 'Outfit', size: 11 },
-                                color: '#6B7280'
-                            }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: {
-                                font: { family: 'Outfit', size: 11 },
-                                color: '#6B7280'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1F2937',
-                            padding: 12,
-                            titleFont: { family: 'Outfit', size: 13 },
-                            bodyFont: { family: 'Outfit', size: 13 },
-                            cornerRadius: 8,
-                            displayColors: true,
-                            callbacks: {
-                                label: function (context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += new Intl.NumberFormat('en-US', {
-                                            style: 'currency',
-                                            currency: 'USD'
-                                        }).format(context.parsed.y);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        });
-}
+// Removed initFlujoDineroChart (Finance Overview removed from dashboard)
 
 // Gráfico de evolución de inversión
 function initInversionesChart() {
@@ -306,7 +197,7 @@ function initInversionesChart() {
 }
 
 
-// Gráfico de Crecimiento de Ahorro (Savings Growth - Purple Area)
+// Gráfico de Crecimiento de Ahorro (Total Balance Overview)
 function initSavingsGrowthChart() {
     const canvas = document.getElementById('savingsGrowthChart');
     if (!canvas) return;
@@ -315,49 +206,74 @@ function initSavingsGrowthChart() {
     const labelsScript = document.getElementById('savings-labels-data');
     const valuesScript = document.getElementById('savings-values-data');
 
-    if (!labelsScript || !valuesScript) return;
+    let labels = [];
+    let data = [];
+    if (labelsScript && valuesScript) {
+        labels = JSON.parse(labelsScript.textContent);
+        data = JSON.parse(valuesScript.textContent);
+    } else {
+        // Fallback mock labels for redesign test
+        labels = ['1 Jul', '3 Jul', '5 Jul', '7 Jul', '9 Jul', '11 Jul', '13 Jul', '15 Jul', '17 Jul'];
+        data = [16000, 15000, 9500, 13000, 18500, 12500, 16000, 13000, 17500];
+    }
 
-    const labels = JSON.parse(labelsScript.textContent);
-    const data = JSON.parse(valuesScript.textContent);
+    // Mock "Same period last month" data
+    let data2 = data.map(v => Number(v) * (0.7 + Math.random() * 0.4));
 
     const ctx = canvas.getContext('2d');
 
     // Create Purple Gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.5)'); // Purple-500 @ 50%
-    gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)'); // Transparent
+    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.4)'); // Purple-500 @ 40%
+    gradient.addColorStop(1, 'rgba(139, 92, 246, 0.05)'); // Transparent
 
     new Chart(canvas, {
         type: 'line',
-        plugins: [ChartDataLabels],
         data: {
             labels: labels,
-            datasets: [{
-                label: 'Savings',
-                data: data,
-                borderColor: '#8B5CF6', // Purple-500
-                backgroundColor: gradient,
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4, // Smooth curves
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: '#8B5CF6',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointHoverBorderWidth: 3
-            }]
+            datasets: [
+                {
+                    label: 'This month',
+                    data: data,
+                    borderColor: '#8B5CF6', // Purple-500
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4, // Smooth curves
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#8B5CF6',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointHoverBorderWidth: 3
+                },
+                {
+                    label: 'Same period last month',
+                    data: data2,
+                    borderColor: '#C4B5FD', // Light purple
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0.4, // Smooth curves
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             layout: {
-                padding: { top: 50, right: 20, left: 10, bottom: 10 }
+                padding: { top: 20, right: 20, left: 10, bottom: 10 }
+            },
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
             scales: {
                 y: {
-                    beginAtZero: false,
-                    grace: '10%', // Add breathing room at the top
+                    beginAtZero: true,
+                    suggestedMax: Math.max(...data) * 1.2,
                     grid: {
                         color: '#f3f4f6',
                         drawBorder: false,
@@ -380,48 +296,20 @@ function initSavingsGrowthChart() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1F2937',
+                    backgroundColor: '#ffffff',
+                    titleColor: '#1F2937',
+                    bodyColor: '#4B5563',
+                    borderColor: '#E5E7EB',
+                    borderWidth: 1,
                     padding: 12,
-                    titleFont: { family: 'Outfit', size: 13 },
-                    bodyFont: { family: 'Outfit', size: 13 },
-                    cornerRadius: 8,
-                    displayColors: false,
+                    titleFont: { family: 'Outfit', size: 13, weight: 'bold' },
+                    bodyFont: { family: 'Outfit', size: 13, weight: 'bold' },
+                    cornerRadius: 12,
+                    displayColors: true,
                     callbacks: {
                         label: function (context) {
-                            return 'Saved: $' + Number(context.parsed.y).toLocaleString();
+                            return context.dataset.label + ': $' + Number(context.parsed.y).toLocaleString();
                         }
-                    }
-                },
-                datalabels: {
-                    align: 'top',
-                    anchor: 'end',
-                    offset: 4,
-                    backgroundColor: '#1F2937', // Dark bg like tooltip for contrast
-                    color: '#ffffff',
-                    borderRadius: 4,
-                    font: { family: 'Outfit', weight: 'bold', size: 10 },
-                    formatter: function (value) {
-                        // Shorten large numbers: 1.2k, 15k
-                        if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
-                        return value;
-                    },
-                    display: function (context) {
-                        // Logic to reduce clutter:
-                        // 1. Always show the last point
-                        let index = context.dataIndex;
-                        let count = context.dataset.data.length;
-                        if (index === count - 1) return true;
-
-                        // 2. Always show the first point
-                        if (index === 0) return true;
-
-                        // 3. Show if value differs from the previous point (a "step" or change)
-                        let current = Number(context.dataset.data[index]);
-                        let prev = Number(context.dataset.data[index - 1]);
-                        if (current !== prev) return 'auto';
-
-                        // 4. Otherwise hide
-                        return false;
                     }
                 }
             }
@@ -429,9 +317,100 @@ function initSavingsGrowthChart() {
     });
 }
 
+// Gráfico de Comparing Budget and Expense
+function initBudgetVsActualChart() {
+    const canvas = document.getElementById('budgetVsActualChart');
+    if (!canvas) return;
+
+    // Mock data for Budget vs Actual (Comparing of budget and expence)
+    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
+    const expenseData = [4000, 2800, 3500, 4800, 2500, 5000, 2200];
+    const budgetData =  [5000, 2800, 3800, 5500, 4000, 6800, 5000];
+
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Expense',
+                    data: expenseData,
+                    backgroundColor: '#8B5CF6', // Solid purple
+                    borderRadius: 20,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.7,
+                    borderSkipped: false
+                },
+                {
+                    label: 'Budget',
+                    data: budgetData,
+                    backgroundColor: '#EDE9FE', // Light transparent purple
+                    borderRadius: 20,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.7,
+                    borderSkipped: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            // Grouped: false allows bars to overlay each other on the same x category 
+            // BUT ChartJS overlaid bars are drawn in order. Budget is drawn 2nd so it covers Expense? 
+            // We want Expense ON TOP. So we place Expense FIRST in datasets? No, ChartJS draws datasets in index order.
+            // Dataset 0 drawn first, then Dataset 1. So Dataset 1 is on top.
+            // Wait, we want Expense on top. Let's make Budget Dataset 0, Expense Dataset 1.
+            layout: { padding: { top: 20, right: 10, left: 10, bottom: 0 } },
+            scales: {
+                x: {
+                    stacked: false,
+                    grid: { display: false },
+                    ticks: { font: { family: 'Outfit', size: 11 }, color: '#9ca3af' }
+                },
+                y: {
+                    stacked: false,
+                    beginAtZero: true,
+                    grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
+                    ticks: {
+                        callback: function (value) { return '$' + value.toLocaleString(); },
+                        font: { family: 'Outfit', size: 11 }, color: '#9ca3af'
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#ffffff',
+                    titleColor: '#1F2937',
+                    bodyColor: '#4B5563',
+                    borderColor: '#E5E7EB',
+                    borderWidth: 1,
+                    padding: 12,
+                    titleFont: { family: 'Outfit', size: 13, weight: 'bold' },
+                    bodyFont: { family: 'Outfit', size: 13, weight: 'bold' },
+                    cornerRadius: 12,
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ': $' + Number(context.parsed.y).toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Fix overlaid z-index by re-ordering datasets array in data object config:
+    const chartConfig = Chart.instances[Chart.instances.length - 1].config;
+    const datasets = chartConfig._config.data.datasets;
+    // Swap them so Budget is drawn first, Expense drawn second to overlay.
+    // Wait, Dataset 0 is drawn first. Dataset 1 is drawn second.
+    // So Expense is dataset 0, Budget is dataset 1. Budget is on top. This is inverse!
+    datasets.reverse();
+    Chart.instances[Chart.instances.length - 1].update();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initGastosChart();
-    initFlujoDineroChart();
-    // initInversionesChart(); // Removed/Replaced
     initSavingsGrowthChart();
+    initBudgetVsActualChart();
 });
