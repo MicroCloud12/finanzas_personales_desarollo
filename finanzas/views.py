@@ -1589,50 +1589,53 @@ def api_ingresos_tarjeta(request):
             
         from django.db.models import Sum, Count
         
-        # Filtros base: tipo INGRESO, de la cuenta seleccionada (usamos cuenta_origen según la lógica del Manager)
-        # Nota: El Manager 'balance_dashboard' usa `cuenta_origen` equivalente a la cuenta para INGRESOS
-        qs_actual = registro_transacciones.objects.filter(
+        qs_base_actual = registro_transacciones.objects.filter(
             propietario=request.user,
-            tipo='INGRESO',
             fecha__year=year,
             fecha__month=month,
             cuenta_origen=cuenta_nombre
         )
         
-        # Totales mes actual
-        agregados_act = qs_actual.aggregate(
-            total=Sum('monto'),
-            num_categorias=Count('categoria', distinct=True)
-        )
-        total_actual = agregados_act['total'] or Decimal('0.00')
-        transacciones_actual = qs_actual.count()
-        categorias_actual = agregados_act['num_categorias'] or 0
-        
-        # Totales mes pasado
-        qs_prev = registro_transacciones.objects.filter(
+        qs_base_previo = registro_transacciones.objects.filter(
             propietario=request.user,
-            tipo='INGRESO',
             fecha__year=prev_year,
             fecha__month=prev_month,
             cuenta_origen=cuenta_nombre
         )
-        total_previo = qs_prev.aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
         
-        # Cálculo de métricas secundarias
-        diferencia_monetaria = total_actual - total_previo
-        if total_previo > 0:
-            porcentaje = (diferencia_monetaria / total_previo) * Decimal('100.0')
-        else:
-            porcentaje = Decimal('100.0') if total_actual > 0 else Decimal('0.0')
+        def procesar_tipo(tipo_tx):
+            qs_act = qs_base_actual.filter(tipo__iexact=tipo_tx)
+            qs_prev = qs_base_previo.filter(tipo__iexact=tipo_tx)
             
+            agregados_act = qs_act.aggregate(
+                total=Sum('monto'),
+                num_categorias=Count('categoria', distinct=True)
+            )
+            total_act = agregados_act['total'] or Decimal('0.00')
+            tx_act = qs_act.count()
+            cat_act = agregados_act['num_categorias'] or 0
+            
+            total_prv = qs_prev.aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+            
+            dif = total_act - total_prv
+            if total_prv > 0:
+                pct = (dif / total_prv) * Decimal('100.0')
+            else:
+                pct = Decimal('100.0') if total_act > 0 else Decimal('0.0')
+                
+            return {
+                'total': f"{total_act:,.2f}",
+                'transactions': tx_act,
+                'categories': cat_act,
+                'diferencia_monto': f"{abs(dif):,.2f}",
+                'porcentaje': round(float(abs(pct)), 1),
+                'es_positivo': bool(dif >= 0),
+            }
+
         return JsonResponse({
             'status': 'success',
-            'total_income': f"{total_actual:,.2f}", # Formateado con comas
-            'transactions': transacciones_actual,
-            'categories': categorias_actual,
-            'diferencia_monto': f"{abs(diferencia_monetaria):,.2f}",
-            'porcentaje': round(float(abs(porcentaje)), 1),
-            'es_positivo': bool(diferencia_monetaria >= 0),
+            'ingresos': procesar_tipo('INGRESO'),
+            'gastos': procesar_tipo('GASTO'),
         })
         
     except Exception as e:

@@ -61,33 +61,60 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Split integer and decimal parts
-                    const parts = String(data.total_income).split('.');
-                    document.getElementById('incomeTotalAmount').textContent = parts[0];
+                    // --- UPDATE INGRESOS ---
+                    const ing = data.ingresos;
+                    const partsIng = String(ing.total).split('.');
+                    document.getElementById('incomeTotalAmount').textContent = partsIng[0];
                     if (document.getElementById('incomeDecimalAmount')) {
-                        document.getElementById('incomeDecimalAmount').textContent = parts[1] || '00';
+                        document.getElementById('incomeDecimalAmount').textContent = partsIng[1] || '00';
                     }
                     
-                    document.getElementById('incomePercentageText').textContent = data.porcentaje + '%';
+                    document.getElementById('incomePercentageText').textContent = ing.porcentaje + '%';
+                    document.getElementById('incomeExtraAmount').textContent = '$' + ing.diferencia_monto;
+                    document.getElementById('incomeTxCount').textContent = ing.transactions + ' transacciones';
+                    document.getElementById('incomeCatCount').textContent = ing.categories + ' categorías';
                     
-                    document.getElementById('incomeExtraAmount').textContent = '$' + data.diferencia_monto;
-                    document.getElementById('incomeTxCount').textContent = data.transactions + ' transacciones';
-                    document.getElementById('incomeCatCount').textContent = data.categories + ' categorías';
+                    const badgeIng = document.getElementById('incomePercentageBadge');
+                    const trendPathIng = document.getElementById('incomeTrendArrow');
+                    const earnTextIng = document.getElementById('incomeEarnText');
                     
-                    const badge = document.getElementById('incomePercentageBadge');
-                    const trendPath = document.getElementById('incomeTrendArrow');
-                    const earnText = document.getElementById('incomeEarnText');
-                    
-                    if (data.es_positivo) {
-                        badge.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        // Flecha hacia arriba
-                        trendPath.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
-                        earnText.textContent = "extra";
+                    if (ing.es_positivo) {
+                        badgeIng.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        trendPathIng.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
+                        earnTextIng.textContent = "extra";
                     } else {
-                        badge.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        // Flecha hacia abajo
-                        trendPath.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
-                        earnText.textContent = "menos";
+                        badgeIng.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        trendPathIng.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
+                        earnTextIng.textContent = "menos";
+                    }
+
+                    // --- UPDATE GASTOS ---
+                    const gas = data.gastos;
+                    const partsGas = String(gas.total).split('.');
+                    document.getElementById('expenseTotalAmount').textContent = partsGas[0];
+                    if (document.getElementById('expenseDecimalAmount')) {
+                        document.getElementById('expenseDecimalAmount').textContent = partsGas[1] || '00';
+                    }
+                    
+                    document.getElementById('expensePercentageText').textContent = gas.porcentaje + '%';
+                    document.getElementById('expenseExtraAmount').textContent = '$' + gas.diferencia_monto;
+                    document.getElementById('expenseTxCount').textContent = gas.transactions + ' transacciones';
+                    document.getElementById('expenseCatCount').textContent = gas.categories + ' categorías';
+                    
+                    const badgeGas = document.getElementById('expensePercentageBadge');
+                    const trendPathGas = document.getElementById('expenseTrendArrow');
+                    const earnTextGas = document.getElementById('expenseEarnText');
+                    
+                    // In expenses, going up (es_positivo = true) is visually "bad/red" 
+                    // Going down (es_positivo = false) is visually "good/green"
+                    if (gas.es_positivo) {
+                        badgeGas.className = "inline-flex items-center gap-1 bg-red-50 text-red-500 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        trendPathGas.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
+                        earnTextGas.textContent = "extra";
+                    } else {
+                        badgeGas.className = "inline-flex items-center gap-1 bg-green-50 text-green-500 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        trendPathGas.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
+                        earnTextGas.textContent = "menos";
                     }
                 }
             })
