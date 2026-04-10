@@ -81,6 +81,7 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
         # Si algo falla (ej. error de red con Drive o Gemini), la tarea se reintentará automáticamente
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
+
 @shared_task
 def process_drive_tickets(user_id: int):
     """
