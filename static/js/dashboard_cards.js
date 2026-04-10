@@ -71,8 +71,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('incomePercentageText').textContent = data.porcentaje + '%';
                     
                     document.getElementById('incomeExtraAmount').textContent = '$' + data.diferencia_monto;
-                    document.getElementById('incomeTxCount').textContent = data.transactions + ' transactions';
-                    document.getElementById('incomeCatCount').textContent = data.categories + ' categories';
+                    document.getElementById('incomeTxCount').textContent = data.transactions + ' transacciones';
+                    document.getElementById('incomeCatCount').textContent = data.categories + ' categorías';
                     
                     const badge = document.getElementById('incomePercentageBadge');
                     const trendPath = document.getElementById('incomeTrendArrow');
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         badge.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
                         // Flecha hacia abajo
                         trendPath.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
-                        earnText.textContent = "less";
+                        earnText.textContent = "menos";
                     }
                 }
             })
