@@ -40,7 +40,58 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Restore animation
             widget.style.opacity = '1';
+            
+            // --- NEW: Trigger update for Income Card ---
+            fetchIncomeMetrics(card.nombre);
         }, 150);
+    }
+
+    // Función para mandar a traer los ingresos cruzados con filtros
+    function fetchIncomeMetrics(cuentaNombre) {
+        const monthSelect = document.querySelector('select[name="month"]');
+        const yearSelect = document.querySelector('select[name="year"]');
+        if (!monthSelect || !yearSelect) return;
+        
+        const month = monthSelect.value;
+        const year = yearSelect.value;
+        
+        const url = `/api/dashboard/ingresos-tarjeta/?cuenta_nombre=${encodeURIComponent(cuentaNombre)}&month=${month}&year=${year}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Split integer and decimal parts
+                    const parts = String(data.total_income).split('.');
+                    document.getElementById('incomeTotalAmount').textContent = parts[0];
+                    if (document.getElementById('incomeDecimalAmount')) {
+                        document.getElementById('incomeDecimalAmount').textContent = parts[1] || '00';
+                    }
+                    
+                    document.getElementById('incomePercentageText').textContent = data.porcentaje + '%';
+                    
+                    document.getElementById('incomeExtraAmount').textContent = '$' + data.diferencia_monto;
+                    document.getElementById('incomeTxCount').textContent = data.transactions + ' transactions';
+                    document.getElementById('incomeCatCount').textContent = data.categories + ' categories';
+                    
+                    const badge = document.getElementById('incomePercentageBadge');
+                    const trendPath = document.getElementById('incomeTrendArrow');
+                    const earnText = document.getElementById('incomeEarnText');
+                    
+                    if (data.es_positivo) {
+                        badge.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        // Flecha hacia arriba
+                        trendPath.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
+                        earnText.textContent = "extra";
+                    } else {
+                        badge.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        // Flecha hacia abajo
+                        trendPath.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
+                        earnText.textContent = "less";
+                    }
+                }
+            })
+            .catch(error => console.error("Error al obtener las estadísticas de ingresos:", error));
     }
 
     if (prevBtn) {
@@ -56,4 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateCardDisplay(currentIndex);
         });
     }
+
+    // Initialize the real data for the first card on load
+    fetchIncomeMetrics(tarjetas[currentIndex].nombre);
 });

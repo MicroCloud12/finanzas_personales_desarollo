@@ -1561,3 +1561,79 @@ def confirmar_datos_factura(request):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def api_ingresos_tarjeta(request):
+    """
+    Endpoint AJAX para obtener las estadísticas de ingresos filtradas
+    por una tarjeta (cuenta) en concreto, mes y año.
+    """
+    try:
+        cuenta_nombre = request.GET.get('cuenta_nombre', '')
+        year = request.GET.get('year', '')
+        month = request.GET.get('month', '')
+        
+        if not cuenta_nombre or not year or not month:
+            return JsonResponse({'status': 'error', 'message': 'Parámetros incompletos'}, status=400)
+            
+        year = int(year)
+        month = int(month)
+        
+        # Calcular el mes anterior para la comparación
+        if month == 1:
+            prev_month = 12
+            prev_year = year - 1
+        else:
+            prev_month = month - 1
+            prev_year = year
+            
+        from django.db.models import Sum, Count
+        
+        # Filtros base: tipo INGRESO, de la cuenta seleccionada (usamos cuenta_origen según la lógica del Manager)
+        # Nota: El Manager 'balance_dashboard' usa `cuenta_origen` equivalente a la cuenta para INGRESOS
+        qs_actual = registro_transacciones.objects.filter(
+            propietario=request.user,
+            tipo='INGRESO',
+            fecha__year=year,
+            fecha__month=month,
+            cuenta_origen=cuenta_nombre
+        )
+        
+        # Totales mes actual
+        agregados_act = qs_actual.aggregate(
+            total=Sum('monto'),
+            num_categorias=Count('categoria', distinct=True)
+        )
+        total_actual = agregados_act['total'] or Decimal('0.00')
+        transacciones_actual = qs_actual.count()
+        categorias_actual = agregados_act['num_categorias'] or 0
+        
+        # Totales mes pasado
+        qs_prev = registro_transacciones.objects.filter(
+            propietario=request.user,
+            tipo='INGRESO',
+            fecha__year=prev_year,
+            fecha__month=prev_month,
+            cuenta_origen=cuenta_nombre
+        )
+        total_previo = qs_prev.aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+        
+        # Cálculo de métricas secundarias
+        diferencia_monetaria = total_actual - total_previo
+        if total_previo > 0:
+            porcentaje = (diferencia_monetaria / total_previo) * Decimal('100.0')
+        else:
+            porcentaje = Decimal('100.0') if total_actual > 0 else Decimal('0.0')
+            
+        return JsonResponse({
+            'status': 'success',
+            'total_income': f"{total_actual:,.2f}", # Formateado con comas
+            'transactions': transacciones_actual,
+            'categories': categorias_actual,
+            'diferencia_monto': f"{abs(diferencia_monetaria):,.2f}",
+            'porcentaje': round(float(abs(porcentaje)), 1),
+            'es_positivo': bool(diferencia_monetaria >= 0),
+        })
+        
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
