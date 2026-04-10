@@ -1632,10 +1632,46 @@ def api_ingresos_tarjeta(request):
                 'es_positivo': bool(dif >= 0),
             }
 
+        ingresos_data = procesar_tipo('INGRESO')
+        gastos_data = procesar_tipo('GASTO')
+        
+        # Calcular Balance Total (Ingresos - Gastos)
+        val_ingreso_act = float(ingresos_data['total'].replace(',', ''))
+        val_gasto_act = float(gastos_data['total'].replace(',', ''))
+        balance_act = val_ingreso_act - val_gasto_act
+        
+        # Balance Total mes anterior para porcentaje  
+        # (Des-formateamos los calculados de la funcion o los recalculamos)
+        val_ingreso_prev = qs_base_previo.filter(tipo__iexact='INGRESO').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+        val_gasto_prev = qs_base_previo.filter(tipo__iexact='GASTO').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+        balance_prev = float(val_ingreso_prev) - float(val_gasto_prev)
+        
+        dif_balance = balance_act - balance_prev
+        if balance_prev > 0:
+            pct_balance = (dif_balance / balance_prev) * 100.0
+        else:
+            pct_balance = 100.0 if balance_act > 0 else 0.0
+            
+        transacciones_balance = ingresos_data['transactions'] + gastos_data['transactions']
+        
+        # Categorias unicas entre ingresos y gastos para esa cuenta
+        cat_balance_qs = qs_base_actual.filter(tipo__in=['INGRESO', 'GASTO', 'Ingreso', 'Gasto']).aggregate(num=Count('categoria', distinct=True))
+        cat_balance = cat_balance_qs['num'] or 0
+
+        balance_data = {
+            'total': f"{balance_act:,.2f}",
+            'transactions': transacciones_balance,
+            'categories': cat_balance,
+            'diferencia_monto': f"{abs(dif_balance):,.2f}",
+            'porcentaje': round(float(abs(pct_balance)), 1),
+            'es_positivo': bool(dif_balance >= 0),
+        }
+
         return JsonResponse({
             'status': 'success',
-            'ingresos': procesar_tipo('INGRESO'),
-            'gastos': procesar_tipo('GASTO'),
+            'ingresos': ingresos_data,
+            'gastos': gastos_data,
+            'balance': balance_data
         })
         
     except Exception as e:

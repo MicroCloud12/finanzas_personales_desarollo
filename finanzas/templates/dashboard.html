@@ -39,17 +39,19 @@
         <div
             class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-gray-900 font-bold text-lg">Total balance</h3>
+                <h3 class="text-gray-900 font-bold text-lg">Balance Total</h3>
+                <!-- Por ahora usamos solo MXN
                 <select
                     class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
                     <option>USD</option>
                     <option>MXN</option>
                 </select>
+                -->
             </div>
 
             <div class="mb-4">
                 <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
-                    ${{ balance|floatformat:0|intcomma }}<span class="text-gray-300 text-3xl font-bold">.00</span>
+                    $<span id="balanceTotalAmount">{{ balance|floatformat:0|intcomma }}</span><span class="text-gray-300 text-3xl font-bold">.<span id="balanceDecimalAmount">00</span></span>
                 </h2>
             </div>
 
@@ -57,17 +59,17 @@
                 <!-- Left Details -->
                 <div class="flex flex-col justify-end gap-3 pb-1">
                     <div>
-                        <span
-                            class="inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                        <span id="balancePercentageBadge"
+                            class="inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors">
+                            <svg id="balanceTrendIcon" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path id="balanceTrendArrow" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                                     d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
                             </svg>
-                            12.1%
+                            <span id="balancePercentageText">12.1%</span>
                         </span>
                     </div>
                     <p class="text-[11px] text-gray-400 font-medium leading-snug">
-                        You have extra <span class="font-bold text-gray-700">$1,700</span><br>compared to last month
+                        Has ahorrado <span id="balanceEarnText">extra</span> <span id="balanceExtraAmount" class="font-bold text-gray-700">$1,700</span><br>comparado al mes pasado
                     </p>
                 </div>
 
@@ -82,7 +84,7 @@
                                     d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                             </svg>
                         </div>
-                        <span class="text-xs font-bold text-gray-600">50 transactions</span>
+                        <span id="balanceTxCount" class="text-xs font-bold text-gray-600">-- transacciones</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <div
@@ -91,7 +93,7 @@
                                 <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"></path>
                             </svg>
                         </div>
-                        <span class="text-xs font-bold text-gray-600">15 categories</span>
+                        <span id="balanceCatCount" class="text-xs font-bold text-gray-600">-- categorías</span>
                     </div>
                 </div>
             </div>

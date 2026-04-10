@@ -116,6 +116,40 @@ document.addEventListener('DOMContentLoaded', function() {
                         trendPathGas.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
                         earnTextGas.textContent = "menos";
                     }
+                    // --- UPDATE TOTAL BALANCE ---
+                    const bal = data.balance;
+                    
+                    // We need to handle potential negative signs on the total
+                    let rawBal = String(bal.total);
+                    let isNegative = rawBal.startsWith('-');
+                    if (isNegative) {
+                        rawBal = rawBal.substring(1);
+                    }
+                    const partsBal = rawBal.split('.');
+                    
+                    document.getElementById('balanceTotalAmount').textContent = (isNegative ? '-' : '') + partsBal[0];
+                    if (document.getElementById('balanceDecimalAmount')) {
+                        document.getElementById('balanceDecimalAmount').textContent = partsBal[1] || '00';
+                    }
+                    
+                    document.getElementById('balancePercentageText').textContent = bal.porcentaje + '%';
+                    document.getElementById('balanceExtraAmount').textContent = '$' + bal.diferencia_monto;
+                    document.getElementById('balanceTxCount').textContent = bal.transactions + ' transacciones';
+                    document.getElementById('balanceCatCount').textContent = bal.categories + ' categorías';
+                    
+                    const badgeBal = document.getElementById('balancePercentageBadge');
+                    const trendPathBal = document.getElementById('balanceTrendArrow');
+                    const earnTextBal = document.getElementById('balanceEarnText');
+                    
+                    if (bal.es_positivo) {
+                        badgeBal.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        trendPathBal.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
+                        earnTextBal.textContent = "extra";
+                    } else {
+                        badgeBal.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+                        trendPathBal.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
+                        earnTextBal.textContent = "menos";
+                    }
                 }
             })
             .catch(error => console.error("Error al obtener las estadísticas de ingresos:", error));
