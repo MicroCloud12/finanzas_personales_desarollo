@@ -431,7 +431,7 @@ def vista_dashboard(request):
             deuda_total += d.saldo_pendiente
             
     # --- Listado de Tarjetas para el Widget ---
-    las_cuentas = Cuenta.objects.filter(propietario=request.user, tipo__in=['DEBITO', 'CREDITO'])
+    las_cuentas = Cuenta.objects.filter(propietario=request.user, tipo='DEBITO')
     tarjetas_list = []
     for c in las_cuentas:
         term = c.terminacion.strip() if c.terminacion else ""

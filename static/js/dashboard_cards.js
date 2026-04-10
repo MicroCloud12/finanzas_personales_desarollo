@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             // Update content
             visualCardName.textContent = card.nombre;
-            visualCardNumber.textContent = '**** **** **** ' + (card.terminacion || '0000');
+            visualCardNumber.innerHTML = '<span class="inline-block relative top-[0.2em] transform translate-y-px">**** **** ****</span> <span class="ml-3">' + (card.terminacion || '0000') + '</span>';
             if(indexLabel) indexLabel.textContent = '( ' + (index + 1) + '/' + tarjetas.length + ' )';
             
             // Cycle gradients smoothly on the main block

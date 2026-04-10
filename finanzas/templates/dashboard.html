@@ -400,7 +400,7 @@
                 <!-- Number -->
                 <div>
                     <p class="text-[11px] text-white/60 font-medium mb-1 tracking-wide">Número Tarjeta <span id="visualCardIndexLabel" class="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-[9px]">(1/{{ tarjetas_list|length }})</span></p>
-                    <h4 class="text-2xl sm:text-3xl tracking-[0.15em] font-mono leading-none drop-shadow-md text-white/90" id="visualCardNumber">**** **** **** {{ tarjetas_list.0.terminacion }}</h4>
+                    <h4 class="text-2xl sm:text-3xl tracking-[0.15em] font-mono leading-none drop-shadow-md text-white/90 flex items-center" id="visualCardNumber"><span class="inline-block relative top-[0.2em] transform translate-y-px">**** **** ****</span> <span class="ml-3">{{ tarjetas_list.0.terminacion }}</span></h4>
                 </div>
 
                 <!-- Footer details -->
