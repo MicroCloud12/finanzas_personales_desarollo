@@ -42,15 +42,20 @@ class TransaccionesForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        # --- ¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE! ---
-        # 1. Atrapamos el 'user' que nos pasa la vista.
+        # Extraemos el usuario que pasamos desde la vista
         user = kwargs.pop('user', None)
-
-        # 2. Llamamos al constructor original, PERO ya sin el argumento 'user'.
         super(TransaccionesForm, self).__init__(*args, **kwargs)
+
 
         # 3. Ahora que el formulario está inicializado, podemos modificar sus campos.
         if user:
+            # Obtenemos solo las cuentas que pertenecen a este usuario
+            cuentas = Cuenta.objects.filter(propietario=user)
+            opciones = [(c.nombre, c.nombre) for c in cuentas]
+            # 👇 NUEVO: Rescatamos las clases CSS y atributos originales 👇
+            atributos_origen = self.fields['cuenta_origen'].widget.attrs.copy()
+            atributos_destino = self.fields['cuenta_destino'].widget.attrs.copy()
+    
             self.fields['deuda_asociada'].queryset = Deuda.objects.filter(propietario=user)
 
         self.fields['deuda_asociada'].required = False
@@ -59,8 +64,15 @@ class TransaccionesForm(forms.ModelForm):
         
         # "refresca la página" solía ser porque fallaba la validación de estos campos si venían vacíos.
         self.fields['tipo_pago'].required = False
-        self.fields['cuenta_destino'].required = False
-        self.fields['cuenta_origen'].required = False
+        self.fields['cuenta_destino'].widget = forms.Select(
+                choices=[('', '---------')] + opciones,
+                attrs=atributos_destino # <--- Le devolvemos su estilo
+            )
+        # Transformamos en Select, pero reinyectando los atributos de estilo
+        self.fields['cuenta_origen'].widget = forms.Select(
+                choices=opciones,
+                attrs=atributos_origen  # <--- Le devolvemos su estilo
+            )
 
     def clean(self):
         cleaned_data = super().clean()
