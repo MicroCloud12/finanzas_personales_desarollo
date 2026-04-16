@@ -128,6 +128,7 @@ class GeminiService:
             6.  **cuenta_origen_sugerida**: REGLA CRÍTICA. Revisa el recibo buscando terminaciones de tarjeta (ej. "VISA 1234", "MASTERCARD ****5678", "AUT: 1234"). Compara esa terminación de 4 dígitos con la lista de 'Cuentas disponibles del usuario' en el CONTEXTO. Si los números coinciden, devuelve EXACTAMENTE el nombre de esa cuenta (ej. "Tarjeta Nu"). Si el recibo indica pago en "Efectivo", busca su cuenta de efectivo. Si no hay coincidencia clara, devuelve "".
             7.  **cuenta_destino_sugerida**: Infiere del contexto si es transferencia a cuentas propias. Si es un gasto normal en tienda, devuelve "N/A".
             8.  **confianza_extraccion**: ALTA, MEDIA o BAJA según la claridad.
+            9.  **descripcion_corta**: Extrae ÚNICAMENTE el concepto central de la operación. OMITE ESTRICTAMENTE palabras redundantes al inicio como "Transferencia", "Traspaso", "SPEI" o "Pago de". Por ejemplo: Si el recibo dice "Transferencia renta", debes devolver "Renta".
 
             Ahora, analiza la siguiente imagen:
         """,
@@ -467,13 +468,18 @@ class TransactionService:
             # Por defecto, usamos la descripción corta
             descripcion_final = datos.get("descripcion_corta", "Sin descripción")
             
+            # 👇 NUEVO: Filtro de limpieza para Transferencias 👇
+            if tipo_documento == 'TRANSFERENCIA':
+                # Elimina la palabra "Transferencia", "Transferencia de" o "Transferencia por" al inicio
+                import re # Asegúrate de que import re esté al principio de tu archivo si no lo tienes
+                descripcion_final = re.sub(r'(?i)^transferencias?\s*(de|por)?\s*', '', descripcion_final).strip()
+            # 👆 FIN DEL NUEVO FILTRO 👆
+            
             # Si es un ticket de compra, sobrescribimos con el nombre del establecimiento
             if tipo_documento == 'TICKET_COMPRA':
                 descripcion_final = datos.get("establecimiento", "Compra sin establecimiento")
             
-            # --- FIN DE LA LÓGICA ---
             # Usamos nuestra función segura para procesar la fecha.
-            # Ya no hay riesgo de que el programa se rompa por un formato incorrecto.
             fecha_segura = parse_date_safely(datos.get("fecha") or datos.get("fecha_emision"))
 
             # Validamos el monto (puede venir como 'total' o 'total_pagado')
@@ -481,15 +487,15 @@ class TransactionService:
 
             registro_transacciones.objects.create(
                 propietario=user,
-                fecha=fecha_segura, # Usamos la fecha limpia y validada
-                #descripcion=datos.get("descripcion_corta", datos.get("establecimiento", "Sin descripción")),
-                descripcion=descripcion_final.upper(),
+                fecha=fecha_segura,
+                # 👇 CAMBIO APLICADO AQUÍ PARA USAR LA DESCRIPCIÓN LIMPIA 👇
+                descripcion=descripcion_final.upper(), 
                 categoria=categoria,
-                monto=Decimal(monto_str), # Convertir a string primero para mayor precisión con Decimal
+                monto=Decimal(monto_str),
                 tipo=tipo_transaccion,
                 cuenta_origen=cuenta,
                 cuenta_destino=cuenta_destino,
-                datos_extra=datos  # Guardamos TODOS los datos originales (RFC, Folio, etc.)
+                datos_extra=datos 
             )
             
             ticket.estado = 'aprobada'
