@@ -7,7 +7,7 @@ from .models import Cuenta
 class CuentaForm(forms.ModelForm):
     class Meta:
         model = Cuenta
-        fields = ['nombre', 'terminacion', 'tipo']
+        fields = ['nombre', 'terminacion', 'tipo', 'es_principal']
         
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,6 +18,8 @@ class CuentaForm(forms.ModelForm):
         for field_name, field in self.fields.items():
             if isinstance(field.widget, forms.Select):
                 field.widget.attrs.update({'class': select_classes})
+            elif isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'})
             else:
                 field.widget.attrs.update({'class': input_classes})
                 

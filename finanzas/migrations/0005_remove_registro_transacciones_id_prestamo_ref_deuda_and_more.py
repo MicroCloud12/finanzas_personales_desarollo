@@ -14,10 +14,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='registro_transacciones',
-            name='id_prestamo_ref',
-        ),
         migrations.CreateModel(
             name='Deuda',
             fields=[

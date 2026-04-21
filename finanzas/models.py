@@ -576,6 +576,7 @@ class Cuenta(models.Model):
     nombre = models.CharField(max_length=50, help_text="Ej. Tarjeta Banamex, Efectivo Quincena, NuBank")
     terminacion = models.CharField(max_length=4, blank=True, null=True, help_text="Últimos 4 dígitos de la tarjeta (opcional)")
     tipo = models.CharField(max_length=15, choices=TIPO_CUENTA, default='DEBITO')
+    es_principal = models.BooleanField(default=False, help_text="Marcar como tarjeta principal o preferida")
     
     class Meta:
         unique_together = ['propietario', 'nombre']
@@ -584,3 +585,9 @@ class Cuenta(models.Model):
         if self.terminacion:
             return f"{self.nombre} (**{self.terminacion})"
         return self.nombre
+
+    def save(self, *args, **kwargs):
+        if self.es_principal:
+            # Desmarcar otras cuentas del mismo propietario como principal
+            Cuenta.objects.filter(propietario=self.propietario).exclude(pk=self.pk).update(es_principal=False)
+        super().save(*args, **kwargs)
