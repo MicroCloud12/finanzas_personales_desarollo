@@ -1129,3 +1129,13 @@ INFO 2026-04-08 13:08:04,196 tasks Tienda nueva detectada: BURRITOS DON NICO
 INFO 2026-04-08 13:08:07,351 tasks Tienda reconocida por IA: MCDONALD'S
 INFO 2026-04-08 13:08:07,472 tasks Tienda nueva detectada: BARBACOA CAPULHUAC
 INFO 2026-04-08 13:08:10,053 tasks Tienda nueva detectada: RESTAURANTE ABURIYA
+ERROR 2026-04-21 09:35:04,251 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-21 09:35:04,268 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-21 09:35:08,687 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-21 09:35:08,709 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-21 11:24:01,153 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-21 11:24:01,165 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-23 20:32:03,856 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-23 20:32:03,882 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-23 20:39:30,675 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-23 20:39:30,718 views Error en api_ingresos_tarjeta: name 'Count' is not defined

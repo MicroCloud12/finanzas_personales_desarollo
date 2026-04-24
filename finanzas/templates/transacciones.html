@@ -39,7 +39,7 @@
             <label for="{{ form.tipo.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.tipo.label }}</label>
             <div class="mt-1">{{ form.tipo }}</div>
         </div>
-<div>
+        <div>
             <label for="id_cuenta_origen" class="block text-sm font-medium text-gray-700">Tarjeta/Cuenta Origen</label>
             <div class="mt-1">
                 <select name="cuenta_origen" id="id_cuenta_origen" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
@@ -55,7 +55,7 @@
             {% endfor %}
         </div>
 
-        <div>
+        <div id="div_cuenta_destino" style="display: none;">
             <label for="{{ form.cuenta_destino.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.cuenta_destino.label }}</label>
             <div class="mt-1">
                 <select name="{{ form.cuenta_destino.name }}" id="{{ form.cuenta_destino.id_for_label }}" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
@@ -63,6 +63,7 @@
                 </select>
             </div>
         </div>
+
         <div>
             <label for="{{ form.deuda_asociada.id_for_label }}" class="block text-sm font-medium text-gray-700">
                 {{ form.deuda_asociada.label }}

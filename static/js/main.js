@@ -1,21 +1,3 @@
-// Función para automatizar el Tipo según la Categoría seleccionada
-function actualizarTipo(selectElement, ticketId) {
-    const categoriaSeleccionada = selectElement.value;
-    const selectTipo = document.querySelector(`select[name="tipo_${ticketId}"]`);
-
-    if (selectTipo) {
-        if (categoriaSeleccionada === 'Nomina') {
-            selectTipo.value = 'INGRESO';
-        }
-        else if (categoriaSeleccionada === 'Ahorro') {
-            selectTipo.value = 'TRANSFERENCIA';
-        }
-        else {
-            selectTipo.value = 'GASTO';
-        }
-    }
-}
-
 function fadeFlashMessage() {
     const messageWrapper = document.querySelector('.fixed.top-5.right-5');
     if (messageWrapper) {
@@ -80,20 +62,42 @@ function setupMobileMenu() {
     }
 }
 
-function setupToasts() {
-    const toasts = document.querySelectorAll('.toast-message');
-    toasts.forEach((toast, index) => {
-        setTimeout(() => {
-            toast.classList.remove('translate-x-full', 'opacity-0');
-        }, 100 * index); // Stagger animation
+// --- NUEVA FUNCIÓN PARA EL FORMULARIO DE TRANSACCIONES ---
+function setupTransactionForm() {
+    const tipoSelect = document.getElementById('id_tipo');
+    const divCuentaDestino = document.getElementById('div_cuenta_destino');
+    const cuentaDestinoSelect = document.getElementById('id_cuenta_destino');
 
-        setTimeout(() => {
-            toast.classList.add('opacity-0', 'translate-x-full');
-            setTimeout(() => {
-                toast.remove();
-            }, 300);
-        }, 5000 + (1000 * index)); // Auto dismiss
-    });
+    // Verificamos que estemos en la página correcta donde existen estos elementos
+    if (!tipoSelect || !divCuentaDestino) return;
+
+    function toggleFields() {
+        const tipo = tipoSelect.value;
+
+        if (tipo === 'TRANSFERENCIA') {
+            // Mostrar cuenta destino
+            divCuentaDestino.style.display = 'block';
+
+            // Hacer que sea obligatorio seleccionar un destino
+            if (cuentaDestinoSelect) cuentaDestinoSelect.required = true;
+
+        } else {
+            // Ocultar cuenta destino (Aplica para INGRESO y GASTO)
+            divCuentaDestino.style.display = 'none';
+
+            // Quitar obligatoriedad y limpiar valor para no enviar basura al backend
+            if (cuentaDestinoSelect) {
+                cuentaDestinoSelect.required = false;
+                cuentaDestinoSelect.value = '';
+            }
+        }
+    }
+
+    // Ejecutar inmediatamente al cargar la página por si se está editando una transacción
+    toggleFields();
+
+    // Escuchar cambios en el selector de Tipo
+    tipoSelect.addEventListener('change', toggleFields);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -101,5 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupProfileMenu();
     initScrollAnimations();
     setupMobileMenu();
-    setupToasts();
+    // Iniciamos el script de transacciones
+    setupTransactionForm();
 });

@@ -1564,10 +1564,6 @@ def confirmar_datos_factura(request):
 
 @login_required
 def api_ingresos_tarjeta(request):
-    """
-    Endpoint AJAX para obtener las estadísticas de ingresos filtradas
-    por una tarjeta (cuenta) en concreto, mes y año.
-    """
     try:
         cuenta_nombre = request.GET.get('cuenta_nombre', '')
         year = request.GET.get('year', '')
@@ -1587,81 +1583,77 @@ def api_ingresos_tarjeta(request):
             prev_month = month - 1
             prev_year = year
             
-        from django.db.models import Sum, Count
-        
-        qs_base_actual = registro_transacciones.objects.filter(
-            propietario=request.user,
-            fecha__year=year,
-            fecha__month=month,
-            cuenta_origen=cuenta_nombre
-        )
-        
-        qs_base_previo = registro_transacciones.objects.filter(
-            propietario=request.user,
-            fecha__year=prev_year,
-            fecha__month=prev_month,
-            cuenta_origen=cuenta_nombre
-        )
-        
-        def procesar_tipo(tipo_tx):
-            qs_act = qs_base_actual.filter(tipo__iexact=tipo_tx)
-            qs_prev = qs_base_previo.filter(tipo__iexact=tipo_tx)
+        # --- NUEVA LÓGICA: Procesador de flujos con Transferencias ---
+        def procesar_flujo(es_entrada, y, m):
+            if es_entrada:
+                # Entradas: Ingresos normales OR Transferencias que llegaron a esta tarjeta
+                qs = registro_transacciones.objects.filter(
+                    propietario=request.user, fecha__year=y, fecha__month=m
+                ).filter(
+                    Q(tipo='INGRESO', cuenta_origen=cuenta_nombre) | 
+                    Q(tipo='TRANSFERENCIA', cuenta_destino=cuenta_nombre)
+                )
+            else:
+                # Salidas: Gastos normales OR Transferencias que salieron de esta tarjeta
+                qs = registro_transacciones.objects.filter(
+                    propietario=request.user, fecha__year=y, fecha__month=m
+                ).filter(
+                    Q(tipo='GASTO', cuenta_origen=cuenta_nombre) | 
+                    Q(tipo='TRANSFERENCIA', cuenta_origen=cuenta_nombre)
+                )
             
-            agregados_act = qs_act.aggregate(
+            agregados = qs.aggregate(
                 total=Sum('monto'),
                 num_categorias=Count('categoria', distinct=True)
             )
-            total_act = agregados_act['total'] or Decimal('0.00')
-            tx_act = qs_act.count()
-            cat_act = agregados_act['num_categorias'] or 0
             
-            total_prv = qs_prev.aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-            
-            dif = total_act - total_prv
-            if total_prv > 0:
-                pct = (dif / total_prv) * Decimal('100.0')
+            return {
+                'total': agregados['total'] or Decimal('0.00'),
+                'transactions': qs.count(),
+                'categories': agregados['num_categorias'] or 0
+            }
+
+        # 1. Obtenemos datos del mes actual y anterior
+        entradas_act = procesar_flujo(es_entrada=True, y=year, m=month)
+        salidas_act = procesar_flujo(es_entrada=False, y=year, m=month)
+        
+        entradas_prev = procesar_flujo(es_entrada=True, y=prev_year, m=prev_month)
+        salidas_prev = procesar_flujo(es_entrada=False, y=prev_year, m=prev_month)
+
+        # 2. Función auxiliar para calcular métricas de la tarjeta
+        def calcular_metricas(act, prev):
+            dif = act['total'] - prev['total']
+            if prev['total'] > 0:
+                pct = (dif / prev['total']) * Decimal('100.0')
             else:
-                pct = Decimal('100.0') if total_act > 0 else Decimal('0.0')
+                pct = Decimal('100.0') if act['total'] > 0 else Decimal('0.0')
                 
             return {
-                'total': f"{total_act:,.2f}",
-                'transactions': tx_act,
-                'categories': cat_act,
+                'total': f"{act['total']:,.2f}",
+                'transactions': act['transactions'],
+                'categories': act['categories'],
                 'diferencia_monto': f"{abs(dif):,.2f}",
                 'porcentaje': round(float(abs(pct)), 1),
                 'es_positivo': bool(dif >= 0),
             }
 
-        ingresos_data = procesar_tipo('INGRESO')
-        gastos_data = procesar_tipo('GASTO')
+        ingresos_data = calcular_metricas(entradas_act, entradas_prev)
+        gastos_data = calcular_metricas(salidas_act, salidas_prev)
         
-        # Calcular Balance Total (Ingresos - Gastos)
-        val_ingreso_act = float(ingresos_data['total'].replace(',', ''))
-        val_gasto_act = float(gastos_data['total'].replace(',', ''))
-        balance_act = val_ingreso_act - val_gasto_act
-        
-        # Balance Total mes anterior para porcentaje  
-        # (Des-formateamos los calculados de la funcion o los recalculamos)
-        val_ingreso_prev = qs_base_previo.filter(tipo__iexact='INGRESO').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-        val_gasto_prev = qs_base_previo.filter(tipo__iexact='GASTO').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-        balance_prev = float(val_ingreso_prev) - float(val_gasto_prev)
+        # 3. Calcular Balance Total de esta Tarjeta específica
+        balance_act = float(entradas_act['total']) - float(salidas_act['total'])
+        balance_prev = float(entradas_prev['total']) - float(salidas_prev['total'])
         
         dif_balance = balance_act - balance_prev
         if balance_prev > 0:
             pct_balance = (dif_balance / balance_prev) * 100.0
         else:
             pct_balance = 100.0 if balance_act > 0 else 0.0
-            
-        transacciones_balance = ingresos_data['transactions'] + gastos_data['transactions']
-        
-        # Categorias unicas entre ingresos y gastos para esa cuenta
-        cat_balance_qs = qs_base_actual.filter(tipo__in=['INGRESO', 'GASTO', 'Ingreso', 'Gasto']).aggregate(num=Count('categoria', distinct=True))
-        cat_balance = cat_balance_qs['num'] or 0
 
         balance_data = {
             'total': f"{balance_act:,.2f}",
-            'transactions': transacciones_balance,
-            'categories': cat_balance,
+            'transactions': entradas_act['transactions'] + salidas_act['transactions'],
+            'categories': entradas_act['categories'] + salidas_act['categories'],
             'diferencia_monto': f"{abs(dif_balance):,.2f}",
             'porcentaje': round(float(abs(pct_balance)), 1),
             'es_positivo': bool(dif_balance >= 0),
@@ -1675,4 +1667,6 @@ def api_ingresos_tarjeta(request):
         })
         
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error en api_ingresos_tarjeta: {e}")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
