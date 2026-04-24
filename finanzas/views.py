@@ -236,8 +236,6 @@ def crear_transacciones(request):
             logger.error(f"Error de validación en TransaccionesForm: {form.errors.as_json()}")
     else: 
         form = TransaccionesForm(user=request.user)
-        logger.debug(f"Campo Deuda Asociada renderizado como: {form['deuda_asociada']}")
-
     context = {'form': form}
     return render(request, 'transacciones.html', context)
 
@@ -353,7 +351,7 @@ def vista_dashboard(request):
         fecha__year=year
     ).filter(
         # 1. Todo lo que esté categorizado explícitamente como Ahorro (menos Gastos)
-        (Q(categoria__iexact='Ahorro') & ~Q(tipo__iexact='GASTO')) |
+        (Q(categoria__iexact='Ahorro') & ~Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'])) |
         # 2. Transferencias directas a la Cuenta Ahorro
         Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
         # 3. Ingresos que entraron directo a Cuenta Ahorro 
@@ -547,7 +545,7 @@ def datos_gastos_categoria(request):
     month = int(request.GET.get('month', datetime.now().month))
     gastos_por_categoria = registro_transacciones.objects.filter(
         propietario=request.user,
-        tipo='GASTO',
+        tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'],
         fecha__year=year,
         fecha__month=month
     ).values('categoria').annotate(total=Sum('monto')).order_by('-total')
@@ -567,7 +565,7 @@ def datos_flujo_dinero(request):
         fecha__month=month
     )
     ingresos = transacciones_del_mes.filter(tipo='INGRESO').exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-    gastos = transacciones_del_mes.filter(tipo='GASTO').exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    gastos = transacciones_del_mes.filter(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL']).exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
     data = {
         'labels': ['Ingresos del Mes', 'Gastos del Mes'],
         'data': [ingresos, gastos],

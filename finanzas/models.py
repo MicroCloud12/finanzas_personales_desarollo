@@ -17,9 +17,11 @@ class registro_transacciones(models.Model):
         ('INGRESO', 'Ingreso'),
         ('GASTO', 'Gasto'),
         ('TRANSFERENCIA','Transferencia'),
+        ('PAGO_MENSUALIDAD', 'Pago de Mensualidad'),
+        ('PAGO_CAPITAL', 'Pago a Capital'),
     ]
     # Index para filtrar ingresos vs gastos rápidamente
-    tipo = models.CharField(max_length=15, choices=TIPO_CHOICES, db_index=True)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, db_index=True)
     cuenta_origen = models.CharField(max_length=100)
     cuenta_destino = models.CharField(max_length=100)
     deuda_asociada = models.ForeignKey('Deuda', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
@@ -86,6 +88,18 @@ class registro_transacciones(models.Model):
     # Tu método save que modificamos anteriormente va aquí...
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        
+        # Mapeo de los nuevos tipos de pago a la lógica interna (deuda_asociada y tipo_pago)
+        if self.tipo in ['PAGO_MENSUALIDAD', 'PAGO_CAPITAL'] and self.cuenta_destino:
+            try:
+                self.deuda_asociada = Deuda.objects.get(
+                    propietario=self.propietario,
+                    nombre=self.cuenta_destino
+                )
+                self.tipo_pago = 'MENSUALIDAD' if self.tipo == 'PAGO_MENSUALIDAD' else 'CAPITAL'
+            except Deuda.DoesNotExist:
+                pass
+                
         super().save(*args, **kwargs)
 
         # Si la transacción es un GASTO nuevo y su cuenta origen es una tarjeta de crédito en Deudas

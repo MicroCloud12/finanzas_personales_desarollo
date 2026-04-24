@@ -74,7 +74,7 @@ function setupTransactionForm() {
     function toggleFields() {
         const tipo = tipoSelect.value;
 
-        if (tipo === 'TRANSFERENCIA') {
+        if (tipo === 'TRANSFERENCIA' || tipo === 'PAGO_MENSUALIDAD' || tipo === 'PAGO_CAPITAL') {
             // Mostrar cuenta destino
             divCuentaDestino.style.display = 'block';
 

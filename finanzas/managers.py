@@ -28,10 +28,10 @@ class TransaccionManager(models.Manager):
         # filter=Q(...) es mucho más rápido que hacer filter cerparados en Python
         agregados = qs.aggregate(
             ingresos_efectivo=Sum('monto', filter=Q(tipo='INGRESO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-            gastos_efectivo=Sum('monto', filter=Q(tipo='GASTO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
+            gastos_efectivo=Sum('monto', filter=Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL']) & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
             ahorro_total=Sum('monto', filter=Q(tipo='TRANSFERENCIA', categoria='Ahorro', cuenta_origen='Efectivo Quincena', cuenta_destino='Cuenta Ahorro')),
             transferencias_efectivo=Sum('monto', filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-            gastos_ahorro=Sum('monto', filter=Q(tipo='GASTO', cuenta_origen='Cuenta Ahorro')),
+            gastos_ahorro=Sum('monto', filter=Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'], cuenta_origen='Cuenta Ahorro')),
             ingresos_ahorro=Sum('monto', filter=Q(tipo='INGRESO', cuenta_origen='Cuenta Ahorro')),
         )
         
@@ -41,7 +41,7 @@ class TransaccionManager(models.Manager):
     def gastos_por_categoria(self, usuario, year, month):
         """Retorna lista de diccionarios para gráficas: [{'categoria': 'X', 'total': 100}, ...]"""
         return (self.del_mes(usuario, year, month)
-                .filter(tipo='GASTO')
+                .filter(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'])
                 .values('categoria')
                 .annotate(total=Sum('monto'))
                 .order_by('-total'))
@@ -54,7 +54,7 @@ class TransaccionManager(models.Manager):
         
         return (self.filter(propietario=usuario, fecha__year=year)
                 .filter(
-                    (Q(categoria__iexact='Ahorro') & ~Q(tipo__iexact='GASTO')) |
+                    (Q(categoria__iexact='Ahorro') & ~Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'])) |
                     Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
                     Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
                 )

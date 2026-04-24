@@ -30,7 +30,7 @@ class CuentaForm(forms.ModelForm):
 class TransaccionesForm(forms.ModelForm):
     class Meta:
         model = registro_transacciones
-        exclude = ('propietario',)
+        exclude = ('propietario', 'deuda_asociada', 'tipo_pago')
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date','class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'descripcion': forms.Textarea(attrs={'rows': 3, 'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
@@ -39,8 +39,6 @@ class TransaccionesForm(forms.ModelForm):
             'tipo': forms.Select(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'cuenta_origen': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'cuenta_destino': forms.TextInput(attrs={'class': 'appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
-            'deuda_asociada': forms.Select(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
-            'tipo_pago':forms.Select(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -51,44 +49,33 @@ class TransaccionesForm(forms.ModelForm):
 
         # 3. Ahora que el formulario está inicializado, podemos modificar sus campos.
         if user:
+            self.user = user
             # Obtenemos solo las cuentas que pertenecen a este usuario
             cuentas = Cuenta.objects.filter(propietario=user)
-            opciones = [(c.nombre, c.nombre) for c in cuentas]
+            opciones_origen = [(c.nombre, c.nombre) for c in cuentas]
+            
+            deudas = Deuda.objects.filter(propietario=user)
+            opciones_destino = opciones_origen.copy()
+            for d in deudas:
+                if (d.nombre, d.nombre) not in opciones_destino:
+                    opciones_destino.append((d.nombre, d.nombre))
+
             # 👇 NUEVO: Rescatamos las clases CSS y atributos originales 👇
             atributos_origen = self.fields['cuenta_origen'].widget.attrs.copy()
             atributos_destino = self.fields['cuenta_destino'].widget.attrs.copy()
-    
-            self.fields['deuda_asociada'].queryset = Deuda.objects.filter(propietario=user)
 
-        self.fields['deuda_asociada'].required = False
-        self.fields['deuda_asociada'].label = "Deuda Asociada (Opcional)"
-        self.fields['deuda_asociada'].empty_label = "Ninguna"
+        self.fields['cuenta_origen'].required = False
+        self.fields['cuenta_destino'].required = False
         
-        # "refresca la página" solía ser porque fallaba la validación de estos campos si venían vacíos.
-        self.fields['tipo_pago'].required = False
         self.fields['cuenta_destino'].widget = forms.Select(
-                choices=[('', '---------')] + opciones,
+                choices=[('', '---------')] + opciones_destino,
                 attrs=atributos_destino # <--- Le devolvemos su estilo
             )
         # Transformamos en Select, pero reinyectando los atributos de estilo
         self.fields['cuenta_origen'].widget = forms.Select(
-                choices=opciones,
+                choices=opciones_origen,
                 attrs=atributos_origen  # <--- Le devolvemos su estilo
             )
-
-    def clean(self):
-        cleaned_data = super().clean()
-        # Si vienen vacíos, ponemos un valor por defecto para que el Modelo no se queje (blank=False)
-        if not cleaned_data.get('cuenta_origen'):
-            cleaned_data['cuenta_origen'] = 'Sin Cuenta'
-        
-        if not cleaned_data.get('cuenta_destino'):
-            cleaned_data['cuenta_destino'] = 'Sin Cuenta'
-            
-        if not cleaned_data.get('tipo_pago'):
-            cleaned_data['tipo_pago'] = 'MENSUALIDAD' # Valor por default seguro del modelo
-            
-        return cleaned_data
 
         # Aplicamos estilos
         tailwind_select_classes = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -102,6 +89,19 @@ class TransaccionesForm(forms.ModelForm):
                 widget.attrs.update({'class': tailwind_input_classes, 'type': 'date'})
             else:
                 widget.attrs.update({'class': tailwind_input_classes})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Si vienen vacíos, ponemos un valor por defecto para que el Modelo no se queje (blank=False)
+        if not cleaned_data.get('cuenta_origen'):
+            cleaned_data['cuenta_origen'] = 'Sin Cuenta'
+        
+        if not cleaned_data.get('cuenta_destino'):
+            cleaned_data['cuenta_destino'] = 'Sin Cuenta'
+            
+        return cleaned_data
+
+
 
 class FormularioRegistroPersonalizado(UserCreationForm):
     # El campo de email y la validación que ya teníamos están perfectos.

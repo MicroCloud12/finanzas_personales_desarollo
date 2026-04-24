@@ -44,37 +44,14 @@
         <div>
             <label for="{{ form.cuenta_origen.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.cuenta_origen.label }}</label>
             <div class="mt-1">
-                <select name="{{ form.cuenta_origen.name }}" id="{{ form.cuenta_origen.id_for_label }}" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    {% include 'partials/_ticket_select_options.html' with selected=form.cuenta_origen.value %}
-                </select>
+                {{ form.cuenta_origen }}
             </div>
         </div>
 
-        <div>
+        <div id="div_cuenta_destino" style="display: none;">
             <label for="{{ form.cuenta_destino.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.cuenta_destino.label }}</label>
             <div class="mt-1">
-                <select name="{{ form.cuenta_destino.name }}" id="{{ form.cuenta_destino.id_for_label }}" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    {% include 'partials/_ticket_cuentadestino_options.html' with selected=form.cuenta_destino.value %}
-                </select>
-            </div>
-        </div>
-        <div>
-            <label for="{{ form.deuda_asociada.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                {{ form.deuda_asociada.label }}
-            </label>
-            <div class="mt-1">
-                {{ form.deuda_asociada }}
-            </div>
-            {% for error in form.errors.deuda_asociada %}
-                <p class="mt-2 text-xs text-red-600">{{ error }}</p>
-            {% endfor %}
-        </div>
-        <div>
-            <label for="{{ form.tipo_pago.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.tipo_pago.label }}</label>
-            <div class="mt-1">
-                <select name="{{ form.tipo_pago.name }}" id="{{ form.tipo_pago.id_for_label }}" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    {% include 'partials/_tipo_pago_options.html' with selected=form.tipo_pago.value %}
-                </select>
+                {{ form.cuenta_destino }}
             </div>
         </div>
         <div>
