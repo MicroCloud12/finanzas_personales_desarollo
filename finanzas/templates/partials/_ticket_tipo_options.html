@@ -1,3 +1,5 @@
 <option value="GASTO" {% if ticket.datos_json.tipo_movimiento == 'GASTO' or ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}selected{% endif %}>Gasto</option>
 <option value="INGRESO" {% if ticket.datos_json.tipo_movimiento == 'INGRESO' %}selected{% endif %}>Ingreso</option>
 <option value="TRANSFERENCIA" {% if ticket.datos_json.tipo_movimiento == 'TRANSFERENCIA' or ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}selected{% endif %}>Transferencia</option>
+<option value="PAGO_MENSUALIDAD" {% if ticket.datos_json.tipo_movimiento == 'PAGO_MENSUALIDAD' %}selected{% endif %}>Pago de Mensualidad</option>
+<option value="PAGO_CAPITAL" {% if ticket.datos_json.tipo_movimiento == 'PAGO_CAPITAL' %}selected{% endif %}>Pago a Capital</option>

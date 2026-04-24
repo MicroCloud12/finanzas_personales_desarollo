@@ -290,12 +290,14 @@ def eliminar_transaccion(request, transaccion_id):
 @login_required
 def revisar_tickets(request):
     tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-    # --- NUEVO: Obtenemos las cuentas del usuario ---
+    # --- NUEVO: Obtenemos las cuentas y deudas del usuario ---
     cuentas_usuario = Cuenta.objects.filter(propietario=request.user)
+    deudas_usuario = Deuda.objects.filter(propietario=request.user)
     
     return render(request, 'revisar_tickets.html', {
         'tickets': tickets_pendientes,
-        'cuentas_usuario': cuentas_usuario # Pasamos las cuentas a la plantilla
+        'cuentas_usuario': cuentas_usuario,
+        'deudas_usuario': deudas_usuario
     })
 
 @login_required
