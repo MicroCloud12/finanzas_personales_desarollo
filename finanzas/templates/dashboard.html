@@ -341,7 +341,7 @@
                         {% endif %}
                     </div>
                     <p class="text-[11px] text-gray-400 font-medium leading-snug">
-                        Pagaste <span class="font-bold text-gray-700">$150</span><br>este mes
+                        Pagaste <span class="font-bold text-gray-700">${{ total_pagado_deudas|floatformat:0|intcomma }}</span><br>este mes
                     </p>
                 </div>
 
@@ -357,7 +357,7 @@
                                 </path>
                             </svg>
                         </div>
-                        <span class="text-xs font-bold text-gray-600">2 tarjetas activas</span>
+                        <span class="text-xs font-bold text-gray-600">{{ num_tarjetas }} tarjeta{{ num_tarjetas|pluralize:"s" }} activa{{ num_tarjetas|pluralize:"s" }}</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <div
@@ -369,7 +369,7 @@
                                 </path>
                             </svg>
                         </div>
-                        <span class="text-xs font-bold text-gray-600">1 préstamo</span>
+                        <span class="text-xs font-bold text-gray-600">{{ num_prestamos }} préstamo{{ num_prestamos|pluralize:"s" }}</span>
                     </div>
                 </div>
             </div>

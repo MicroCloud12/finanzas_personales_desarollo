@@ -432,6 +432,9 @@ def vista_dashboard(request):
     todas_deudas = Deuda.objects.filter(propietario=request.user)
     deuda_total = Decimal('0.00')
     
+    num_tarjetas = todas_deudas.filter(tipo_deuda='TARJETA_CREDITO').count()
+    num_prestamos = todas_deudas.filter(tipo_deuda='PRESTAMO').count()
+    
     for d in todas_deudas:
         if d.tipo_deuda == 'TARJETA_CREDITO':
             # Para TC: Deuda Real = Límite (monto_total) - Disponible (saldo_pendiente)
@@ -442,6 +445,24 @@ def vista_dashboard(request):
             # Para Préstamos: Deuda Real = Saldo Pendiente
             deuda_total += d.saldo_pendiente
             
+    # --- Pago total a deudas este mes ---
+    pagos_prestamos = registro_transacciones.objects.filter(
+        propietario=request.user,
+        fecha__year=year,
+        fecha__month=month,
+        tipo__in=['PAGO_MENSUALIDAD', 'PAGO_CAPITAL']
+    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    
+    nombres_tarjetas = todas_deudas.filter(tipo_deuda='TARJETA_CREDITO').values_list('nombre', flat=True)
+    pagos_tc = registro_transacciones.objects.filter(
+        propietario=request.user,
+        fecha__year=year,
+        fecha__month=month,
+        tipo='TRANSFERENCIA',
+        cuenta_destino__in=nombres_tarjetas
+    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    
+    total_pagado_deudas = pagos_prestamos + pagos_tc
     # --- Listado de Tarjetas para el Widget ---
     las_cuentas = Cuenta.objects.filter(propietario=request.user, tipo='DEBITO').order_by('-es_principal', 'id')
     tarjetas_list = []
@@ -478,6 +499,9 @@ def vista_dashboard(request):
         'months': range(1, 13),
         'es_usuario_premium': es_usuario_premium,
         'deuda_total': deuda_total,
+        'num_tarjetas': num_tarjetas,
+        'num_prestamos': num_prestamos,
+        'total_pagado_deudas': total_pagado_deudas,
         'tarjetas_data_json': tarjetas_data_json,
         'tarjetas_list': tarjetas_list,
         'investment_chart_labels': chart_labels,
