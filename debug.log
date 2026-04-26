@@ -1159,3 +1159,9 @@ ERROR 2026-04-26 17:17:39,494 views Error en api_ingresos_tarjeta: name 'Count' 
 ERROR 2026-04-26 17:17:39,510 views Error en api_ingresos_tarjeta: name 'Count' is not defined
 ERROR 2026-04-26 17:21:31,183 views Error en api_ingresos_tarjeta: name 'Count' is not defined
 ERROR 2026-04-26 17:21:31,236 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:22:42,615 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:22:42,632 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:22:56,829 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:22:56,851 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:36:11,197 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:36:11,214 views Error en api_ingresos_tarjeta: name 'Count' is not defined

@@ -417,6 +417,17 @@ def vista_dashboard(request):
     
     ahorro = ahorro_acumulado
     
+    # --- Cálculo de Transacciones de Ahorro del Mes ---
+    ahorros_tx_count = registro_transacciones.objects.filter(
+        propietario=request.user,
+        fecha__year=year,
+        fecha__month=month
+    ).filter(
+        (Q(categoria__iexact='Ahorro') & ~Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'])) |
+        Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
+        Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
+    ).count()
+
     # --- Cálculo de Deuda Total ---
     todas_deudas = Deuda.objects.filter(propietario=request.user)
     deuda_total = Decimal('0.00')
@@ -460,6 +471,7 @@ def vista_dashboard(request):
         'transferencias': transferencias,
         'disponible_banco': disponible_banco,
         'ahorro': ahorro,
+        'ahorros_tx_count': ahorros_tx_count,
         'selected_year': year,
         'selected_month': month,
         'years': range(current_year, current_year - 5, -1),
