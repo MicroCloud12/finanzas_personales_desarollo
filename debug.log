@@ -1149,3 +1149,13 @@ ERROR 2026-04-23 20:44:13,318 views Error de validación en TransaccionesForm: {"
 ERROR 2026-04-23 20:44:25,677 views Error de validación en TransaccionesForm: {"cuenta_destino": [{"message": "This field is required.", "code": "required"}]}
 ERROR 2026-04-23 21:14:03,733 views Error en api_ingresos_tarjeta: name 'Count' is not defined
 ERROR 2026-04-23 21:14:03,745 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 16:21:37,008 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 16:21:37,031 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:08:30,028 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:08:30,054 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:17:08,427 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:17:08,442 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:17:39,494 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:17:39,510 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:21:31,183 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+ERROR 2026-04-26 17:21:31,236 views Error en api_ingresos_tarjeta: name 'Count' is not defined

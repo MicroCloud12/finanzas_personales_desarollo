@@ -368,6 +368,7 @@ def vista_dashboard(request):
     ahorro_por_mes = {s['mes'].strftime('%Y-%m'): s['total'] for s in savings_qs}
     
     # Generamos los meses para todo el año
+    meses_es = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
     for m in range(1, 13):
         try:
             mes_fecha = datetime(year, m, 1)
@@ -380,7 +381,7 @@ def vista_dashboard(request):
         monto_mes = ahorro_por_mes.get(mes_key, Decimal('0.0'))
         ahorro_acumulado += monto_mes
         
-        savings_labels.append(mes_fecha.strftime('%B')) # Nombre del mes
+        savings_labels.append(meses_es[mes_fecha.month]) # Nombre del mes
         savings_data.append(str(ahorro_acumulado))
         
     chart_labels = savings_labels

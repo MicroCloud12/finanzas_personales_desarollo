@@ -2,17 +2,8 @@
 {% for cuenta in cuentas_usuario %}
     <option value="{{ cuenta.nombre }}" {% if ticket.datos_json.cuenta_destino_sugerida == cuenta.nombre %}selected{% endif %}>{{ cuenta.nombre }}</option>
 {% endfor %}
-<optgroup label="Deudas a Plazo">
 {% for deuda in deudas_usuario %}
-    {% if deuda.tipo_deuda == 'plazo' %}
+    {% if deuda.tipo_deuda == 'PRESTAMO' %}
         <option value="{{ deuda.nombre }}" {% if ticket.datos_json.cuenta_destino_sugerida == deuda.nombre %}selected{% endif %}>{{ deuda.nombre }}</option>
     {% endif %}
 {% endfor %}
-</optgroup>
-<optgroup label="Tarjetas de Crédito">
-{% for deuda in deudas_usuario %}
-    {% if deuda.tipo_deuda == 'tdc' %}
-        <option value="{{ deuda.nombre }}" {% if ticket.datos_json.cuenta_destino_sugerida == deuda.nombre %}selected{% endif %}>{{ deuda.nombre }}</option>
-    {% endif %}
-{% endfor %}
-</optgroup>
