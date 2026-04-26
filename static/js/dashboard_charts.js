@@ -13,7 +13,7 @@ const centerTextPlugin = {
         ctx.font = '500 13px Outfit, sans-serif';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#9CA3AF'; // text-gray-400
-        var text1 = 'This month expence',
+        var text1 = 'Gastos de este mes',
             textX1 = Math.round((width - ctx.measureText(text1).width) / 2),
             textY1 = height / 2 - 15;
         ctx.fillText(text1, textX1, textY1);
