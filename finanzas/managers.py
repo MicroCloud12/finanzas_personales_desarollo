@@ -24,13 +24,19 @@ class TransaccionManager(models.Manager):
         # Obtenemos el queryset base del mes
         qs = self.del_mes(usuario, year, month)
         
+        # Obtenemos los nombres de las cuentas de débito del usuario
+        from finanzas.models import Cuenta
+        cuentas_debito = list(Cuenta.objects.filter(propietario=usuario, tipo='DEBITO').values_list('nombre', flat=True))
+        if not cuentas_debito:
+            cuentas_debito = ['Efectivo Quincena']
+            
         # Realizamos la agregación masiva
         # filter=Q(...) es mucho más rápido que hacer filter cerparados en Python
         agregados = qs.aggregate(
-            ingresos_efectivo=Sum('monto', filter=Q(tipo='INGRESO') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-            gastos_efectivo=Sum('monto', filter=Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL']) & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
-            ahorro_total=Sum('monto', filter=Q(tipo='TRANSFERENCIA', categoria='Ahorro', cuenta_origen='Efectivo Quincena', cuenta_destino='Cuenta Ahorro')),
-            transferencias_efectivo=Sum('monto', filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen='Efectivo Quincena')),
+            ingresos_efectivo=Sum('monto', filter=Q(tipo='INGRESO') & ~Q(categoria='Ahorro') & Q(cuenta_origen__in=cuentas_debito)),
+            gastos_efectivo=Sum('monto', filter=Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL']) & ~Q(categoria='Ahorro') & Q(cuenta_origen__in=cuentas_debito)),
+            ahorro_total=Sum('monto', filter=Q(tipo='TRANSFERENCIA', categoria='Ahorro', cuenta_origen__in=cuentas_debito, cuenta_destino='Cuenta Ahorro')),
+            transferencias_efectivo=Sum('monto', filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen__in=cuentas_debito)),
             gastos_ahorro=Sum('monto', filter=Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'], cuenta_origen='Cuenta Ahorro')),
             ingresos_ahorro=Sum('monto', filter=Q(tipo='INGRESO', cuenta_origen='Cuenta Ahorro')),
         )

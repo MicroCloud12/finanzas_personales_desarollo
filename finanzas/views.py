@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from django.http import HttpResponse, JsonResponse
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Count
 from django.contrib.auth.models import User
 from django.utils.dateformat import DateFormat
 from django.db.models.functions import TruncMonth
