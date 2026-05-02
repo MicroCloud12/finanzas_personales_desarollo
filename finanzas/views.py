@@ -294,6 +294,12 @@ def revisar_tickets(request):
     cuentas_usuario = Cuenta.objects.filter(propietario=request.user)
     deudas_usuario = Deuda.objects.filter(propietario=request.user)
     
+    # Formateamos la fecha de manera segura para mostrarla en el template
+    for ticket in tickets_pendientes:
+        fecha_cruda = ticket.datos_json.get("fecha") or ticket.datos_json.get("fecha_emision")
+        fecha_obj = parse_date_safely(fecha_cruda)
+        ticket.fecha_formateada = fecha_obj.strftime("%d/%m/%Y")
+    
     return render(request, 'revisar_tickets.html', {
         'tickets': tickets_pendientes,
         'cuentas_usuario': cuentas_usuario,
@@ -781,6 +787,13 @@ def revisar_inversiones(request):
     Muestra todas las inversiones pendientes para que el usuario las revise.
     """
     pending_investments = PendingInvestment.objects.filter(propietario=request.user, estado='pendiente')
+    
+    # Formateamos la fecha de manera segura para mostrarla en el template
+    for investment in pending_investments:
+        fecha_cruda = investment.datos_json.get("fecha_compra") or investment.datos_json.get("fecha")
+        fecha_obj = parse_date_safely(fecha_cruda)
+        investment.fecha_formateada = fecha_obj.strftime("%d/%m/%Y")
+        
     context = {'pending_investments': pending_investments}
     return render(request, 'revisar_inversiones.html', context)
 

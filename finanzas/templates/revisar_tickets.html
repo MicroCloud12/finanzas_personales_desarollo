@@ -73,7 +73,7 @@
                         {% for ticket in tickets %}
                         <tr class="hover:bg-gray-50/80 transition-colors">
                             <td class="px-4 py-4 bg-white text-sm text-gray-700 font-medium whitespace-nowrap">
-                                {{ ticket.datos_json.fecha|slice:"8:10" }}/{{ ticket.datos_json.fecha|slice:"5:7"}}/{{ticket.datos_json.fecha|slice:"0:4" }}
+                                {{ ticket.fecha_formateada }}
                             </td>
                             <td class="px-4 py-4 bg-white text-sm text-gray-900">
                                 {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}

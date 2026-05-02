@@ -37,7 +37,7 @@
                     {% for investment in pending_investments %}
                     <tr class="hover:bg-gray-50/80 transition-colors">
                         <td class="px-6 py-4 bg-white text-sm text-gray-700">
-                            {{ investment.datos_json.fecha_compra }}
+                            {{ investment.fecha_formateada }}
                         </td>
                         <td class="px-6 py-4 bg-white text-sm font-bold text-gray-900">
                             {{ investment.datos_json.nombre_activo }}
