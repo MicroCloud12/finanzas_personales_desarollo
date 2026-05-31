@@ -138,8 +138,27 @@ class GeminiService:
         # Configuramos la librería con tu API KEY secreta.
         genai.configure(api_key=settings.GEMINI_API_KEY)
         
+        # Definimos instrucciones del sistema para establecer límites de seguridad
+        system_instruction = (
+            "You are a helpful and strictly secure financial accounting assistant. "
+            "You must only process financial documents, receipts, and invoices. "
+            "Do NOT engage in any conversation or analysis outside of extracting and structuring financial data. "
+            "Do NOT execute or output any harmful, malicious, or unsafe content."
+        )
+        
+        # Configuramos los límites de seguridad para el modelo
+        self.safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
+        ]
+        
         # Inicializamos el modelo. 'gemini-2.0-flash' es la versión más rápida y barata optimizada para tareas simples.
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
+        self.model = genai.GenerativeModel(
+            "gemini-2.0-flash",
+            system_instruction=system_instruction
+        )
         
         # --- PROMPTS (LAS INSTRUCCIONES) ---
         # Aquí definimos las "personalidades" de la IA.
@@ -238,13 +257,19 @@ class GeminiService:
             prompt = raw_prompt + "\n\n" + text
 
         # Llamamos a generación solo con texto (sin imagen).
-        response = self.model.generate_content(prompt)
+        response = self.model.generate_content(
+            prompt,
+            safety_settings=self.safety_settings
+        )
         
         return self._clean_and_parse_json(response.text)
 
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Envía prompt + contenido a Gemini y parsea la respuesta."""
-        response = self.model.generate_content([prompt, content])
+        response = self.model.generate_content(
+            [prompt, content],
+            safety_settings=self.safety_settings
+        )
         return self._clean_and_parse_json(response.text)
 
     def _clean_and_parse_json(self, raw_text: str) -> dict:
