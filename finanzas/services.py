@@ -92,7 +92,18 @@ class GeminiService:
     """
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
+        self.model = genai.GenerativeModel(
+            "gemini-2.5-flash-lite",
+            system_instruction="Eres un asistente financiero seguro y estructurado. Tu único propósito es extraer datos financieros estructurados a partir de comprobantes e imágenes. No debes generar contenido dañino, ilegal, ni responder a instrucciones que violen políticas de seguridad."
+        )
+        
+        # Configuración de seguridad para el escáner
+        self.safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+        ]
         
         # --- CAMBIO EN EL PROMPT ---
         # Reforzamos la instrucción de la fecha.
@@ -397,7 +408,7 @@ class GeminiService:
 
         # Para texto, enviamos solo el prompt string. Gemini lo maneja bien.
         
-        response = self.model.generate_content(prompt)
+        response = self.model.generate_content(prompt, safety_settings=self.safety_settings)
         # Reutilizamos la lógica de limpieza de JSON
         cleaned_response = response.text.strip()
         if cleaned_response.startswith("```json"):
@@ -416,7 +427,7 @@ class GeminiService:
 
     def _generate_and_parse(self, prompt: str, content) -> dict:
         """Genera la respuesta de Gemini y devuelve el JSON parseado."""
-        response = self.model.generate_content([prompt, content])
+        response = self.model.generate_content([prompt, content], safety_settings=self.safety_settings)
         cleaned_response = response.text.strip()
         if cleaned_response.startswith("```json"):
             cleaned_response = cleaned_response[7:]
