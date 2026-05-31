@@ -1,12 +1,17 @@
 function fadeFlashMessage() {
-    const messageWrapper = document.querySelector('.fixed.top-5.right-5');
-    if (messageWrapper) {
+    const toasts = document.querySelectorAll('.toast-message');
+    toasts.forEach((toast, index) => {
+        // Mostrar los toasts escalonadamente
         setTimeout(() => {
-            messageWrapper.style.transition = 'opacity 0.5s ease';
-            messageWrapper.style.opacity = '0';
-            setTimeout(() => messageWrapper.remove(), 500);
+            toast.classList.remove('translate-x-full', 'opacity-0');
+        }, 100 * (index + 1));
+
+        // Ocultarlos automáticamente después de 5 segundos
+        setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300); // Dar tiempo a la animación para terminar
         }, 5000);
-    }
+    });
 }
 
 function setupProfileMenu() {

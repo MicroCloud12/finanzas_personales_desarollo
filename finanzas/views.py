@@ -1785,3 +1785,58 @@ def crear_presupuesto(request):
         form = PresupuestoForm()
         
     return render(request, 'crear_presupuesto.html', {'form': form})
+
+@login_required
+def buscar_recibos_presupuesto(request, presupuesto_id):
+    from django.shortcuts import get_object_or_404
+    from django.contrib import messages
+    from .models import Presupuesto
+    from .services import GoogleDriveService
+
+    presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
+    categoria_lower = presupuesto.categoria.lower().strip()
+    
+    if categoria_lower not in ['agua', 'luz', 'gas']:
+        messages.warning(request, f'La búsqueda automática de recibos no está configurada para la categoría: {presupuesto.categoria}')
+        return redirect('presupuesto')
+        
+    try:
+        drive_service = GoogleDriveService(request.user)
+        
+        # Buscar carpeta principal 'recibos' (insensible a mayúsculas)
+        query_recibos = "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='recibos' or name='Recibos' or name='RECIBOS')"
+        response_recibos = drive_service.service.files().list(q=query_recibos, spaces='drive', fields='files(id, name)').execute()
+        carpetas_recibos = response_recibos.get('files', [])
+        
+        if not carpetas_recibos:
+            messages.warning(request, "No se encontró la carpeta 'Recibos' en tu Google Drive. Asegúrate de crearla.")
+            return redirect('presupuesto')
+            
+        carpeta_recibos_id = carpetas_recibos[0]['id']
+            
+        # Buscar la subcarpeta (ej. 'agua', 'Agua', 'AGUA') dentro de 'recibos'
+        cat_title = categoria_lower.capitalize()
+        cat_upper = categoria_lower.upper()
+        
+        query_sub = f"mimeType='application/vnd.google-apps.folder' and '{carpeta_recibos_id}' in parents and trashed=false and (name='{categoria_lower}' or name='{cat_title}' or name='{cat_upper}')"
+        response_sub = drive_service.service.files().list(q=query_sub, spaces='drive', fields='files(id, name)').execute()
+        carpetas_encontradas = response_sub.get('files', [])
+        
+        if not carpetas_encontradas:
+            messages.warning(request, f"Se encontró la carpeta 'Recibos', pero no la subcarpeta '{categoria_lower}'. Asegúrate de crearla.")
+            return redirect('presupuesto')
+            
+        subcarpeta_id = carpetas_encontradas[0]['id']
+        
+        # Como paso intermedio, vamos a listar cuántos PDFs o imágenes hay
+        archivos = drive_service.service.files().list(
+            q=f"'{subcarpeta_id}' in parents and trashed=false",
+            fields="files(id, name, mimeType)"
+        ).execute().get('files', [])
+        
+        messages.success(request, f"Se encontró la carpeta '{categoria_lower}' en Drive con {len(archivos)} archivo(s). ¡Listo para el siguiente paso!")
+        
+    except Exception as e:
+        messages.error(request, f"Error al acceder a Google Drive: {str(e)}. Recuerda vincular tu cuenta.")
+        
+    return redirect('presupuesto')
