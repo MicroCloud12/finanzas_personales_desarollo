@@ -624,3 +624,15 @@ class Presupuesto(models.Model):
         if self.es_recurrente:
             return f"{self.categoria} - ${self.monto_presupuestado} (Recurrente)"
         return f"{self.categoria} - ${self.monto_presupuestado} ({self.mes}/{self.anio})"
+
+class HistorialReciboServicio(models.Model):
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE)
+    presupuesto = models.ForeignKey(Presupuesto, on_delete=models.CASCADE, related_name='historial_recibos')
+    fecha_emision = models.DateField(null=True, blank=True)
+    monto_total = models.DecimalField(max_digits=12, decimal_places=2)
+    datos_json = models.JSONField(default=dict)
+    archivo_drive_id = models.CharField(max_length=255, unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Recibo de {self.presupuesto.categoria} - {self.fecha_emision} - ${self.monto_total}"

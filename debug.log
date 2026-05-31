@@ -1335,3 +1335,8 @@ INFO 2026-05-30 20:14:07,663 tasks Tienda reconocida por IA: OXXO
 INFO 2026-05-30 20:14:11,508 tasks Tienda nueva detectada: LA COMER
 INFO 2026-05-30 20:14:19,690 tasks Tienda nueva detectada: LIVERPOOL
 INFO 2026-05-30 20:14:22,286 tasks Tienda reconocida por IA: WALMART
+ERROR 2026-05-31 12:35:29,510 services Error: La respuesta de Gemini no es un JSON válido: Soy un asistente financiero diseñado para extraer datos estructurados de recibos. No puedo predecir montos futuros ni realizar análisis de tendencias o estacionalidad, ya que mi función se limita a la extracción de información explícita de los documentos proporcionados.
+
+Para poder ayudarte, por favor, proporcióna el JSON con el historial de montos y fechas. Si el JSON contiene la información necesaria, podré extraerla y presentarla en el formato solicitado.
+
+Si tu objetivo es la predicción de montos futuros, te recomiendo utilizar herramientas o modelos de análisis financiero más avanzados que puedan procesar y analizar tendencias a lo largo del tiempo.

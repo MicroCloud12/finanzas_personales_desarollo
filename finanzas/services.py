@@ -341,6 +341,32 @@ class GeminiService:
                 }},
                 "_razonamiento": "Explica brevemente por qué elegiste estos valores y descarta dudas. Ej: 'Encontré Ticket: 4502 cerca de la fecha. Descarté 888 porque parece ser puntos de lealtad.'"
             }}
+            """,
+            "recibo_servicio": """
+            Eres un asistente experto en contabilidad. Extrae los datos de este recibo de servicio (luz, agua, gas, etc.).
+            Devuelve SIEMPRE la respuesta en formato JSON, sin texto adicional.
+
+            ### FORMATO DE SALIDA ESTRICTO (JSON):
+            {{
+              "fecha_emision": "YYYY-MM-DD",
+              "monto_total": 0.00,
+              "periodo_facturado": "Ej. Enero 2025, o 15/ene - 15/feb",
+              "consumo": "Ej. 150 kWh, o 20 m3 (si está disponible)"
+            }}
+            """,
+            "prediccion_servicio": """
+            Eres un experto financiero. Analiza el historial de estos recibos de un servicio para predecir el monto del próximo mes.
+            Te proporcionaré un JSON con el historial de montos y fechas.
+            Devuelve SIEMPRE un JSON.
+
+            ### FORMATO DE SALIDA ESTRICTO (JSON):
+            {{
+              "monto_predicho": 0.00,
+              "razonamiento": "Explica brevemente tu predicción basada en tendencia o estacionalidad"
+            }}
+
+            ### HISTORIAL DE RECIBOS:
+            {context_str}
             """
         }
         # Preconfiguramos configs opcionales de generación

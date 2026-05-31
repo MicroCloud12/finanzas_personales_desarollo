@@ -87,6 +87,16 @@
                   </svg>
                   <span class="resultado-badge hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm"></span>
                 </button>
+                
+                <button type="button" onclick="predecirRecibo(this, {{ p.id }})" data-url="{% url 'predecir_recibo_presupuesto' p.id %}" class="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded relative group transition-colors" title="Predecir recibo de este mes">
+                  <svg class="w-4 h-4 icon-magia" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  </svg>
+                  <svg class="w-4 h-4 icon-spinner-magia hidden animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </button>
                 {% endif %}
                 <button class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded" title="Eliminar">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,6 +156,41 @@ function buscarRecibos(btn, presupuestoId) {
         iconSpinner.classList.add('hidden');
         iconLupa.classList.remove('hidden');
         alert("Ocurrió un error al buscar recibos.");
+        console.error(error);
+    });
+}
+
+function predecirRecibo(btn, presupuestoId) {
+    const url = btn.dataset.url;
+    const iconMagia = btn.querySelector('.icon-magia');
+    const iconSpinner = btn.querySelector('.icon-spinner-magia');
+
+    iconMagia.classList.add('hidden');
+    iconSpinner.classList.remove('hidden');
+
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        iconSpinner.classList.add('hidden');
+        iconMagia.classList.remove('hidden');
+
+        if (data.error) {
+            alert(data.error);
+        } else if (data.success) {
+            alert(`¡Predicción generada!\n\nMonto estimado: $${data.monto_predicho}\nRazonamiento: ${data.razonamiento}`);
+            // Recargar la página para que se vea el nuevo presupuesto
+            window.location.reload();
+        }
+    })
+    .catch(error => {
+        iconSpinner.classList.add('hidden');
+        iconMagia.classList.remove('hidden');
+        alert("Ocurrió un error al predecir el recibo. Esto puede tardar si hay muchos recibos.");
         console.error(error);
     });
 }
