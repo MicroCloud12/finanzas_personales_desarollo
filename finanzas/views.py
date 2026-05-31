@@ -1422,6 +1422,22 @@ def eliminar_factura_pendiente(request, ticket_id):
     return redirect('revisar_facturas_pendientes')
 
 @login_required
+def eliminar_todas_facturas_pendientes(request):
+    """
+    Elimina todos los tickets pendientes de facturación de un jalón.
+    """
+    if request.method == 'POST':
+        from .models import Factura
+        facturas_pendientes = Factura.objects.filter(propietario=request.user, estado='pendiente')
+        count = facturas_pendientes.count()
+        if count > 0:
+            facturas_pendientes.delete()
+            messages.success(request, f"Se han eliminado {count} facturas pendientes correctamente.")
+        else:
+            messages.info(request, "No hay facturas pendientes para eliminar.")
+    return redirect('revisar_facturas_pendientes')
+
+@login_required
 def marcar_ticket_facturado(request, ticket_id):
     """
     Marca un ticket pendiente como 'facturado' (mueve de pendientes al historial).
@@ -1437,6 +1453,31 @@ def marcar_ticket_facturado(request, ticket_id):
         messages.success(request, "Factura archivada en el historial.")
         
     return redirect('revisar_facturas_pendientes')
+
+@csrf_exempt
+@login_required
+def actualizar_json_factura(request, ticket_id):
+    """
+    Actualiza el JSON de datos extraídos de un ticket pendiente.
+    Se usa cuando el usuario edita un campo sugerido.
+    """
+    from .models import Factura
+    import json
+    
+    if request.method == 'POST':
+        try:
+            factura_obj = get_object_or_404(Factura, id=ticket_id, propietario=request.user, estado='pendiente')
+            data = json.loads(request.body)
+            nuevo_json = data.get('datos_facturacion')
+            
+            if nuevo_json is not None:
+                factura_obj.datos_facturacion = nuevo_json
+                factura_obj.save()
+                return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
 @login_required
 def editar_factura_registro(request, factura_id):

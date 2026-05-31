@@ -123,10 +123,15 @@ async function guardarConfiguracion(btn) {
     const inputs = container.querySelectorAll('input[type="checkbox"]:checked');
     const campos = Array.from(inputs).map(input => input.value);
 
-    // Removed prompt as requested
     const urlPortal = "";
 
-    if (!confirm(`¿Guardar configuración para ${tienda} con ${campos.length} campos?`)) return;
+    if (campos.length === 0) {
+        if (!confirm(`¡ATENCIÓN! No has marcado ninguna casilla.\n\nEsto hará que la tienda ${tienda} no requiera ningún campo y borrará su configuración.\n\n¿Estás seguro de continuar?`)) {
+            return;
+        }
+    } else {
+        if (!confirm(`¿Guardar configuración para ${tienda} con ${campos.length} campos?`)) return;
+    }
 
     try {
         const response = await fetch('/api/guardar-config-tienda/', {
@@ -348,7 +353,102 @@ async function eliminarCampoConfigurado(btn) {
     }
 }
 
-// 7. Modal Editar Factura (Inline html scripts moved here)
+// 7. Funciones para editar campos sugeridos individualmente (Nombre del campo)
+function editarCampoSugerido(btn, campoNombreOriginal) {
+    // Buscar la fila
+    const row = btn.closest('.grid');
+    const dt = row.querySelector('dt');
+    const nombreOriginal = dt.textContent.trim();
+
+    // Reemplazar <dt> por un input temporal
+    dt.innerHTML = `<input type="text" class="w-full text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 p-1" value="${nombreOriginal.replace(/"/g, '&quot;')}">`;
+    const input = dt.querySelector('input');
+    input.focus();
+
+    // Ocultar botón editar, mostrar botón guardar con texto claro
+    const btnOriginalHTML = btn.innerHTML;
+    const btnOriginalClass = btn.className;
+
+    btn.innerHTML = `<svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Guardar`;
+    btn.className = "flex items-center text-white bg-green-500 hover:bg-green-600 transition-colors p-1 px-2 rounded-md text-xs font-bold";
+
+    const guardarCambios = () => {
+        guardarEdicionCampoSugerido(btn, campoNombreOriginal, input.value, btnOriginalHTML, btnOriginalClass, dt, row);
+    };
+
+    btn.removeAttribute('onclick'); // Remover atributo HTML inline para evitar conflictos
+    btn.onclick = guardarCambios;
+
+    // También guardar al presionar Enter
+    input.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            guardarCambios();
+        }
+    });
+}
+
+function guardarEdicionCampoSugerido(btn, nombreOriginal, nuevoNombre, btnOriginalHTML, btnOriginalClass, dt, row) {
+    if (!nuevoNombre || nuevoNombre.trim() === '') {
+        nuevoNombre = nombreOriginal; // fallback
+    }
+
+    // Restaurar <dt>
+    dt.textContent = nuevoNombre;
+
+    // Actualizar el valor del checkbox y marcarlo automáticamente
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    if (checkbox) {
+        checkbox.value = nuevoNombre;
+        if (!checkbox.disabled) {
+            checkbox.checked = true;
+        }
+    }
+
+    // Actualizar el data-campo en el botón de eliminar (si existe)
+    const btnEliminar = row.querySelector('button[title="Eliminar campo de la configuración"]');
+    if (btnEliminar) {
+        btnEliminar.dataset.campo = nuevoNombre;
+    }
+
+    // Restaurar botón editar, pasando el nuevo nombre para futuras ediciones
+    btn.innerHTML = btnOriginalHTML;
+    btn.className = btnOriginalClass;
+    btn.onclick = function () {
+        editarCampoSugerido(btn, nuevoNombre);
+    };
+
+    // Actualizar JSON del botón Confirmar (renombrar la clave) y guardar en DB
+    const confirmarBtn = document.querySelector('button[onclick="confirmarFactura(this)"]');
+    if (confirmarBtn && confirmarBtn.dataset.jsonCompleto) {
+        try {
+            const json = JSON.parse(confirmarBtn.dataset.jsonCompleto);
+            if (json.hasOwnProperty(nombreOriginal) && nombreOriginal !== nuevoNombre) {
+                json[nuevoNombre] = json[nombreOriginal];
+                delete json[nombreOriginal];
+                const nuevoJsonString = JSON.stringify(json);
+                confirmarBtn.dataset.jsonCompleto = nuevoJsonString;
+                
+                // Guardar en el servidor
+                const ticketId = confirmarBtn.dataset.ticketId;
+                if (ticketId) {
+                    fetch(`/api/actualizar-json-factura/${ticketId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({ datos_facturacion: json })
+                    }).catch(e => console.error("Error guardando cambios en BD:", e));
+                }
+            }
+        } catch (e) {
+            console.error("Error actualizando el JSON:", e);
+        }
+    }
+}
+
+// 8. Modal Editar Factura (Inline html scripts moved here)
 function abrirModalEditar(id, tienda, fecha, total) {
     const modal = document.getElementById('modal-editar-factura');
     if (!modal) return;

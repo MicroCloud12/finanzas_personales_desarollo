@@ -1221,3 +1221,60 @@ ERROR 2026-04-26 18:05:26,796 views Error en api_ingresos_tarjeta: name 'Count' 
 ERROR 2026-04-26 18:05:26,815 views Error en api_ingresos_tarjeta: name 'Count' is not defined
 ERROR 2026-04-26 18:05:28,659 views Error en api_ingresos_tarjeta: name 'Count' is not defined
 ERROR 2026-04-26 18:05:28,672 views Error en api_ingresos_tarjeta: name 'Count' is not defined
+INFO 2026-05-30 18:10:32,551 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 18:10:35,635 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 18:10:35,919 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 18:10:42,797 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 18:10:47,158 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 18:10:48,181 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 18:10:49,687 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-05-30 18:10:52,963 tasks Tienda nueva detectada: FARMACIAS SIMITLA, S.A. DE C.V.
+INFO 2026-05-30 18:11:00,994 tasks Tienda nueva detectada: LIVERPOOL
+INFO 2026-05-30 18:11:03,878 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 18:11:10,357 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 18:11:14,589 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 18:11:15,807 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 18:11:16,374 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 18:11:18,807 tasks Tienda reconocida por IA: OXXO
+INFO 2026-05-30 18:11:22,943 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 18:11:25,577 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:01:47,420 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:01:47,691 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:01:47,792 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:01:49,314 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:01:52,602 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:01:54,708 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:01:58,626 tasks Tienda nueva detectada: FARMACIAS SIMITLA
+INFO 2026-05-30 19:02:03,873 tasks Tienda nueva detectada: LIVERPOOL
+INFO 2026-05-30 19:02:06,713 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 19:02:08,806 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-05-30 19:02:11,419 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:02:14,817 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:02:17,518 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:02:17,851 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 19:02:20,007 tasks Tienda reconocida por IA: OXXO
+INFO 2026-05-30 19:02:22,356 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 19:02:23,938 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:12:46,316 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:12:46,541 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:12:46,611 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:12:47,116 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:12:53,463 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:12:55,136 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:13:05,789 tasks Tienda nueva detectada: LIVERPOOL
+INFO 2026-05-30 19:13:06,673 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-05-30 19:13:08,633 tasks Tienda nueva detectada: FARMACIAS SIMITLA
+INFO 2026-05-30 19:13:14,156 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 19:13:17,794 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 19:13:18,186 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:13:25,357 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:13:27,966 tasks Tienda reconocida por IA: OXXO
+INFO 2026-05-30 19:13:30,855 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:13:32,485 tasks Tienda reconocida por IA: WALMART
+INFO 2026-05-30 19:13:34,493 tasks Tienda nueva detectada: LA COMER
+INFO 2026-05-30 19:24:54,673 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:24:54,848 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:24:54,849 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:24:55,887 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:25:01,385 tasks Tienda nueva detectada: NU MEXICO
+INFO 2026-05-30 19:25:03,974 tasks Tienda reconocida por IA: WALMART

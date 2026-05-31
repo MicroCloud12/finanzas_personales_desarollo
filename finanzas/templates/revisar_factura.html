@@ -15,7 +15,22 @@
                 Selecciona un ticket para extraer y confirmar sus datos de facturación.
             </p>
         </div>
-        <div class="mt-4 sm:mt-0">
+        <div class="mt-4 sm:mt-0 flex gap-2">
+            {% if tickets %}
+            <form action="{% url 'eliminar_todas_facturas' %}" method="POST"
+                onsubmit="return confirm('¿Estás seguro de que quieres eliminar TODAS las facturas pendientes? Esta acción no se puede deshacer.');">
+                {% csrf_token %}
+                <button type="submit"
+                    class="inline-flex justify-center items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-xl text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none transition-colors">
+                    <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                        </path>
+                    </svg>
+                    Eliminar Todas
+                </button>
+            </form>
+            {% endif %}
             <a href="{% url 'facturacion' %}"
                 class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
                 <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,6 +265,7 @@
                 </button>
 
                 <button type="button" onclick="confirmarFactura(this)"
+                    data-ticket-id="{{ ticket_seleccionado.id }}"
                     data-archivo-id="{{ factura.archivo_id|default:'' }}" data-tienda="{{ factura.tienda }}"
                     data-total="{{ factura.total_pagado }}" data-fecha="{{ factura.fecha_emision }}"
                     data-json-completo='{{ factura_json }}'
@@ -277,7 +293,16 @@
                         </div>
                         <dt class="text-sm font-semibold text-gray-700 col-span-4 break-words">{{ nombre }}</dt>
                         <dd class="text-sm text-gray-900 col-span-6 break-all text-right">{{ valor }}</dd>
-                        <div class="col-span-1 flex justify-center">
+                        <div class="col-span-1 flex justify-center items-center gap-1">
+                            <button type="button" onclick="editarCampoSugerido(this, '{{ nombre|escapejs }}')"
+                                class="text-gray-400 hover:text-indigo-500 transition-colors p-1 rounded-md hover:bg-indigo-50"
+                                title="Editar valor">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                    </path>
+                                </svg>
+                            </button>
                             {% if not factura.es_conocida %}
                             <button type="button" onclick="eliminarCampoConfigurado(this)"
                                 data-tienda="{{ factura.tienda }}" data-campo="{{ nombre }}"
@@ -469,5 +494,5 @@
 </div>
 
 {% block javascript %}
-<script src="{% static 'js/procesamiento.js' %}?v=1.5"></script>
+<script src="{% static 'js/procesamiento.js' %}?v=1.10"></script>
 {% endblock %}
