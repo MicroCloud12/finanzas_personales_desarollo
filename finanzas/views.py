@@ -1761,3 +1761,7 @@ def api_ingresos_tarjeta(request):
         import logging
         logging.getLogger(__name__).error(f"Error en api_ingresos_tarjeta: {e}")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def presupuesto_view(request):
+    return render(request, 'presupuesto.html')
