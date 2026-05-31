@@ -230,3 +230,29 @@ class PagoAmortizacionForm(forms.ModelForm):
         self.fields['fecha_vencimiento'].widget = forms.DateInput(
             attrs={'type': 'date', 'class': input_classes}
         )
+
+from .models import Presupuesto
+
+class PresupuestoForm(forms.ModelForm):
+    class Meta:
+        model = Presupuesto
+        fields = ['categoria', 'monto_presupuestado', 'es_recurrente', 'mes', 'anio']
+        help_texts = {
+            'categoria': "Ej. Vivienda, Alimentación, Transporte.",
+            'monto_presupuestado': "Monto límite que planeas gastar en esta categoría.",
+            'es_recurrente': "Si está activo, este presupuesto se aplicará todos los meses.",
+            'mes': "Solo si NO es recurrente. (1-12)",
+            'anio': "Solo si NO es recurrente. Ej. 2026",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+        checkbox_classes = "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': checkbox_classes})
+            else:
+                field.widget.attrs.update({'class': input_classes})

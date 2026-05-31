@@ -605,3 +605,22 @@ class Cuenta(models.Model):
             # Desmarcar otras cuentas del mismo propietario como principal
             Cuenta.objects.filter(propietario=self.propietario).exclude(pk=self.pk).update(es_principal=False)
         super().save(*args, **kwargs)
+
+class Presupuesto(models.Model):
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='presupuestos')
+    categoria = models.CharField(max_length=100, help_text="Ej. Vivienda, Alimentación, Transporte")
+    monto_presupuestado = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    
+    es_recurrente = models.BooleanField(default=True, help_text="Si es verdadero, aplica para todos los meses")
+    mes = models.IntegerField(null=True, blank=True, help_text="Mes específico (1-12) si no es recurrente")
+    anio = models.IntegerField(null=True, blank=True, help_text="Año específico si no es recurrente")
+    
+    class Meta:
+        verbose_name = "Presupuesto"
+        verbose_name_plural = "Presupuestos"
+        unique_together = ['propietario', 'categoria', 'mes', 'anio']
+
+    def __str__(self):
+        if self.es_recurrente:
+            return f"{self.categoria} - ${self.monto_presupuestado} (Recurrente)"
+        return f"{self.categoria} - ${self.monto_presupuestado} ({self.mes}/{self.anio})"

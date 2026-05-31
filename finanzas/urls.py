@@ -95,4 +95,5 @@ urlpatterns = [
     path('cuentas/editar/<int:cuenta_id>/', views.editar_cuenta, name='editar_cuenta'),
     path('cuentas/eliminar/<int:cuenta_id>/', views.eliminar_cuenta, name='eliminar_cuenta'),
     path('presupuesto/', views.presupuesto_view, name='presupuesto'),
+    path('presupuesto/crear/', views.crear_presupuesto, name='crear_presupuesto'),
 ]

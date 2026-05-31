@@ -1764,4 +1764,24 @@ def api_ingresos_tarjeta(request):
 
 @login_required
 def presupuesto_view(request):
-    return render(request, 'presupuesto.html')
+    from .models import Presupuesto
+    presupuestos = Presupuesto.objects.filter(propietario=request.user).order_by('-monto_presupuestado')
+    return render(request, 'presupuesto.html', {'presupuestos': presupuestos})
+
+@login_required
+def crear_presupuesto(request):
+    from .forms import PresupuestoForm
+    from django.contrib import messages
+    
+    if request.method == 'POST':
+        form = PresupuestoForm(request.POST)
+        if form.is_valid():
+            presupuesto = form.save(commit=False)
+            presupuesto.propietario = request.user
+            presupuesto.save()
+            messages.success(request, 'Concepto de presupuesto guardado exitosamente.')
+            return redirect('presupuesto')
+    else:
+        form = PresupuestoForm()
+        
+    return render(request, 'crear_presupuesto.html', {'form': form})
