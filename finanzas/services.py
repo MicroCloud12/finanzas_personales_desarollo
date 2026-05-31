@@ -298,7 +298,8 @@ class GeminiService:
             {text_content}
 
             ### TUS OBJETIVOS CRÍTICOS:
-            1. **IDENTIFICAR LA TIENDA:**
+            1. **IDENTIFICAR LA TIENDA O TIPO DE DOCUMENTO:**
+               - Si el documento parece una captura de pantalla de una transferencia bancaria, pago de servicios (CFE, Telmex), comprobante de SPEI o depósito, establece "es_transferencia" a true y detén la extracción.
                - Busca coincidencias en la lista de tiendas conocidas.
                - Si encuentras una coincidencia, USA ESE NOMBRE EXACTO y el ID asociado si existe.
                - Si no, usa el nombre comercial más claro que veas en el ticket (ej. "STARBUCKS", "OXXO").
@@ -322,6 +323,7 @@ class GeminiService:
                 "fecha": "YYYY-MM-DD",
                 "total": 0.00,
                 "es_conocida": true/false,
+                "es_transferencia": true/false,
                 "campos_adicionales": {{
                     "NombreCampo1": "Valor1",
                     "NombreCampo2": "Valor2"

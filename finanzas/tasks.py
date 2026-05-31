@@ -354,9 +354,11 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
             
         texto_ticket = ocr_result['text_content']
 
-        # Validación Rápida: Ignorar transferencias
-        if "TRANSFERENCIA" in texto_ticket.upper() and "TICKET" not in texto_ticket.upper():
-             return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia'}
+        # Validación Rápida Mejorada: Ignorar transferencias
+        texto_upper = texto_ticket.upper()
+        palabras_banco = ["TRANSFERENCIA", "SPEI", "CLAVE DE RASTREO", "CUENTA ORIGEN", "CUENTA DESTINO", "FOLIO DE AUTORIZACIÓN", "REFERENCIA NUMÉRICA", "REFERENCIA NUMERICA"]
+        if any(palabra in texto_upper for palabra in palabras_banco) and "TICKET" not in texto_upper and "FACTURA" not in texto_upper:
+             return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia bancaria, ignorado en facturación.'}
 
         # 3. Contexto: Identificar tienda localmente (Ultra rápido)
         contexto_str = BillingService.preparar_contexto_para_gemini(texto_ticket)
@@ -381,6 +383,9 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
 
         if not datos_extraidos:
              return {'status': 'FAILURE', 'file_name': file_name, 'error': 'JSON vacío de Gemini'}
+
+        if datos_extraidos.get("es_transferencia", False):
+             return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Gemini detectó que es una transferencia o pago de servicios.'}
 
         # --- LÓGICA DEFINITIVA DE NORMALIZACIÓN ---
         
