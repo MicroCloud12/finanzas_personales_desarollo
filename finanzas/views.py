@@ -1792,11 +1792,14 @@ def buscar_recibos_presupuesto(request, presupuesto_id):
     from django.contrib import messages
     from .models import Presupuesto
     from .services import GoogleDriveService
+    from django.http import JsonResponse
 
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
     categoria_lower = presupuesto.categoria.lower().strip()
     
     if categoria_lower not in ['agua', 'luz', 'gas']:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'error': f'La búsqueda automática de recibos no está configurada para la categoría: {presupuesto.categoria}'}, status=400)
         messages.warning(request, f'La búsqueda automática de recibos no está configurada para la categoría: {presupuesto.categoria}')
         return redirect('presupuesto')
         
@@ -1809,6 +1812,8 @@ def buscar_recibos_presupuesto(request, presupuesto_id):
         carpetas_recibos = response_recibos.get('files', [])
         
         if not carpetas_recibos:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'error': "No se encontró la carpeta 'Recibos' en tu Google Drive. Asegúrate de crearla."}, status=404)
             messages.warning(request, "No se encontró la carpeta 'Recibos' en tu Google Drive. Asegúrate de crearla.")
             return redirect('presupuesto')
             
@@ -1823,6 +1828,8 @@ def buscar_recibos_presupuesto(request, presupuesto_id):
         carpetas_encontradas = response_sub.get('files', [])
         
         if not carpetas_encontradas:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'error': f"Se encontró la carpeta 'Recibos', pero no la subcarpeta '{categoria_lower}'. Asegúrate de crearla."}, status=404)
             messages.warning(request, f"Se encontró la carpeta 'Recibos', pero no la subcarpeta '{categoria_lower}'. Asegúrate de crearla.")
             return redirect('presupuesto')
             
@@ -1834,9 +1841,14 @@ def buscar_recibos_presupuesto(request, presupuesto_id):
             fields="files(id, name, mimeType)"
         ).execute().get('files', [])
         
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'cantidad': len(archivos)})
+            
         messages.success(request, f"Se encontró la carpeta '{categoria_lower}' en Drive con {len(archivos)} archivo(s). ¡Listo para el siguiente paso!")
         
     except Exception as e:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'error': f"Error al acceder a Google Drive: {str(e)}. Recuerda vincular tu cuenta."}, status=500)
         messages.error(request, f"Error al acceder a Google Drive: {str(e)}. Recuerda vincular tu cuenta.")
         
     return redirect('presupuesto')

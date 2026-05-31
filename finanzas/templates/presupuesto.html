@@ -77,11 +77,16 @@
             <td class="px-6 py-4 bg-white text-sm text-right">
               <div class="flex items-center justify-end gap-2">
                 {% if p.categoria|lower in "agua luz gas" %}
-                <a href="{% url 'buscar_recibos_presupuesto' p.id %}" class="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded" title="Buscar Recibos en Drive">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button type="button" onclick="buscarRecibos(this, {{ p.id }})" data-url="{% url 'buscar_recibos_presupuesto' p.id %}" class="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded relative group transition-colors" title="Buscar Recibos en Drive">
+                  <svg class="w-4 h-4 icon-lupa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                   </svg>
-                </a>
+                  <svg class="w-4 h-4 icon-spinner hidden animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span class="resultado-badge hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm"></span>
+                </button>
                 {% endif %}
                 <button class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded" title="Eliminar">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,4 +110,44 @@
 
 </div>
 
+{% endblock %}
+
+{% block javascript %}
+<script>
+function buscarRecibos(btn, presupuestoId) {
+    const url = btn.dataset.url;
+    const iconLupa = btn.querySelector('.icon-lupa');
+    const iconSpinner = btn.querySelector('.icon-spinner');
+    const badge = btn.querySelector('.resultado-badge');
+
+    iconLupa.classList.add('hidden');
+    iconSpinner.classList.remove('hidden');
+    badge.classList.add('hidden');
+
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        iconSpinner.classList.add('hidden');
+        iconLupa.classList.remove('hidden');
+
+        if (data.error) {
+            alert(data.error);
+        } else if (data.cantidad !== undefined) {
+            badge.textContent = data.cantidad;
+            badge.classList.remove('hidden');
+        }
+    })
+    .catch(error => {
+        iconSpinner.classList.add('hidden');
+        iconLupa.classList.remove('hidden');
+        alert("Ocurrió un error al buscar recibos.");
+        console.error(error);
+    });
+}
+</script>
 {% endblock %}
