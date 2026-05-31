@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     function updateCardDisplay(index) {
-        const card = tarjetas[index];
+        const card = tarjetas.at(index);
         
         // Small fade animation
         widget.style.opacity = '0.7';
@@ -32,11 +32,23 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             // Update content
             visualCardName.textContent = card.nombre;
-            visualCardNumber.innerHTML = '<span class="inline-block relative top-[0.2em] transform translate-y-px">**** **** ****</span> <span class="ml-3">' + (card.terminacion || '0000') + '</span>';
+            
+            visualCardNumber.replaceChildren();
+            const asterisksSpan = document.createElement('span');
+            asterisksSpan.className = 'inline-block relative top-[0.1em] transform translate-y-px opacity-70';
+            asterisksSpan.textContent = '•••• •••• ••••';
+            
+            const termSpan = document.createElement('span');
+            termSpan.className = 'ml-4 opacity-90 font-medium';
+            termSpan.textContent = card.terminacion || '0000';
+            
+            visualCardNumber.appendChild(asterisksSpan);
+            visualCardNumber.appendChild(termSpan);
+            
             if(indexLabel) indexLabel.textContent = '( ' + (index + 1) + '/' + tarjetas.length + ' )';
             
             // Cycle gradients smoothly on the main block
-            widget.style.background = backgroundGradients[index % backgroundGradients.length];
+            widget.style.background = backgroundGradients.at(index % backgroundGradients.length);
             
             // Restore animation
             widget.style.opacity = '1';
@@ -170,5 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initialize the real data for the first card on load
-    fetchIncomeMetrics(tarjetas[currentIndex].nombre);
+    if (tarjetas.length > 0) {
+        fetchIncomeMetrics(tarjetas.at(currentIndex).nombre);
+    }
 });

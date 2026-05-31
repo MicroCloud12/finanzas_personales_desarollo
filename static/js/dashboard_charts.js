@@ -73,7 +73,7 @@ function initGastosChart() {
                 '#D1D5DB'
             ];
 
-            const backgroundColors = data.labels.map((_, i) => palette[i % palette.length]);
+            const backgroundColors = data.labels.map((_, i) => palette.at(i % palette.length));
 
             new Chart(canvas, {
                 type: 'doughnut',
@@ -131,17 +131,25 @@ function initGastosChart() {
             // Generar la leyenda HTML dinámica personalizada
             const legendContainer = document.getElementById('gastosLegend');
             if (legendContainer) {
-                let html = '';
+                legendContainer.replaceChildren();
                 data.labels.forEach((label, i) => {
-                    const color = backgroundColors[i];
-                    html += `
-                        <div class="flex items-center gap-2 mb-2 w-auto min-w-[30%]">
-                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span>
-                            <span class="text-xs font-semibold text-gray-700">${label}</span>
-                        </div>
-                    `;
+                    const color = backgroundColors.at(i);
+                    
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-2 mb-2 w-auto min-w-[30%]';
+                    
+                    const colorSpan = document.createElement('span');
+                    colorSpan.className = 'w-2.5 h-2.5 rounded-full';
+                    colorSpan.style.backgroundColor = color;
+                    
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'text-xs font-semibold text-gray-700';
+                    labelSpan.textContent = label;
+                    
+                    div.appendChild(colorSpan);
+                    div.appendChild(labelSpan);
+                    legendContainer.appendChild(div);
                 });
-                legendContainer.innerHTML = html;
             }
         });
 }
@@ -400,13 +408,13 @@ function initBudgetVsActualChart() {
     });
 
     // Fix overlaid z-index by re-ordering datasets array in data object config:
-    const chartConfig = Chart.instances[Chart.instances.length - 1].config;
-    const datasets = chartConfig._config.data.datasets;
-    // Swap them so Budget is drawn first, Expense drawn second to overlay.
-    // Wait, Dataset 0 is drawn first. Dataset 1 is drawn second.
-    // So Expense is dataset 0, Budget is dataset 1. Budget is on top. This is inverse!
-    datasets.reverse();
-    Chart.instances[Chart.instances.length - 1].update();
+    const lastChart = Chart.instances.at(-1);
+    if (lastChart) {
+        const chartConfig = lastChart.config;
+        const datasets = chartConfig._config.data.datasets;
+        datasets.reverse();
+        lastChart.update();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
