@@ -60,6 +60,9 @@
                 <div>
                   <p class="font-bold text-gray-900">{{ p.categoria }}</p>
                   <p class="text-xs text-gray-500">{% if p.es_recurrente %}Recurrente{% else %}Mes: {{ p.mes }}/{{ p.anio }}{% endif %}</p>
+                  {% if p.fecha_proximo_recibo %}
+                  <p class="text-[10px] text-purple-600 font-medium mt-0.5">Siguiente: {{ p.fecha_proximo_recibo|date:"d M Y" }}</p>
+                  {% endif %}
                 </div>
               </div>
             </td>
@@ -182,7 +185,12 @@ function predecirRecibo(btn, presupuestoId) {
         if (data.error) {
             alert(data.error);
         } else if (data.success) {
-            alert(`¡Predicción generada!\n\nMonto estimado: $${data.monto_predicho}\nRazonamiento: ${data.razonamiento}`);
+            let mensaje = `¡Predicción generada!\n\nMonto estimado: $${data.monto_predicho}\n`;
+            if (data.fecha_predicha) {
+                mensaje += `Fecha estimada: ${data.fecha_predicha}\n`;
+            }
+            mensaje += `Razonamiento: ${data.razonamiento}`;
+            alert(mensaje);
             // Recargar la página para que se vea el nuevo presupuesto
             window.location.reload();
         }

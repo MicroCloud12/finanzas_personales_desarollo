@@ -355,17 +355,18 @@ class GeminiService:
             }}
             """,
             "prediccion_servicio": """
-            Eres un experto financiero. Analiza el historial de estos recibos de un servicio para predecir el monto del próximo mes.
-            Te proporcionaré un JSON con el historial de montos y fechas.
-            Devuelve SIEMPRE un JSON.
+            Eres un asistente de cálculo estadístico. Tu tarea es analizar una serie de datos históricos (fechas y montos de recibos) y calcular matemáticamente una estimación razonable para el próximo periodo.
+            Esto es puramente un ejercicio matemático de estimación basado en promedios o tendencias, no es un consejo financiero.
+            Devuelve SIEMPRE un JSON estricto.
 
             ### FORMATO DE SALIDA ESTRICTO (JSON):
             {{
               "monto_predicho": 0.00,
-              "razonamiento": "Explica brevemente tu predicción basada en tendencia o estacionalidad"
+              "fecha_predicha": "YYYY-MM-DD",
+              "razonamiento": "Explica brevemente tu estimación matemática"
             }}
 
-            ### HISTORIAL DE RECIBOS:
+            ### DATOS HISTÓRICOS:
             {context_str}
             """
         }

@@ -1956,7 +1956,9 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
         
         # 5. Pedir predicción
         prediccion = gemini_service.extract_from_text("prediccion_servicio", "", contexto)
+        print("DEBUG PREDICCION GEMINI:", prediccion)
         monto_predicho = prediccion.get("monto_predicho", 0)
+        fecha_predicha = prediccion.get("fecha_predicha", "")
         razonamiento = prediccion.get("razonamiento", "Sin razonamiento proporcionado por la IA.")
         
         try:
@@ -1964,14 +1966,30 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
         except:
             monto_predicho = 0.0
             
+        fecha_obj = None
+        if fecha_predicha:
+            try:
+                fecha_obj = datetime.strptime(fecha_predicha, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+                
         # 6. Actualizar presupuesto
+        actualizado = False
         if monto_predicho > 0:
             presupuesto.monto_presupuestado = monto_predicho
+            actualizado = True
+            
+        if fecha_obj:
+            presupuesto.fecha_proximo_recibo = fecha_obj
+            actualizado = True
+            
+        if actualizado:
             presupuesto.save()
             
         return JsonResponse({
             'success': True,
             'monto_predicho': monto_predicho,
+            'fecha_predicha': fecha_predicha,
             'razonamiento': razonamiento
         })
         

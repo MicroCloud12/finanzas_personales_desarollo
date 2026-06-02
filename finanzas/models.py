@@ -614,6 +614,7 @@ class Presupuesto(models.Model):
     es_recurrente = models.BooleanField(default=True, help_text="Si es verdadero, aplica para todos los meses")
     mes = models.IntegerField(null=True, blank=True, help_text="Mes específico (1-12) si no es recurrente")
     anio = models.IntegerField(null=True, blank=True, help_text="Año específico si no es recurrente")
+    fecha_proximo_recibo = models.DateField(null=True, blank=True, help_text="Fecha estimada del próximo recibo (generada por IA)")
     
     class Meta:
         verbose_name = "Presupuesto"
