@@ -354,6 +354,21 @@ class GeminiService:
               "consumo": "Ej. 150 kWh, o 20 m3 (si está disponible)"
             }}
             """,
+            "recibo_servicio_from_text": """
+            Eres un asistente experto en contabilidad. Analiza el siguiente TEXTO EXTRAÍDO (OCR) de un recibo de servicio (luz, agua, gas, etc.) y extrae los datos requeridos.
+            Devuelve SIEMPRE la respuesta en formato JSON, sin texto adicional.
+
+            ### FORMATO DE SALIDA ESTRICTO (JSON):
+            {{
+              "fecha_emision": "YYYY-MM-DD",
+              "monto_total": 0.00,
+              "periodo_facturado": "Ej. Enero 2025, o 15/ene - 15/feb",
+              "consumo": "Ej. 150 kWh, o 20 m3 (si está disponible)"
+            }}
+
+            ### TEXTO DEL RECIBO (OCR):
+            {text_content}
+            """,
             "prediccion_servicio": """
             Eres un asistente de cálculo estadístico. Tu tarea es analizar una serie de datos históricos (fechas y montos de recibos) y calcular matemáticamente una estimación razonable para el próximo periodo.
             Esto es puramente un ejercicio matemático de estimación basado en promedios o tendencias, no es un consejo financiero.

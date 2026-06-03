@@ -8,7 +8,7 @@ from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
-from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura
+from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura, HistorialReciboServicio, Presupuesto
 
 logger = logging.getLogger(__name__)
 
@@ -474,5 +474,118 @@ def process_drive_for_invoices(user_id: int):
 
         return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
 
+    except Exception as e:
+        return {'status': 'ERROR', 'message': str(e)}
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id: str, file_name: str, mime_type: str):
+    try:
+        from datetime import datetime
+        user = User.objects.get(id=user_id)
+        presupuesto = Presupuesto.objects.get(id=presupuesto_id, propietario=user)
+        
+        gdrive_service = GoogleDriveService(user)
+        gemini_service = get_gemini_service()
+        
+        file_content = gdrive_service.get_file_content(file_id)
+        file_bytes = file_content.getvalue()
+        
+        # 1. Mistral OCR
+        mistral_service = MistralOCRService()
+        ocr_result = mistral_service.get_text_from_image(file_bytes, mime_type)
+        if "error" in ocr_result:
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': f"Mistral OCR: {ocr_result['error']}"}
+            
+        texto_recibo = ocr_result['text_content']
+        
+        # 2. Gemini Text
+        datos = gemini_service.extract_from_text(
+            prompt_name="recibo_servicio_from_text",
+            text=texto_recibo
+        )
+        
+        if datos.get("error"):
+            return {'status': 'FAILURE', 'file_name': file_name, 'error': datos.get('error')}
+            
+        fecha_emision = datos.get('fecha_emision')
+        if fecha_emision:
+            try:
+                fecha_obj = datetime.strptime(fecha_emision, '%Y-%m-%d').date()
+            except ValueError:
+                fecha_obj = None
+        else:
+            fecha_obj = None
+            
+        monto = datos.get('monto_total', 0)
+        try:
+            monto = float(monto)
+        except:
+            monto = 0.0
+            
+        HistorialReciboServicio.objects.create(
+            propietario=user,
+            presupuesto=presupuesto,
+            fecha_emision=fecha_obj,
+            monto_total=monto,
+            datos_json=datos,
+            archivo_drive_id=file_id
+        )
+        
+        return {'status': 'SUCCESS', 'file_name': file_name}
+    except Exception as e:
+        self.retry(exc=e)
+        return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
+
+@shared_task
+def process_drive_utility_bills(user_id: int, presupuesto_id: int, categoria_lower: str):
+    try:
+        user = User.objects.get(id=user_id)
+        drive_service = GoogleDriveService(user)
+        
+        # Buscar carpeta principal
+        query_recibos = "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='recibos' or name='Recibos' or name='RECIBOS')"
+        carpetas = drive_service.service.files().list(q=query_recibos, spaces='drive', fields='files(id)').execute().get('files', [])
+        if not carpetas:
+            return {'status': 'NO_FILES', 'message': 'Carpeta Recibos no encontrada.'}
+            
+        carpeta_id = carpetas[0]['id']
+        cat_upper = categoria_lower.upper()
+        cat_title = categoria_lower.capitalize()
+        query_sub = f"mimeType='application/vnd.google-apps.folder' and '{carpeta_id}' in parents and trashed=false and (name='{categoria_lower}' or name='{cat_title}' or name='{cat_upper}')"
+        
+        subcarpetas = drive_service.service.files().list(q=query_sub, spaces='drive', fields='files(id)').execute().get('files', [])
+        if not subcarpetas:
+            return {'status': 'NO_FILES', 'message': f'Subcarpeta {categoria_lower} no encontrada.'}
+            
+        subcarpeta_id = subcarpetas[0]['id']
+        
+        archivos = drive_service.service.files().list(
+            q=f"'{subcarpeta_id}' in parents and trashed=false",
+            fields="files(id, name, mimeType)"
+        ).execute().get('files', [])
+        
+        if not archivos:
+            return {'status': 'NO_FILES', 'message': 'No hay archivos para analizar en la carpeta.'}
+            
+        files_to_process = []
+        for archivo in archivos:
+            if not archivo['mimeType'].startswith('image/') and archivo['mimeType'] != 'application/pdf':
+                continue
+            if not HistorialReciboServicio.objects.filter(archivo_drive_id=archivo['id']).exists():
+                files_to_process.append(archivo)
+                
+        if not files_to_process:
+            return {'status': 'NO_FILES', 'message': 'No hay recibos nuevos por procesar.'}
+            
+        job = group(
+            process_single_utility_bill.s(user.id, presupuesto_id, item['id'], item['name'], item['mimeType'])
+            for item in files_to_process
+        )
+        
+        result_group = job.apply_async()
+        result_group.save()
+        
+        return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
+        
     except Exception as e:
         return {'status': 'ERROR', 'message': str(e)}
