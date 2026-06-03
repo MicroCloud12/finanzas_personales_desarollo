@@ -97,5 +97,6 @@ urlpatterns = [
     path('presupuesto/', views.presupuesto_view, name='presupuesto'),
     path('presupuesto/crear/', views.crear_presupuesto, name='crear_presupuesto'),
     path('presupuesto/<int:presupuesto_id>/buscar-recibos/', views.buscar_recibos_presupuesto, name='buscar_recibos_presupuesto'),
+    path('presupuesto/<int:presupuesto_id>/procesar-recibos-anteriores/', views.procesar_recibos_anteriores_presupuesto, name='procesar_recibos_anteriores_presupuesto'),
     path('presupuesto/<int:presupuesto_id>/predecir-recibo/', views.predecir_recibo_presupuesto, name='predecir_recibo_presupuesto'),
 ]

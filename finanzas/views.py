@@ -1854,6 +1854,99 @@ def buscar_recibos_presupuesto(request, presupuesto_id):
     return redirect('presupuesto')
 
 @login_required
+def procesar_recibos_anteriores_presupuesto(request, presupuesto_id):
+    from django.shortcuts import get_object_or_404
+    from django.http import JsonResponse
+    from .models import Presupuesto, HistorialReciboServicio
+    from .services import GoogleDriveService, get_gemini_service
+    from datetime import datetime
+    
+    if request.headers.get('x-requested-with') != 'XMLHttpRequest':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
+    categoria_lower = presupuesto.categoria.lower().strip()
+    
+    if categoria_lower not in ['agua', 'luz', 'gas']:
+        return JsonResponse({'error': 'Procesamiento no configurado para esta categoría'}, status=400)
+
+    try:
+        drive_service = GoogleDriveService(request.user)
+        gemini_service = get_gemini_service()
+        
+        # 1. Buscar carpeta
+        query_recibos = "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='recibos' or name='Recibos' or name='RECIBOS')"
+        carpetas = drive_service.service.files().list(q=query_recibos, spaces='drive', fields='files(id)').execute().get('files', [])
+        if not carpetas:
+            return JsonResponse({'error': 'Carpeta Recibos no encontrada.'}, status=404)
+            
+        carpeta_id = carpetas[0]['id']
+        cat_upper = categoria_lower.upper()
+        cat_title = categoria_lower.capitalize()
+        query_sub = f"mimeType='application/vnd.google-apps.folder' and '{carpeta_id}' in parents and trashed=false and (name='{categoria_lower}' or name='{cat_title}' or name='{cat_upper}')"
+        
+        subcarpetas = drive_service.service.files().list(q=query_sub, spaces='drive', fields='files(id)').execute().get('files', [])
+        if not subcarpetas:
+            return JsonResponse({'error': f'Subcarpeta {categoria_lower} no encontrada.'}, status=404)
+            
+        subcarpeta_id = subcarpetas[0]['id']
+        
+        # 2. Obtener archivos
+        archivos = drive_service.service.files().list(
+            q=f"'{subcarpeta_id}' in parents and trashed=false",
+            fields="files(id, name, mimeType)"
+        ).execute().get('files', [])
+        
+        if not archivos:
+            return JsonResponse({'error': 'No hay archivos para analizar en la carpeta.'}, status=404)
+            
+        # 3. Procesar archivos nuevos
+        procesados = 0
+        for archivo in archivos:
+            if not archivo['mimeType'].startswith('image/') and archivo['mimeType'] != 'application/pdf':
+                continue
+                
+            if not HistorialReciboServicio.objects.filter(archivo_drive_id=archivo['id']).exists():
+                file_content = drive_service.get_file_content(archivo['id']).read()
+                datos = gemini_service.extract_data("recibo_servicio", file_content, archivo['mimeType'])
+                
+                fecha_emision = datos.get('fecha_emision')
+                if fecha_emision:
+                    try:
+                        fecha_obj = datetime.strptime(fecha_emision, '%Y-%m-%d').date()
+                    except ValueError:
+                        fecha_obj = None
+                else:
+                    fecha_obj = None
+                    
+                monto = datos.get('monto_total', 0)
+                try:
+                    monto = float(monto)
+                except:
+                    monto = 0.0
+                
+                HistorialReciboServicio.objects.create(
+                    propietario=request.user,
+                    presupuesto=presupuesto,
+                    fecha_emision=fecha_obj,
+                    monto_total=monto,
+                    datos_json=datos,
+                    archivo_drive_id=archivo['id']
+                )
+                procesados += 1
+                
+        return JsonResponse({
+            'success': True,
+            'procesados': procesados,
+            'mensaje': f'Se procesaron {procesados} recibos nuevos.'
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': f'Ocurrió un error al procesar: {str(e)}'}, status=500)
+
+@login_required
 def predecir_recibo_presupuesto(request, presupuesto_id):
     from django.shortcuts import get_object_or_404
     from django.http import JsonResponse
