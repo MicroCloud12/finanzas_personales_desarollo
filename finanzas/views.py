@@ -1886,7 +1886,7 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
     from django.shortcuts import get_object_or_404
     from django.http import JsonResponse
     from .models import Presupuesto, HistorialReciboServicio
-    from .services import GoogleDriveService, get_gemini_service
+    from .services import get_gemini_service
     from datetime import datetime
     import json
     
@@ -1900,77 +1900,12 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
         return JsonResponse({'error': 'Predicción no configurada para esta categoría'}, status=400)
 
     try:
-        drive_service = GoogleDriveService(request.user)
         gemini_service = get_gemini_service()
-        
-        # 1. Buscar carpeta
-        query_recibos = "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='recibos' or name='Recibos' or name='RECIBOS')"
-        carpetas = drive_service.service.files().list(q=query_recibos, spaces='drive', fields='files(id)').execute().get('files', [])
-        if not carpetas:
-            return JsonResponse({'error': 'Carpeta Recibos no encontrada.'}, status=404)
-            
-        carpeta_id = carpetas[0]['id']
-        cat_upper = categoria_lower.upper()
-        cat_title = categoria_lower.capitalize()
-        query_sub = f"mimeType='application/vnd.google-apps.folder' and '{carpeta_id}' in parents and trashed=false and (name='{categoria_lower}' or name='{cat_title}' or name='{cat_upper}')"
-        
-        subcarpetas = drive_service.service.files().list(q=query_sub, spaces='drive', fields='files(id)').execute().get('files', [])
-        if not subcarpetas:
-            return JsonResponse({'error': f'Subcarpeta {categoria_lower} no encontrada.'}, status=404)
-            
-        subcarpeta_id = subcarpetas[0]['id']
-        
-        # 2. Obtener archivos
-        archivos = drive_service.service.files().list(
-            q=f"'{subcarpeta_id}' in parents and trashed=false",
-            fields="files(id, name, mimeType)"
-        ).execute().get('files', [])
-        
-        if not archivos:
-            return JsonResponse({'error': 'No hay archivos para analizar en la carpeta.'}, status=404)
-            
-        # 3. Procesar archivos nuevos
-        for archivo in archivos:
-            # Ignorar si no es imagen o pdf
-            if not archivo['mimeType'].startswith('image/') and archivo['mimeType'] != 'application/pdf':
-                continue
                 
-            # Verificar si ya existe en base de datos
-            if not HistorialReciboServicio.objects.filter(archivo_drive_id=archivo['id']).exists():
-                file_content = drive_service.get_file_content(archivo['id']).read()
-                
-                # Extraer datos con Gemini
-                datos = gemini_service.extract_data("recibo_servicio", file_content, archivo['mimeType'])
-                
-                # Guardar
-                fecha_emision = datos.get('fecha_emision')
-                if fecha_emision:
-                    try:
-                        fecha_obj = datetime.strptime(fecha_emision, '%Y-%m-%d').date()
-                    except ValueError:
-                        fecha_obj = None
-                else:
-                    fecha_obj = None
-                    
-                monto = datos.get('monto_total', 0)
-                try:
-                    monto = float(monto)
-                except:
-                    monto = 0.0
-                
-                HistorialReciboServicio.objects.create(
-                    propietario=request.user,
-                    presupuesto=presupuesto,
-                    fecha_emision=fecha_obj,
-                    monto_total=monto,
-                    datos_json=datos,
-                    archivo_drive_id=archivo['id']
-                )
-                
-        # 4. Obtener todo el historial
+        # 1. Obtener todo el historial de la base de datos
         historial = HistorialReciboServicio.objects.filter(presupuesto=presupuesto).order_by('fecha_emision')
         if not historial.exists():
-            return JsonResponse({'error': 'No se pudo extraer historial válido de los recibos.'}, status=400)
+            return JsonResponse({'error': 'No hay historial de recibos. Asegúrate de procesar tus recibos primero.'}, status=400)
             
         datos_historial = []
         for h in historial:
@@ -1982,9 +1917,9 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
             
         contexto = json.dumps(datos_historial)
         
-        # 5. Pedir predicción
+        # 2. Pedir predicción a Gemini
         prediccion = gemini_service.extract_from_text("prediccion_servicio", "", contexto)
-        print("DEBUG PREDICCION GEMINI:", prediccion)
+        
         monto_predicho = prediccion.get("monto_predicho", 0)
         fecha_predicha = prediccion.get("fecha_predicha", "")
         razonamiento = prediccion.get("razonamiento", "Sin razonamiento proporcionado por la IA.")
@@ -2001,7 +1936,7 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
             except ValueError:
                 pass
                 
-        # 6. Actualizar presupuesto
+        # 3. Actualizar presupuesto
         actualizado = False
         if monto_predicho > 0:
             presupuesto.monto_presupuestado = monto_predicho
