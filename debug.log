@@ -1340,3 +1340,16 @@ ERROR 2026-05-31 12:35:29,510 services Error: La respuesta de Gemini no es un JS
 Para poder ayudarte, por favor, proporcióna el JSON con el historial de montos y fechas. Si el JSON contiene la información necesaria, podré extraerla y presentarla en el formato solicitado.
 
 Si tu objetivo es la predicción de montos futuros, te recomiendo utilizar herramientas o modelos de análisis financiero más avanzados que puedan procesar y analizar tendencias a lo largo del tiempo.
+INFO 2026-06-01 20:56:56,956 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-01 20:57:00,553 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2026-06-01 20:57:09,582 tasks Tienda reconocida por IA: LIVERPOOL
+INFO 2026-06-01 20:57:12,434 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-06-01 20:57:12,682 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2026-06-01 20:57:18,123 tasks Tienda reconocida por IA: LA COMER
+INFO 2026-06-01 20:57:21,332 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-01 20:57:21,912 tasks Tienda reconocida por IA: LA COMER
+INFO 2026-06-01 20:57:26,531 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-01 20:57:29,641 tasks Tienda reconocida por IA: OXXO
+INFO 2026-06-01 20:57:34,660 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-01 20:57:37,991 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-01 20:57:39,772 tasks Tienda nueva detectada: LA COMER
