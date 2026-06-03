@@ -95,6 +95,7 @@ urlpatterns = [
     path('cuentas/editar/<int:cuenta_id>/', views.editar_cuenta, name='editar_cuenta'),
     path('cuentas/eliminar/<int:cuenta_id>/', views.eliminar_cuenta, name='eliminar_cuenta'),
     path('presupuesto/', views.presupuesto_view, name='presupuesto'),
+    path('presupuesto/historicos/', views.revisar_historicos, name='revisar_historicos'),
     path('presupuesto/crear/', views.crear_presupuesto, name='crear_presupuesto'),
     path('presupuesto/<int:presupuesto_id>/buscar-recibos/', views.buscar_recibos_presupuesto, name='buscar_recibos_presupuesto'),
     path('presupuesto/<int:presupuesto_id>/procesar-recibos-anteriores/', views.procesar_recibos_anteriores_presupuesto, name='procesar_recibos_anteriores_presupuesto'),

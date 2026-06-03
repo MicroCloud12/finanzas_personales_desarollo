@@ -1960,3 +1960,18 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': f'Ocurrió un error al predecir: {str(e)}'}, status=500)
+
+@login_required
+def revisar_historicos(request):
+    """
+    Vista para revisar el historial de recibos procesados (luz, agua, gas).
+    """
+    from .models import HistorialReciboServicio
+    
+    historicos = HistorialReciboServicio.objects.filter(
+        propietario=request.user
+    ).select_related('presupuesto').order_by('-fecha_emision', '-id')
+    
+    return render(request, 'revisar_historicos.html', {
+        'historicos': historicos
+    })
