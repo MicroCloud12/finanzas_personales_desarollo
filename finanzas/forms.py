@@ -236,10 +236,11 @@ from .models import Presupuesto
 class PresupuestoForm(forms.ModelForm):
     class Meta:
         model = Presupuesto
-        fields = ['categoria', 'monto_presupuestado', 'es_recurrente', 'mes', 'anio']
+        fields = ['categoria', 'monto_presupuestado', 'monto_real', 'es_recurrente', 'mes', 'anio']
         help_texts = {
             'categoria': "Ej. Vivienda, Alimentación, Transporte.",
             'monto_presupuestado': "Monto límite que planeas gastar en esta categoría.",
+            'monto_real': "Monto realmente gastado o facturado en este periodo.",
             'es_recurrente': "Si está activo, este presupuesto se aplicará todos los meses.",
             'mes': "Solo si NO es recurrente. (1-12)",
             'anio': "Solo si NO es recurrente. Ej. 2026",

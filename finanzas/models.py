@@ -610,6 +610,7 @@ class Presupuesto(models.Model):
     propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='presupuestos')
     categoria = models.CharField(max_length=100, help_text="Ej. Vivienda, Alimentación, Transporte")
     monto_presupuestado = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    monto_real = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Monto real gastado o facturado")
     
     es_recurrente = models.BooleanField(default=True, help_text="Si es verdadero, aplica para todos los meses")
     mes = models.IntegerField(null=True, blank=True, help_text="Mes específico (1-12) si no es recurrente")

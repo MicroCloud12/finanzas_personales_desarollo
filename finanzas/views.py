@@ -1788,6 +1788,26 @@ def crear_presupuesto(request):
     return render(request, 'crear_presupuesto.html', {'form': form})
 
 @login_required
+def editar_presupuesto(request, presupuesto_id):
+    from .forms import PresupuestoForm
+    from .models import Presupuesto
+    from django.contrib import messages
+    from django.shortcuts import get_object_or_404
+    
+    presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
+    
+    if request.method == 'POST':
+        form = PresupuestoForm(request.POST, instance=presupuesto)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Concepto de presupuesto actualizado exitosamente.')
+            return redirect('presupuesto')
+    else:
+        form = PresupuestoForm(instance=presupuesto)
+        
+    return render(request, 'editar_presupuesto.html', {'form': form, 'presupuesto': presupuesto})
+
+@login_required
 def buscar_recibos_presupuesto(request, presupuesto_id):
     from django.shortcuts import get_object_or_404
     from django.contrib import messages
