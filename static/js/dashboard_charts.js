@@ -325,96 +325,80 @@ function initSavingsGrowthChart() {
     });
 }
 
-// Gráfico de Comparing Budget and Expense
 function initBudgetVsActualChart() {
     const canvas = document.getElementById('budgetVsActualChart');
     if (!canvas) return;
-
-    // Mock data for Budget vs Actual (Comparing of budget and expence)
-    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
-    const expenseData = [4000, 2800, 3500, 4800, 2500, 5000, 2200];
-    const budgetData = [5000, 2800, 3800, 5500, 4000, 6800, 5000];
-
-    new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Expense',
-                    data: expenseData,
-                    backgroundColor: '#8B5CF6', // Solid purple
-                    borderRadius: 20,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.7,
-                    borderSkipped: false
+    const url = canvas.dataset.url;
+    if (!url) return;
+    
+    fetch(url)
+        .then(resp => resp.json())
+        .then(data => {
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Gasto Real',
+                            data: data.real,
+                            backgroundColor: '#8B5CF6', // Solid purple
+                            borderRadius: 4,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.7
+                        },
+                        {
+                            label: 'Presupuesto',
+                            data: data.presupuestado,
+                            backgroundColor: '#EDE9FE', // Light transparent purple
+                            borderRadius: 4,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.7
+                        }
+                    ]
                 },
-                {
-                    label: 'Budget',
-                    data: budgetData,
-                    backgroundColor: '#EDE9FE', // Light transparent purple
-                    borderRadius: 20,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.7,
-                    borderSkipped: false
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            // Grouped: false allows bars to overlay each other on the same x category 
-            // BUT ChartJS overlaid bars are drawn in order. Budget is drawn 2nd so it covers Expense? 
-            // We want Expense ON TOP. So we place Expense FIRST in datasets? No, ChartJS draws datasets in index order.
-            // Dataset 0 drawn first, then Dataset 1. So Dataset 1 is on top.
-            // Wait, we want Expense on top. Let's make Budget Dataset 0, Expense Dataset 1.
-            layout: { padding: { top: 20, right: 10, left: 10, bottom: 0 } },
-            scales: {
-                x: {
-                    stacked: false,
-                    grid: { display: false },
-                    ticks: { font: { family: 'Outfit', size: 11 }, color: '#9ca3af' }
-                },
-                y: {
-                    stacked: false,
-                    beginAtZero: true,
-                    grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
-                    ticks: {
-                        callback: function (value) { return '$' + value.toLocaleString(); },
-                        font: { family: 'Outfit', size: 11 }, color: '#9ca3af'
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#ffffff',
-                    titleColor: '#1F2937',
-                    bodyColor: '#4B5563',
-                    borderColor: '#E5E7EB',
-                    borderWidth: 1,
-                    padding: 12,
-                    titleFont: { family: 'Outfit', size: 13, weight: 'bold' },
-                    bodyFont: { family: 'Outfit', size: 13, weight: 'bold' },
-                    cornerRadius: 12,
-                    callbacks: {
-                        label: function (context) {
-                            return context.dataset.label + ': $' + Number(context.parsed.y).toLocaleString();
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 20, right: 10, left: 10, bottom: 0 } },
+                    scales: {
+                        x: {
+                            stacked: false,
+                            grid: { display: false },
+                            ticks: { font: { family: 'Outfit', size: 11 }, color: '#9ca3af' }
+                        },
+                        y: {
+                            stacked: false,
+                            beginAtZero: true,
+                            grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
+                            ticks: {
+                                callback: function (value) { return '$' + value.toLocaleString(); },
+                                font: { family: 'Outfit', size: 11 }, color: '#9ca3af'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#ffffff',
+                            titleColor: '#1F2937',
+                            bodyColor: '#4B5563',
+                            borderColor: '#E5E7EB',
+                            borderWidth: 1,
+                            padding: 12,
+                            titleFont: { family: 'Outfit', size: 13, weight: 'bold' },
+                            bodyFont: { family: 'Outfit', size: 13, weight: 'bold' },
+                            cornerRadius: 12,
+                            callbacks: {
+                                label: function (context) {
+                                    return context.dataset.label + ': $' + Number(context.parsed.y).toLocaleString();
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
-    });
-
-    // Fix overlaid z-index by re-ordering datasets array in data object config:
-    const lastChart = Chart.instances.at(-1);
-    if (lastChart) {
-        const chartConfig = lastChart.config;
-        const datasets = chartConfig._config.data.datasets;
-        datasets.reverse();
-        lastChart.update();
-    }
+            });
+        });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

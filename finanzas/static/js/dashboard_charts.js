@@ -112,9 +112,72 @@ function initInversionesChart() {
 
 
 
+function initBudgetVsActualChart() {
+    console.log("initBudgetVsActualChart called");
+    const canvas = document.getElementById('budgetVsActualChart');
+    if (!canvas) {
+        console.log("canvas budgetVsActualChart not found");
+        return;
+    }
+    const url = canvas.dataset.url;
+    if (!url) {
+        console.log("no data-url on canvas");
+        return;
+    }
+    console.log("Fetching budget data from", url);
+    
+    fetch(url)
+        .then(resp => resp.json())
+        .then(data => {
+            console.log("Budget data received:", data);
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Gasto Real',
+                            data: data.real,
+                            backgroundColor: '#4F46E5', // Indigo-600
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Presupuesto',
+                            data: data.presupuestado,
+                            backgroundColor: '#C7D2FE', // Indigo-200
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                borderDash: [2, 4],
+                                color: '#f3f4f6'
+                            },
+                            ticks: {
+                                callback: value => '$' + value.toLocaleString()
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initGastosChart();
     initFlujoDineroChart();
     initInversionesChart();
-    initGananciasMensualesChart();
+    initBudgetVsActualChart();
 });

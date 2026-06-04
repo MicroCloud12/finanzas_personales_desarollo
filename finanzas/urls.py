@@ -17,6 +17,7 @@ urlpatterns = [
     path('transacciones/<int:transaccion_id>/editar/', views.editar_transaccion, name='editar_transaccion'),
     path('transacciones/<int:transaccion_id>/eliminar/', views.eliminar_transaccion, name='eliminar_transaccion'),
     path('api/datos-gastos-categoria/', views.datos_gastos_categoria, name='api_datos_gastos'),
+    path('api/datos-presupuesto/', views.datos_presupuesto, name='api_datos_presupuesto'),
     path('api/datos-flujo-dinero/', views.datos_flujo_dinero, name='api_flujo_dinero'),
     path('api/datos-inversiones/', views.datos_inversiones, name='api_datos_inversiones'),
     path('api/dashboard/ingresos-tarjeta/', views.api_ingresos_tarjeta, name='api_ingresos_tarjeta'),

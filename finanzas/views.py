@@ -602,6 +602,27 @@ def datos_gastos_categoria(request):
     return JsonResponse(data)
 
 @login_required
+def datos_presupuesto(request):
+    from .models import Presupuesto
+    print(f"DEBUG: api_datos_presupuesto hit by {request.user}")
+    presupuestos = Presupuesto.objects.filter(propietario=request.user).order_by('-monto_presupuestado')
+    
+    labels = []
+    data_presupuestado = []
+    data_real = []
+    
+    for p in presupuestos:
+        labels.append(p.categoria)
+        data_presupuestado.append(float(p.monto_presupuestado))
+        data_real.append(float(p.monto_real))
+        
+    return JsonResponse({
+        'labels': labels,
+        'presupuestado': data_presupuestado,
+        'real': data_real
+    })
+
+@login_required
 def datos_flujo_dinero(request):
     year = int(request.GET.get('year', datetime.now().year))
     month = int(request.GET.get('month', datetime.now().month))

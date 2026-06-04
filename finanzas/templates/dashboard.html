@@ -509,7 +509,7 @@
                     </div>
                 </div>
                 <div class="relative h-96 w-full">
-                    <canvas id="budgetVsActualChart"></canvas>
+                    <canvas id="budgetVsActualChart" data-url="{% url 'api_datos_presupuesto' %}"></canvas>
                 </div>
             </div>
 
@@ -562,7 +562,7 @@
 </div>
 
 {% block javascript %}
-<script src="{% static 'js/dashboard_charts.js' %}?v=9"></script>
+<script src="{% static 'js/dashboard_charts.js' %}?v=12"></script>
 <script src="{% static 'js/dashboard_cards.js' %}"></script>
 {% endblock javascript %}
 {% endblock %}
