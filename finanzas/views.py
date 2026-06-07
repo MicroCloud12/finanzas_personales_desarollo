@@ -120,6 +120,8 @@ Vista de inicio, redirige a la página de inicio,
 inicio de sesión y registro.
 '''
 def home(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
     return render(request, 'index.html')
 
 def iniciosesion(request):
