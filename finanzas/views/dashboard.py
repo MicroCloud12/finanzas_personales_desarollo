@@ -15,7 +15,7 @@ from django.contrib.auth.models import User
 from django.utils.dateformat import DateFormat
 from django.db.models.functions import TruncMonth
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 
@@ -228,9 +228,13 @@ def vista_dashboard(request):
     return render(request, 'dashboard.html', context)
 
 @login_required
+@require_GET
 def datos_gastos_categoria(request):
-    year = int(request.GET.get('year', datetime.now().year))
-    month = int(request.GET.get('month', datetime.now().month))
+    try:
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+    except ValueError:
+        return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
     gastos_por_categoria = registro_transacciones.objects.filter(
         propietario=request.user,
         tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'],
@@ -244,6 +248,7 @@ def datos_gastos_categoria(request):
     return JsonResponse(data)
 
 @login_required
+@require_GET
 def datos_presupuesto(request):
     print(f"DEBUG: api_datos_presupuesto hit by {request.user}")
     presupuestos = Presupuesto.objects.filter(propietario=request.user).order_by('-monto_presupuestado')
@@ -264,9 +269,13 @@ def datos_presupuesto(request):
     })
 
 @login_required
+@require_GET
 def datos_flujo_dinero(request):
-    year = int(request.GET.get('year', datetime.now().year))
-    month = int(request.GET.get('month', datetime.now().month))
+    try:
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+    except ValueError:
+        return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
     transacciones_del_mes = registro_transacciones.objects.filter(
         propietario=request.user,
         fecha__year=year,
@@ -281,6 +290,7 @@ def datos_flujo_dinero(request):
     return JsonResponse(data)
 
 @login_required
+@require_GET
 def datos_ganancias_mensuales(request):
     """Retorna las ganancias mensuales acumuladas de las inversiones del usuario.
     profits = InvestmentService.calculate_monthly_profit(request.user)
@@ -296,6 +306,7 @@ def datos_ganancias_mensuales(request):
     return JsonResponse({'labels': labels, 'data': data})
 
 @login_required
+@require_GET
 def datos_inversiones(request):
     
     qs = (
@@ -314,6 +325,7 @@ def datos_inversiones(request):
 Deudas y amortizaciones
 '''
 @login_required
+@require_GET
 def api_ingresos_tarjeta(request):
     try:
         cuenta_nombre = request.GET.get('cuenta_nombre', '')
@@ -323,8 +335,11 @@ def api_ingresos_tarjeta(request):
         if not cuenta_nombre or not year or not month:
             return JsonResponse({'status': 'error', 'message': 'Parámetros incompletos'}, status=400)
             
-        year = int(year)
-        month = int(month)
+        try:
+            year = int(year)
+            month = int(month)
+        except ValueError:
+            return JsonResponse({'status': 'error', 'message': 'El formato de fecha es inválido'}, status=400)
         
         # Calcular el mes anterior para la comparación
         if month == 1:
@@ -418,7 +433,6 @@ def api_ingresos_tarjeta(request):
         })
         
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Error en api_ingresos_tarjeta: {e}")
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        logger.error(f"Error en api_ingresos_tarjeta: {e}")
+        return JsonResponse({'status': 'error', 'message': 'Ha ocurrido un error inesperado al procesar los ingresos.'}, status=500)
 

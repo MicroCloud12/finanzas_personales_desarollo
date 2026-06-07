@@ -269,7 +269,7 @@ def marcar_ticket_facturado(request, ticket_id):
         
     return redirect('revisar_facturas_pendientes')
 
-@csrf_exempt
+@require_POST
 @login_required
 def actualizar_json_factura(request, ticket_id):
     """
@@ -288,9 +288,10 @@ def actualizar_json_factura(request, ticket_id):
                 factura_obj.save()
                 return JsonResponse({'status': 'success'})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            logger.error(f"Error actualizando json factura: {e}")
+            return JsonResponse({'status': 'error', 'message': 'Error inesperado procesando la solicitud'}, status=400)
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 @login_required
 def editar_factura_registro(request, factura_id):
@@ -326,7 +327,8 @@ def eliminar_factura_registro(request, factura_id):
     context = {'factura': factura}
     return render(request, 'confirmar_eliminar_factura.html', context)
 
-@csrf_exempt
+@require_POST
+@login_required
 def guardar_configuracion_tienda(request):
     """
     BOTÓN 1: ENSEÑAR (Guardar Configuración)
@@ -355,9 +357,9 @@ def guardar_configuracion_tienda(request):
         return JsonResponse({'status': 'success', 'message': f'Configuración de {nombre_tienda} {accion} correctamente.'})
 
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        logger.error(f"Error guardando config tienda: {e}")
+        return JsonResponse({'status': 'error', 'message': 'Ocurrió un error inesperado al guardar la configuración'}, status=500)
 
-@csrf_exempt
 @require_POST
 @login_required
 def agregar_campo_tienda(request):
@@ -385,10 +387,11 @@ def agregar_campo_tienda(request):
             return JsonResponse({'success': True, 'mensaje': 'El campo ya existía'})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        logger.error(f"Error agregando campo tienda: {e}")
+        return JsonResponse({'success': False, 'error': 'Ocurrió un error inesperado al agregar el campo'}, status=500)
 
-@csrf_exempt
 @require_POST
+@login_required
 def eliminar_campo_tienda(request):
     try:
         data = json.loads(request.body)
@@ -412,9 +415,11 @@ def eliminar_campo_tienda(request):
             return JsonResponse({'success': True, 'mensaje': 'El campo no estaba en la configuración'})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        logger.error(f"Error eliminando campo tienda: {e}")
+        return JsonResponse({'success': False, 'error': 'Ocurrió un error inesperado al eliminar el campo'}, status=500)
 
-@csrf_exempt
+@require_POST
+@login_required
 def confirmar_datos_factura(request):
     """
     BOTÓN 2: LA PALOMA (Confirmar Transacción)
@@ -430,9 +435,6 @@ def confirmar_datos_factura(request):
         total = data.get('total', 0)
         fecha = data.get('fecha')
         datos_json = data.get('datos_facturacion', {}) # El JSON completo con folio, rfc, etc.
-
-        if not request.user.is_authenticated:
-             return JsonResponse({'status': 'error', 'message': 'Usuario no autenticado'}, status=403)
 
         defaults = {
             'propietario': request.user,
@@ -460,5 +462,6 @@ def confirmar_datos_factura(request):
         return JsonResponse({'status': 'success', 'message': 'Factura guardada y lista para procesar.'})
 
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        logger.error(f"Error confirmando datos factura: {e}")
+        return JsonResponse({'status': 'error', 'message': 'Ocurrió un error inesperado al guardar la factura.'}, status=500)
 
