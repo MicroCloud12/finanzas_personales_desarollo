@@ -10,6 +10,23 @@ document.addEventListener('DOMContentLoaded', function () {
     let cancelRequested = false;
     let currentTaskId = null;
     let currentGroupId = null;
+    let currentSleepTimeout = null;
+    let currentSleepResolve = null;
+
+    function sleep(ms) { 
+        return new Promise(resolve => {
+            currentSleepResolve = resolve;
+            currentSleepTimeout = setTimeout(() => {
+                currentSleepResolve = null;
+                resolve();
+            }, ms);
+        }); 
+    }
+
+    function cancelSleep() {
+        if (currentSleepTimeout) clearTimeout(currentSleepTimeout);
+        if (currentSleepResolve) currentSleepResolve();
+    }
 
     startBtn.addEventListener('click', async function () {
         startBtn.disabled = true;
@@ -46,7 +63,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (error.message === "Cancelado_por_usuario") {
                 updateProgress(100, "Proceso Cancelado", 'bg-yellow-500');
                 startBtn.disabled = false;
-                if (cancelBtn) cancelBtn.classList.add('hidden');
+                if (cancelBtn) {
+                    cancelBtn.classList.add('hidden');
+                    cancelBtn.innerText = "Cancelar Procesamiento";
+                    cancelBtn.disabled = false;
+                }
             } else {
                 handleError(error.message);
             }
@@ -54,28 +75,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (cancelBtn) {
-        cancelBtn.addEventListener('click', async function() {
+        cancelBtn.addEventListener('click', function() {
             cancelRequested = true;
             this.disabled = true;
             this.innerText = "Cancelando...";
+            cancelSleep(); // Despierta el loop inmediatamente para que lance la excepción
             
-            try {
-                await fetch('/api/cancelar-procesamiento/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        task_id: currentTaskId,
-                        group_id: currentGroupId
-                    })
-                });
-            } catch (e) {
-                console.error("Error al cancelar en servidor", e);
-            }
-            this.innerText = "Cancelar Procesamiento";
-            this.disabled = false;
+            // Lanzamos la petición al servidor pero no bloqueamos la UI esperándola
+            fetch('/api/cancelar-procesamiento/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    task_id: currentTaskId,
+                    group_id: currentGroupId
+                })
+            }).catch(e => console.error("Error al cancelar en servidor", e));
         });
     }
 
@@ -117,8 +134,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
-
-    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
     function updateProgress(percentage, text, color = 'bg-indigo-600') {
         progressBar.style.width = `${percentage}%`;
