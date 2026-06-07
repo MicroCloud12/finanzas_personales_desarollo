@@ -23,174 +23,130 @@ def load_and_optimize_image(file_content, max_width: int = 1024, quality: int = 
     image.save(buffer, format="JPEG", quality=quality)
     return buffer.getvalue()
 
+def _get_optimized_file_data(gdrive_service, file_id: str, mime_type: str) -> bytes:
+    """Descarga y optimiza el archivo de Drive si es imagen."""
+    file_content = gdrive_service.get_file_content(file_id)
+    return load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
+
+def _get_files_from_drive_folder(user, folder_name: str, mimetypes=None):
+    """Obtiene la lista de archivos de una carpeta específica de Drive."""
+    gdrive_service = GoogleDriveService(user)
+    if mimetypes is None:
+        mimetypes = ['image/jpeg', 'image/png', 'application/pdf']
+    return gdrive_service.list_files_in_folder(folder_name=folder_name, mimetypes=mimetypes)
+
+def _build_user_context(user) -> str:
+    from .models import Cuenta, registro_transacciones
+    cuentas = Cuenta.objects.filter(propietario=user)
+    lista_cuentas_str = ", ".join([f"'{c.nombre}' (Terminación: {c.terminacion or 'N/A'})" for c in cuentas])
+    categorias = list(registro_transacciones.objects.filter(propietario=user).values_list('categoria', flat=True).distinct()[:20])
+    return f"Cuentas disponibles del usuario: [{lista_cuentas_str}]. Categorías conocidas del usuario: {categorias}."
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime_type: str):
-    """
-    Procesa un único ticket: lo descarga, obtiene el contexto del usuario (sus cuentas
-    y categorías), lo analiza con Gemini y lo guarda como pendiente con sugerencias.
-    """
+    """Procesa un único ticket: extrae datos con Gemini y lo guarda como pendiente."""
     try:
-        from django.contrib.auth.models import User
-        # Importamos los modelos necesarios para construir el contexto
-        from .models import Cuenta, registro_transacciones
-        
         user = User.objects.get(id=user_id)
-        gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service()
-        transaction_service = TransactionService()
+        file_data = _get_optimized_file_data(GoogleDriveService(user), file_id, mime_type)
+        contexto_usuario = _build_user_context(user)
         
-        # Descargamos el archivo de Drive
-        file_content = gdrive_service.get_file_content(file_id)
-
-        # --- LA MAGIA: OBTENER CONTEXTO DEL USUARIO ---
-        
-        # 1. Obtenemos las tarjetas/cuentas registradas por el usuario
-        cuentas = Cuenta.objects.filter(propietario=user)
-        lista_cuentas_str = ", ".join([f"'{c.nombre}' (Terminación: {c.terminacion or 'N/A'})" for c in cuentas])
-        
-        # 2. Obtenemos las categorías que el usuario suele usar para que la IA no invente nombres nuevos
-        # Tomamos las categorías únicas de sus últimas transacciones
-        categorias = list(registro_transacciones.objects.filter(propietario=user).values_list('categoria', flat=True).distinct()[:20])
-        
-        # 3. Construimos el texto de contexto para instruir a Gemini
-        contexto_usuario = f"Cuentas disponibles del usuario: [{lista_cuentas_str}]. Categorías conocidas del usuario: {categorias}."
-        
-        # -------------------------------------------
-
-        # Preparamos la imagen (compresión) o PDF
-        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
-        
-        # --- LLAMADA A GEMINI CON EL CONTEXTO INYECTADO ---
-        extracted_data = gemini_service.extract_data(
+        extracted_data = get_gemini_service().extract_data(
             prompt_name="tickets",
             file_data=file_data,
             mime_type=mime_type,
-            context=contexto_usuario  # <-- Aquí le pasamos sus tarjetas y categorías
+            context=contexto_usuario
         )
         
-        # Si Gemini devuelve una lista, tomamos el primer elemento
         if isinstance(extracted_data, list):
             extracted_data = extracted_data[0] if extracted_data else {}
 
-        # Verificamos si Gemini devolvió un error de procesamiento
         if extracted_data.get("error"):
              return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data.get('raw_response', 'Error desconocido')}
 
-        # Guardamos el ticket pendiente para que el usuario lo revise (ya con los dropdowns pre-seleccionados)
-        transaction_service.create_pending_transaction(user, extracted_data)
-        
+        TransactionService().create_pending_transaction(user, extracted_data)
         return {'status': 'SUCCESS', 'file_name': file_name}
-
     except Exception as e:
-        # Si algo falla (ej. error de red con Drive o Gemini), la tarea se reintentará automáticamente
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 
 @shared_task
 def process_drive_tickets(user_id: int):
-    """
-    Tarea principal: Obtiene la lista de tickets y lanza tareas paralelas para procesarlos.
-    """
+    """Busca tickets en Drive y lanza tareas paralelas."""
     try:
         user = User.objects.get(id=user_id)
-        gdrive_service = GoogleDriveService(user)
-        files_to_process = gdrive_service.list_files_in_folder(
-            folder_name="Tickets de Compra", 
-            mimetypes=['image/jpeg', 'image/png', 'application/pdf']
-        )
+        files_to_process = _get_files_from_drive_folder(user, "Tickets de Compra")
 
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
 
-        job = group(
-            process_single_ticket.s(user.id, item['id'], item['name'], item['mimeType'])
-            for item in files_to_process
-        )
-        
+        job = group(process_single_ticket.s(user.id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
         result_group = job.apply_async()
-        result_group.save() # ¡Esto es clave! Guarda el estado del grupo en el backend de resultados.
+        result_group.save()
 
-        # --- CAMBIO IMPORTANTE ---
-        # Devolvemos el ID del grupo para que el frontend pueda monitorearlo.
         return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
-
     except Exception as e:
-        # Manejo de errores
         return {'status': 'ERROR', 'message': str(e)}
+
+def _calculate_investment_metrics(extracted_data: dict) -> dict:
+    try:
+        cantidad = Decimal(str(extracted_data.get("cantidad_titulos", 0)))
+        precio_orig = Decimal(str(extracted_data.get("precio_por_titulo", 0)))
+    except InvalidOperation:
+        raise ValueError('Datos numéricos inválidos de Gemini')
+
+    fecha = parse_date_safely(extracted_data.get("fecha_compra") or extracted_data.get("fecha"))
+    rate = ExchangeRateService().get_usd_mxn_rate(fecha)
+    precio_actual_usd = StockPriceService().get_current_price(extracted_data.get('emisora_ticker', ''))
+    
+    if precio_actual_usd is None:
+        precio_actual_usd = precio_orig if extracted_data.get("moneda") == "USD" else (precio_orig / rate if rate else None)
+
+    if precio_actual_usd is None:
+        raise ValueError('No se pudo obtener el precio actual ni el tipo de cambio')
+
+    precio_usd = precio_orig
+    if extracted_data.get("moneda") == "MXN":
+        if not rate:
+            raise ValueError('Tipo de cambio no disponible para conversión de MXN')
+        precio_usd = precio_orig / rate
+
+    costo_total = cantidad * precio_usd
+    valor_actual = cantidad * precio_actual_usd
+    
+    return {
+        'fecha_compra': extracted_data.get('fecha_compra'),
+        'emisora_ticker': extracted_data.get('emisora_ticker'),
+        'nombre_activo': extracted_data.get('nombre_activo'),
+        'cantidad_titulos': str(cantidad),
+        'precio_por_titulo': str(precio_usd),
+        'costo_total_adquisicion': str(costo_total),
+        'valor_actual_mercado': str(valor_actual),
+        'ganancia_perdida_no_realizada': str(valor_actual - costo_total),
+        'tipo_cambio': str(rate) if rate is not None else None,
+        'moneda': "USD"
+    }
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_inversion(self, user_id: int, file_id: str, file_name: str, mime_type: str):
-    """Procesa una inversión (imagen o PDF) y crea el registro correspondiente."""
+    """Procesa una inversión y crea el registro correspondiente."""
     try:
+        if mime_type not in ('image/jpeg', 'image/png', 'application/pdf'):
+            return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
+            
         user = User.objects.get(id=user_id)
-        gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service()
-        investment_service = InvestmentService()
-        current_price = StockPriceService()
-        file_content = gdrive_service.get_file_content(file_id)
+        file_data = _get_optimized_file_data(GoogleDriveService(user), file_id, mime_type)
 
-        # --- CORRECCIÓN 1: Unificar la preparación de datos y la llamada a Gemini ---
-        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
-
-        extracted_data = gemini_service.extract_data(
-            prompt_name="inversion", # Usamos la clave del prompt "inversion"
+        extracted_data = get_gemini_service().extract_data(
+            prompt_name="inversion",
             file_data=file_data,
             mime_type=mime_type
         )
         
-        if mime_type not in ('image/jpeg', 'image/png', 'application/pdf'):
-            return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
-            
         if isinstance(extracted_data, list):
             extracted_data = extracted_data[0] if extracted_data else {}
-        
-        # (El resto de tu lógica para procesar los datos de inversión se mantiene igual)
-        try:
-            cantidad = Decimal(str(extracted_data.get("cantidad_titulos", 0)))
-            precio_por_titulo_orig = Decimal(str(extracted_data.get("precio_por_titulo", 0)))
-        except InvalidOperation:
-            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Datos numéricos inválidos de Gemini'}
-        
-        # ... (resto de la lógica sin cambios)
-        fecha = parse_date_safely(extracted_data.get("fecha_compra") or extracted_data.get("fecha"))
-        rate_service = ExchangeRateService()
-        rate = rate_service.get_usd_mxn_rate(fecha)
-
-        precio_actual_usd = current_price.get_current_price(extracted_data['emisora_ticker'])
-        if precio_actual_usd is None:
-            precio_actual_usd = precio_por_titulo_orig if extracted_data.get("moneda") == "USD" else (precio_por_titulo_orig / rate if rate else None)
-        
-        if precio_actual_usd is None:
-            return {'status': 'FAILURE', 'file_name': file_name, 'error': 'No se pudo obtener el precio actual ni el tipo de cambio'}
-        
-        # ... (más lógica sin cambios)
-        precio_por_titulo_usd = precio_por_titulo_orig
-        if extracted_data.get("moneda") == "MXN":
-            if rate is None or rate == 0:
-                return {'status': 'FAILURE', 'file_name': file_name, 'error': 'Tipo de cambio no disponible para conversión de MXN'}
-            precio_por_titulo_usd = precio_por_titulo_orig / rate
-        
-        costo_total_adquisicion = cantidad * precio_por_titulo_usd
-        valor_actual_mercado = cantidad * precio_actual_usd
-        ganancia_perdida_no_realizada = valor_actual_mercado - costo_total_adquisicion
-
-        extracted_data['tipo_cambio_usd'] = str(rate) if rate is not None else None
-        
-        valores = {
-            'fecha_compra': extracted_data.get('fecha_compra'),
-            'emisora_ticker': extracted_data.get('emisora_ticker'),
-            'nombre_activo': extracted_data.get('nombre_activo'),
-            'cantidad_titulos': str(cantidad),
-            'precio_por_titulo': str(precio_por_titulo_usd),
-            'costo_total_adquisicion': str(costo_total_adquisicion),
-            'valor_actual_mercado': str(valor_actual_mercado),
-            'ganancia_perdida_no_realizada': str(ganancia_perdida_no_realizada),
-            'tipo_cambio': str(rate) if rate is not None else None,
-            'moneda': "USD"
-        }
-
-        print(f"datos extraidos: {extracted_data}")
-        investment_service.create_pending_investment(user, valores)
+            
+        valores = _calculate_investment_metrics(extracted_data)
+        InvestmentService().create_pending_investment(user, valores)
 
         return {'status': 'SUCCESS', 'file_name': file_name}
 
@@ -203,58 +159,38 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
 
 @shared_task
 def process_drive_investments(user_id):
-    """
-    Tarea para procesar TODOS los archivos de la carpeta 'Inversiones'.
-    """
+    """Tarea para procesar TODOS los archivos de la carpeta 'Inversiones'."""
     try:
         user = User.objects.get(id=user_id)
-        gdrive_service = GoogleDriveService(user)
-        files_to_process = gdrive_service.list_files_in_folder(
-            folder_name="Inversiones",
-            mimetypes=['image/jpeg', 'image/png', 'application/pdf']
-        )
+        files_to_process = _get_files_from_drive_folder(user, "Inversiones")
 
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
 
-        job = group(
-            process_single_inversion.s(user.id, item['id'], item['name'], item['mimeType'])
-            for item in files_to_process
-        )
-        
+        job = group(process_single_inversion.s(user.id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
         result_group = job.apply_async()
-        result_group.save() # ¡Esto es clave! Guarda el estado del grupo en el backend de resultados.
+        result_group.save()
 
-        # --- CAMBIO IMPORTANTE ---
-        # Devolvemos el ID del grupo para que el frontend pueda monitorearlo.
         return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
-
     except Exception as e:
-        # Manejo de errores
         return {'status': 'ERROR', 'message': str(e)}
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_amortization(self, user_id: int, file_id: str, file_name: str, mime_type: str, deuda_id: int):
     """Procesa un único archivo de tabla de amortización."""
     try:
+        if mime_type not in ('image/jpeg', 'image/png', 'application/pdf'):
+            return {'status': 'UNSUPPORTED', 'file_name': file_name}
+            
         user = User.objects.get(id=user_id)
         deuda = Deuda.objects.get(id=deuda_id, propietario=user)
-
-        gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service()
-        file_content = gdrive_service.get_file_content(file_id)
+        file_data = _get_optimized_file_data(GoogleDriveService(user), file_id, mime_type)
         
-        # --- CORRECCIÓN 2: Unificar la preparación de datos y la llamada a Gemini ---
-        file_data = load_and_optimize_image(file_content) if 'image' in mime_type else file_content.getvalue()
-        
-        extracted_data = gemini_service.extract_data(
-            prompt_name="deudas", # Usamos la clave del prompt "deudas"
+        extracted_data = get_gemini_service().extract_data(
+            prompt_name="deudas",
             file_data=file_data,
             mime_type=mime_type
         )
-
-        if mime_type not in ('image/jpeg', 'image/png', 'application/pdf'):
-            return {'status': 'UNSUPPORTED', 'file_name': file_name}
 
         AmortizacionPendiente.objects.create(
             propietario=user,
@@ -272,60 +208,36 @@ def process_single_amortization(self, user_id: int, file_id: str, file_name: str
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 
+def _filter_files_by_name(files, target_name: str) -> list:
+    """Filtra archivos cuyo nombre contenga el texto objetivo (case-insensitive)."""
+    target = target_name.lower()
+    return [f for f in files if target in f['name'].lower()]
+
 @shared_task
 def process_drive_amortizations(user_id: int, deuda_id: int):
-    """
-    Busca tablas de amortización en Drive y lanza tareas para procesar solo
-    los archivos cuyo nombre coincida con el de la deuda.
-    """
+    """Busca tablas de amortización en Drive que coincidan con la deuda."""
     try:
         user = User.objects.get(id=user_id)
-        
-        # --- NUEVA LÓGICA (PASO 1: OBTENER NOMBRE DE LA DEUDA) ---
         try:
             deuda = Deuda.objects.get(id=deuda_id, propietario=user)
-            # Normalizamos el nombre de la deuda para una comparación robusta
-            # Ejemplo: "Préstamo Coche" -> "préstamo coche"
-            nombre_deuda_normalizado = deuda.nombre.lower()
-            print(f"Nombre de deuda normalizado: {nombre_deuda_normalizado}")
         except Deuda.DoesNotExist:
             return {'status': 'ERROR', 'message': 'La deuda especificada no fue encontrada.'}
 
-        gdrive_service = GoogleDriveService(user)
-        todos_los_archivos = gdrive_service.list_files_in_folder(
-            folder_name="Tablas de Amortizacion",
-            mimetypes=['image/jpeg', 'image/png', 'application/pdf']
-        )
-
+        todos_los_archivos = _get_files_from_drive_folder(user, "Tablas de Amortizacion")
+        
         if not todos_los_archivos:
             return {'status': 'NO_FILES', 'message': 'No se encontraron archivos en la carpeta.'}
 
-        # --- NUEVA LÓGICA (PASO 2 y 3: FILTRAR ARCHIVOS) ---
-        files_to_process = []
-        for archivo in todos_los_archivos:
-            # Normalizamos el nombre del archivo
-            # Ejemplo: "Amortizacion - Préstamo Coche.pdf" -> "amortizacion - préstamo coche.pdf"
-            nombre_archivo_normalizado = archivo['name'].lower()
-            print(f"Nombre de archivo normalizado: {nombre_archivo_normalizado}")
-            
-            # Comprobamos si el nombre de la deuda está contenido en el nombre del archivo
-            if nombre_deuda_normalizado in nombre_archivo_normalizado:
-                files_to_process.append(archivo)
-        
-        # --- FIN DE LA NUEVA LÓGICA ---
+        files_to_process = _filter_files_by_name(todos_los_archivos, deuda.nombre)
 
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': f"No se encontraron archivos que coincidan con el nombre '{deuda.nombre}'."}
 
-        job = group(
-            process_single_amortization.s(user.id, item['id'], item['name'], item['mimeType'], deuda_id)
-            for item in files_to_process
-        )
+        job = group(process_single_amortization.s(user.id, item['id'], item['name'], item['mimeType'], deuda_id) for item in files_to_process)
         result_group = job.apply_async()
         result_group.save()
 
         return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
-
     except Exception as e:
         return {'status': 'ERROR', 'message': str(e)}
     
@@ -333,57 +245,56 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
 
     # ... (código existente) ...
 
+def _is_bank_transfer(text: str) -> bool:
+    """Valida rápidamente si el texto corresponde a una transferencia bancaria."""
+    text_upper = text.upper()
+    bank_words = ["TRANSFERENCIA", "SPEI", "CLAVE DE RASTREO", "CUENTA ORIGEN", "CUENTA DESTINO", "FOLIO DE AUTORIZACIÓN", "REFERENCIA NUMÉRICA", "REFERENCIA NUMERICA"]
+    return any(word in text_upper for word in bank_words) and "TICKET" not in text_upper and "FACTURA" not in text_upper
+
+def _normalize_store_name(datos_extraidos: dict) -> str:
+    """Obtiene y normaliza el nombre de la tienda."""
+    nombre_ia = (datos_extraidos.get("tienda") or datos_extraidos.get("establecimiento") or "DESCONOCIDO").upper().strip()
+    
+    if datos_extraidos.get("es_conocida", False):
+        logger.info(f"Tienda reconocida por IA: {nombre_ia}")
+        return nombre_ia
+        
+    tienda_obj = BillingService.buscar_tienda_fuzzy(nombre_ia)
+    if tienda_obj:
+        logger.info(f"Tienda normalizada por Fuzzy: {nombre_ia} -> {tienda_obj.tienda}")
+        return tienda_obj.tienda
+        
+    logger.info(f"Tienda nueva detectada: {nombre_ia}")
+    return nombre_ia
+
+from google.api_core.exceptions import ResourceExhausted
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=10)
 def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mime_type: str):
-    """
-    Procesa un ticket para FACTURACIÓN.
-    Optimizaciones:
-    - Usa PIL para redimensionar (rápido).
-    - Usa Gemini Flash (rápido).
-    - Maneja ResourceExhausted para no atorarse en loops infinitos.
-    """
+    """Procesa un ticket para FACTURACIÓN."""
     try:
         user = User.objects.get(id=user_id)
-        
-        # 1. Drive: Obtener archivo
-        gdrive_service = GoogleDriveService(user)
-        file_content = gdrive_service.get_file_content(file_id)
-        file_bytes = file_content.getvalue()
+        file_bytes = GoogleDriveService(user).get_file_content(file_id).getvalue()
 
-        # 2. Mistral OCR: Obtener texto (Optimizado sin OpenCV pesado)
-        mistral_service = MistralOCRService()
-        # Nota: Asegúrate de que MistralOCRService tenga el método 'get_text_from_image' 
-        # con la optimización de PIL que te di en la respuesta anterior.
-        ocr_result = mistral_service.get_text_from_image(file_bytes, mime_type)
-        
+        ocr_result = MistralOCRService().get_text_from_image(file_bytes, mime_type)
         if "error" in ocr_result:
             return {'status': 'FAILURE', 'file_name': file_name, 'error': f"Mistral: {ocr_result['error']}"}
             
         texto_ticket = ocr_result['text_content']
 
-        # Validación Rápida Mejorada: Ignorar transferencias
-        texto_upper = texto_ticket.upper()
-        palabras_banco = ["TRANSFERENCIA", "SPEI", "CLAVE DE RASTREO", "CUENTA ORIGEN", "CUENTA DESTINO", "FOLIO DE AUTORIZACIÓN", "REFERENCIA NUMÉRICA", "REFERENCIA NUMERICA"]
-        if any(palabra in texto_upper for palabra in palabras_banco) and "TICKET" not in texto_upper and "FACTURA" not in texto_upper:
-             return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia bancaria, ignorado en facturación.'}
+        if _is_bank_transfer(texto_ticket):
+            return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Parece transferencia bancaria, ignorado en facturación.'}
 
-        # 3. Contexto: Identificar tienda localmente (Ultra rápido)
         contexto_str = BillingService.preparar_contexto_para_gemini(texto_ticket)
-
-        # 4. Gemini: Extracción Inteligente
-        gemini_service = get_gemini_service()
         
         try:
-            datos_extraidos = gemini_service.extract_from_text(
+            datos_extraidos = get_gemini_service().extract_from_text(
                 prompt_name="facturacion_from_text_with_context", 
                 text=texto_ticket, 
                 context=contexto_str
             )
         except ResourceExhausted:
-            # SI GEMINI TE BLOQUEA (Error 429), devolvemos estado THROTTLED
-            # Esto evita que Celery reintente infinitamente y sature tu worker.
             logger.warning(f"Rate Limit en Gemini para {file_name}. Pausando...")
-            # Opcional: self.retry(countdown=60) si quieres reintentar en 1 minuto
             return {'status': 'THROTTLED', 'file_name': file_name, 'error': 'Cuota de Gemini excedida (15 RPM).'}
         except Exception as e:
              return {'status': 'FAILURE', 'file_name': file_name, 'error': f"Gemini Error: {str(e)}"}
@@ -397,57 +308,23 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         if datos_extraidos.get("es_transferencia", False):
              return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Gemini detectó que es una transferencia o pago de servicios.'}
 
-        # --- LÓGICA DEFINITIVA DE NORMALIZACIÓN ---
-        
-        # 1. Nombre propuesto por la IA (Ya debería venir normalizado si hizo match)
-        nombre_ia = datos_extraidos.get("tienda") or datos_extraidos.get("establecimiento") or "DESCONOCIDO"
-        nombre_ia = nombre_ia.upper().strip()
-        
-        # 2. Verificamos la bandera de la IA
-        es_conocida_por_ia = datos_extraidos.get("es_conocida", False)
+        tienda_final = _normalize_store_name(datos_extraidos)
 
-        if es_conocida_por_ia:
-            # Si la IA dice que la encontró en la lista, CONFIAMOS EN ELLA.
-            # Esto evita que "WALMART" se convierta en "WAL-MART" y se duplique.
-            tienda_final = nombre_ia
-            logger.info(f"Tienda reconocida por IA: {tienda_final}")
-        else:
-            # Solo si la IA no la reconoció, usamos el Fuzzy Search como respaldo final
-            # por si la IA falló pero el nombre es muy similar.
-            tienda_obj = BillingService.buscar_tienda_fuzzy(nombre_ia)
-            if tienda_obj:
-                tienda_final = tienda_obj.tienda
-                logger.info(f"Tienda normalizada por Fuzzy: {nombre_ia} -> {tienda_final}")
-            else:
-                tienda_final = nombre_ia
-                logger.info(f"Tienda nueva detectada: {tienda_final}")
-
-   # 1. Preparamos el JSON para guardar
         payload_facturacion = datos_extraidos.get("campos_adicionales", {})
-        
-        # 2. Inyectamos la tienda para que el resumen la detecte como conocida
         payload_facturacion['tienda'] = tienda_final
         payload_facturacion['es_conocida'] = True 
 
-        # 3. Guardamos la factura con el JSON enriquecido
         Factura.objects.create(
             propietario=user,
             tienda=tienda_final,
             fecha_emision=parse_date_safely(datos_extraidos.get("fecha")),
             total=Decimal(str(datos_extraidos.get("total", 0))),
-            datos_facturacion=payload_facturacion, # <--- Ahora sí lleva el nombre dentro
+            datos_facturacion=payload_facturacion,
             archivo_drive_id=file_id,
             estado='pendiente' 
         )
 
-        # 4. Devolvemos la respuesta completa para la notificación visual
-        return {
-            'status': 'SUCCESS', 
-            'file_name': file_name, 
-            'tienda': tienda_final,
-            'es_conocida': True, 
-            'mensaje': f"Tienda vinculada: {tienda_final}"
-        }
+        return {'status': 'SUCCESS', 'file_name': file_name, 'tienda': tienda_final, 'es_conocida': True, 'mensaje': f"Tienda vinculada: {tienda_final}"}
 
     except Exception as e:
         logger.error(f"Error fatal procesando {file_name}: {e}")
@@ -455,30 +332,15 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
 
 @shared_task
 def process_drive_for_invoices(user_id: int):
-    """
-    Tarea Maestra: Busca archivos y lanza los workers.
-    """
+    """Tarea Maestra: Busca archivos y lanza los workers."""
     try:
         user = User.objects.get(id=user_id)
-        gdrive_service = GoogleDriveService(user)
-        
-        # Listamos archivos (Asegúrate que la carpeta exista en Drive)
-        files_to_process = gdrive_service.list_files_in_folder(
-            folder_name="Tickets de Compra",
-            mimetypes=['image/jpeg', 'image/png', 'application/pdf']
-        )
+        files_to_process = _get_files_from_drive_folder(user, "Tickets de Compra")
 
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
 
-        # Lanzamos el grupo de tareas
-        # IMPORTANTE: Aquí es donde Python busca 'process_single_invoice'.
-        # Debe estar definida ARRIBA de esta línea o importada correctamente.
-        job = group(
-            process_single_invoice.s(user.id, item['id'], item['name'], item['mimeType'])
-            for item in files_to_process
-        )
-
+        job = group(process_single_invoice.s(user.id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
         result_group = job.apply_async()
         result_group.save()
 
@@ -487,32 +349,37 @@ def process_drive_for_invoices(user_id: int):
     except Exception as e:
         return {'status': 'ERROR', 'message': str(e)}
 
+def _parse_utility_bill_data(datos: dict) -> tuple:
+    from datetime import datetime
+    fecha_emision = datos.get('fecha_emision')
+    fecha_obj = None
+    if fecha_emision:
+        try:
+            fecha_obj = datetime.strptime(fecha_emision, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    try:
+        monto = float(datos.get('monto_total', 0))
+    except (ValueError, TypeError):
+        monto = 0.0
+
+    return fecha_obj, monto
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id: str, file_name: str, mime_type: str):
+    """Procesa un recibo de servicio usando Mistral y Gemini."""
     try:
-        from datetime import datetime
         user = User.objects.get(id=user_id)
         presupuesto = Presupuesto.objects.get(id=presupuesto_id, propietario=user)
+        file_bytes = GoogleDriveService(user).get_file_content(file_id).getvalue()
         
-        gdrive_service = GoogleDriveService(user)
-        gemini_service = get_gemini_service()
-        
-        file_content = gdrive_service.get_file_content(file_id)
-        file_bytes = file_content.getvalue()
-        
-        # 1. Mistral OCR
-        mistral_service = MistralOCRService()
-        ocr_result = mistral_service.get_text_from_image(file_bytes, mime_type)
+        ocr_result = MistralOCRService().get_text_from_image(file_bytes, mime_type)
         if "error" in ocr_result:
             return {'status': 'FAILURE', 'file_name': file_name, 'error': f"Mistral OCR: {ocr_result['error']}"}
             
         texto_recibo = ocr_result['text_content']
-        
-        # 2. Gemini Text
-        datos = gemini_service.extract_from_text(
-            prompt_name="recibo_servicio_from_text",
-            text=texto_recibo
-        )
+        datos = get_gemini_service().extract_from_text(prompt_name="recibo_servicio_from_text", text=texto_recibo)
         
         if isinstance(datos, list):
             datos = datos[0] if datos else {}
@@ -520,20 +387,7 @@ def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id
         if datos.get("error"):
             return {'status': 'FAILURE', 'file_name': file_name, 'error': datos.get('error')}
             
-        fecha_emision = datos.get('fecha_emision')
-        if fecha_emision:
-            try:
-                fecha_obj = datetime.strptime(fecha_emision, '%Y-%m-%d').date()
-            except ValueError:
-                fecha_obj = None
-        else:
-            fecha_obj = None
-            
-        monto = datos.get('monto_total', 0)
-        try:
-            monto = float(monto)
-        except:
-            monto = 0.0
+        fecha_obj, monto = _parse_utility_bill_data(datos)
             
         HistorialReciboServicio.objects.create(
             propietario=user,
@@ -549,52 +403,50 @@ def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
 
+def _get_utility_bill_folder_files(drive_service, categoria_lower: str) -> list:
+    query_recibos = "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='recibos' or name='Recibos' or name='RECIBOS')"
+    carpetas = drive_service.service.files().list(q=query_recibos, spaces='drive', fields='files(id)').execute().get('files', [])
+    if not carpetas:
+        raise ValueError('Carpeta Recibos no encontrada.')
+        
+    carpeta_id = carpetas[0]['id']
+    cat_upper, cat_title = categoria_lower.upper(), categoria_lower.capitalize()
+    query_sub = f"mimeType='application/vnd.google-apps.folder' and '{carpeta_id}' in parents and trashed=false and (name='{categoria_lower}' or name='{cat_title}' or name='{cat_upper}')"
+    
+    subcarpetas = drive_service.service.files().list(q=query_sub, spaces='drive', fields='files(id)').execute().get('files', [])
+    if not subcarpetas:
+        raise ValueError(f'Subcarpeta {categoria_lower} no encontrada.')
+        
+    return drive_service.service.files().list(
+        q=f"'{subcarpetas[0]['id']}' in parents and trashed=false",
+        fields="files(id, name, mimeType)"
+    ).execute().get('files', [])
+
 @shared_task
 def process_drive_utility_bills(user_id: int, presupuesto_id: int, categoria_lower: str):
+    """Busca y procesa recibos de servicio en Drive."""
     try:
         user = User.objects.get(id=user_id)
         drive_service = GoogleDriveService(user)
         
-        # Buscar carpeta principal
-        query_recibos = "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='recibos' or name='Recibos' or name='RECIBOS')"
-        carpetas = drive_service.service.files().list(q=query_recibos, spaces='drive', fields='files(id)').execute().get('files', [])
-        if not carpetas:
-            return {'status': 'NO_FILES', 'message': 'Carpeta Recibos no encontrada.'}
+        try:
+            archivos = _get_utility_bill_folder_files(drive_service, categoria_lower)
+        except ValueError as ve:
+            return {'status': 'NO_FILES', 'message': str(ve)}
             
-        carpeta_id = carpetas[0]['id']
-        cat_upper = categoria_lower.upper()
-        cat_title = categoria_lower.capitalize()
-        query_sub = f"mimeType='application/vnd.google-apps.folder' and '{carpeta_id}' in parents and trashed=false and (name='{categoria_lower}' or name='{cat_title}' or name='{cat_upper}')"
-        
-        subcarpetas = drive_service.service.files().list(q=query_sub, spaces='drive', fields='files(id)').execute().get('files', [])
-        if not subcarpetas:
-            return {'status': 'NO_FILES', 'message': f'Subcarpeta {categoria_lower} no encontrada.'}
-            
-        subcarpeta_id = subcarpetas[0]['id']
-        
-        archivos = drive_service.service.files().list(
-            q=f"'{subcarpeta_id}' in parents and trashed=false",
-            fields="files(id, name, mimeType)"
-        ).execute().get('files', [])
-        
         if not archivos:
             return {'status': 'NO_FILES', 'message': 'No hay archivos para analizar en la carpeta.'}
             
-        files_to_process = []
-        for archivo in archivos:
-            if not archivo['mimeType'].startswith('image/') and archivo['mimeType'] != 'application/pdf':
-                continue
-            if not HistorialReciboServicio.objects.filter(archivo_drive_id=archivo['id']).exists():
-                files_to_process.append(archivo)
+        files_to_process = [
+            a for a in archivos 
+            if (a['mimeType'].startswith('image/') or a['mimeType'] == 'application/pdf') 
+            and not HistorialReciboServicio.objects.filter(archivo_drive_id=a['id']).exists()
+        ]
                 
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No hay recibos nuevos por procesar.'}
             
-        job = group(
-            process_single_utility_bill.s(user.id, presupuesto_id, item['id'], item['name'], item['mimeType'])
-            for item in files_to_process
-        )
-        
+        job = group(process_single_utility_bill.s(user.id, presupuesto_id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
         result_group = job.apply_async()
         result_group.save()
         
