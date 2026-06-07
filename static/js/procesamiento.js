@@ -5,11 +5,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const progressText = document.getElementById('progress-text');
     const progressPercent = document.getElementById('progress-percent');
     const progressBar = document.getElementById('progress-bar');
-    let pollingInterval;
+    const cancelBtn = document.getElementById('cancel-processing-btn'); // Nuevo botón de cancelar
+    let pollingInterval; // No se usa actualmente, se usa sleep
+    let cancelRequested = false;
+    let currentTaskId = null;
+    let currentGroupId = null;
 
     startBtn.addEventListener('click', async function () {
         startBtn.disabled = true;
+        cancelRequested = false;
+        currentTaskId = null;
+        currentGroupId = null;
         progressContainer.classList.remove('hidden');
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
         updateProgress(0, "Iniciando...", 'bg-indigo-600');
 
         try {
@@ -18,27 +26,65 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const initialResponse = await fetch(startUrl);
             const initialData = await initialResponse.json();
-            const initialTaskId = initialData.task_id;
+            currentTaskId = initialData.task_id;
 
             updateProgress(15, "Buscando tickets...");
-            const groupId = await waitForGroupId(initialTaskId);
+            currentGroupId = await waitForGroupId(currentTaskId);
 
             updateProgress(25, "Procesando tickets...");
-            await monitorGroupProgress(groupId);
+            await monitorGroupProgress(currentGroupId);
 
-            updateProgress(100, "¡Proceso completado!", 'bg-green-500');
-            setTimeout(() => {
-                window.location.href = redirectUrl;
-            }, 1500);
+            if (!cancelRequested) {
+                updateProgress(100, "¡Proceso completado!", 'bg-green-500');
+                if (cancelBtn) cancelBtn.classList.add('hidden');
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 1500);
+            }
 
         } catch (error) {
-            handleError(error.message);
+            if (error.message === "Cancelado_por_usuario") {
+                updateProgress(100, "Proceso Cancelado", 'bg-yellow-500');
+                startBtn.disabled = false;
+                if (cancelBtn) cancelBtn.classList.add('hidden');
+            } else {
+                handleError(error.message);
+            }
         }
     });
 
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', async function() {
+            cancelRequested = true;
+            this.disabled = true;
+            this.innerText = "Cancelando...";
+            
+            try {
+                await fetch('/api/cancelar-procesamiento/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        task_id: currentTaskId,
+                        group_id: currentGroupId
+                    })
+                });
+            } catch (e) {
+                console.error("Error al cancelar en servidor", e);
+            }
+            this.innerText = "Cancelar Procesamiento";
+            this.disabled = false;
+        });
+    }
+
     async function waitForGroupId(taskId) {
         while (true) {
+            if (cancelRequested) throw new Error("Cancelado_por_usuario");
             await sleep(2500);
+            if (cancelRequested) throw new Error("Cancelado_por_usuario");
+            
             const response = await fetch(`/resultado-tarea-inicial/${taskId}/`);
             const data = await response.json();
 
@@ -55,7 +101,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function monitorGroupProgress(groupId) {
         while (true) {
+            if (cancelRequested) throw new Error("Cancelado_por_usuario");
             await sleep(2500);
+            if (cancelRequested) throw new Error("Cancelado_por_usuario");
+            
             const response = await fetch(`/estado-grupo/${groupId}/`);
             const data = await response.json();
 
@@ -73,21 +122,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateProgress(percentage, text, color = 'bg-indigo-600') {
         progressBar.style.width = `${percentage}%`;
-        // Removed text injection into the bar itself to fix duplicate % and layout issues
         progressBar.textContent = '';
-        // Update the external percentage text
         if (progressPercent) progressPercent.textContent = `${percentage}%`;
-
-        // Preserve layout classes (h-2.5, rounded-full, transitions) and only switch color
         progressBar.className = `h-2.5 rounded-full transition-all duration-300 ease-out ${color}`;
         progressText.textContent = text;
     }
 
     function handleError(message) {
-        if (pollingInterval) clearInterval(pollingInterval);
         console.error("Error:", message);
         updateProgress(100, `Error: ${message}`, 'bg-red-500');
         startBtn.disabled = false;
+        if (cancelBtn) cancelBtn.classList.add('hidden');
     }
 });
 

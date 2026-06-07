@@ -1419,3 +1419,57 @@ WARNING 2026-06-07 01:02:54,447 utils La fecha extraída '2023-05-20' es muy anti
 WARNING 2026-06-07 01:02:54,448 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
 WARNING 2026-06-07 01:02:54,448 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
 ERROR 2026-06-07 01:16:28,645 ai_service Gemini API Error: Unterminated string starting at: line 2 column 20 (char 21)
+WARNING 2026-06-07 17:36:18,690 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,691 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,691 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,692 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,693 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,694 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,694 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,695 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,696 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,697 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,698 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:36:18,700 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,734 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,735 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,736 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,737 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,737 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,738 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,739 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,739 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,740 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,741 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,742 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:37:30,742 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,426 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,427 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,427 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,427 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,428 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,428 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,429 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,429 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,429 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,430 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,430 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,431 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,431 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,432 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,432 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,432 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,433 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,433 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,434 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,434 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,435 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,436 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,436 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:48:53,437 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+INFO 2026-06-07 17:50:10,541 transacciones Tarea principal revocada: c4edc181-9272-4d37-b740-c27d5f4b0b26
+INFO 2026-06-07 17:50:10,546 transacciones Grupo de tareas revocado: cd8ad67c-0748-4a37-95e7-6e5495d1352f
+INFO 2026-06-07 17:50:11,366 transacciones Tarea principal revocada: c4edc181-9272-4d37-b740-c27d5f4b0b26
+INFO 2026-06-07 17:50:11,369 transacciones Grupo de tareas revocado: cd8ad67c-0748-4a37-95e7-6e5495d1352f
+INFO 2026-06-07 17:50:11,592 transacciones Tarea principal revocada: c4edc181-9272-4d37-b740-c27d5f4b0b26
+INFO 2026-06-07 17:50:11,598 transacciones Grupo de tareas revocado: cd8ad67c-0748-4a37-95e7-6e5495d1352f

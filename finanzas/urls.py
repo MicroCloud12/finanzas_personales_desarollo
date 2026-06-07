@@ -30,6 +30,7 @@ urlpatterns = [
     path('aprobar-todos-tickets/', views.aprobar_todos_tickets, name='aprobar_todos_tickets'),
     path('rechazar-todos-tickets/', views.rechazar_todos_tickets, name='rechazar_todos_tickets'),
     path('estado-grupo/<str:group_id>/', views.get_group_status, name='get_group_status'),
+    path('api/cancelar-procesamiento/', views.cancelar_procesamiento, name='cancelar_procesamiento'),
     path('revisar_tickets/', views.revisar_tickets, name='revisar_tickets'),
     path('inversiones/', views.lista_inversiones, name='lista_inversiones'),
     path('inversiones/crear/', views.crear_inversion, name='crear_inversion'),

@@ -20,6 +20,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 
 from celery.result import AsyncResult, GroupResult
+from config.celery import app as celery_app
 
 from ..utils import parse_date_safely
 from ..tasks import (
@@ -284,6 +285,37 @@ def get_group_status(request, group_id):
     except Exception as e:
         logger.error(f"Error en get_group_status: {e}")
         return JsonResponse({"status": "FAILURE", "info": str(e)}, status=500)
+
+@require_POST
+@login_required
+def cancelar_procesamiento(request):
+    """
+    Controlador para revocar la tarea principal y el grupo de tareas hijo
+    del autoescaneo para detener el consumo de recursos.
+    """
+    try:
+        data = json.loads(request.body)
+        task_id = data.get('task_id')
+        group_id = data.get('group_id')
+
+        if not task_id:
+            return JsonResponse({'status': 'error', 'message': 'Falta task_id'}, status=400)
+
+        # Revocar la tarea principal (por si aún no empieza a hacer dispatch del grupo)
+        celery_app.control.revoke(task_id, terminate=True)
+        logger.info(f"Tarea principal revocada: {task_id}")
+
+        # Si ya se generó el group_id, revocamos todas las subtareas pendientes
+        if group_id:
+            group_result = GroupResult.restore(group_id)
+            if group_result:
+                group_result.revoke()
+                logger.info(f"Grupo de tareas revocado: {group_id}")
+
+        return JsonResponse({'status': 'success', 'message': 'Procesamiento cancelado exitosamente.'})
+    except Exception as e:
+        logger.error(f"Error al cancelar procesamiento: {e}")
+        return JsonResponse({'status': 'error', 'message': 'Ocurrió un error inesperado al cancelar'}, status=500)
      
 '''
 Mercado Pago y suscripciones
