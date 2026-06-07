@@ -1961,6 +1961,9 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
         # 2. Pedir predicción a Gemini
         prediccion = gemini_service.extract_from_text("prediccion_servicio", "", contexto)
         
+        if isinstance(prediccion, list):
+            prediccion = prediccion[0] if prediccion else {}
+            
         monto_predicho = prediccion.get("monto_predicho", 0)
         fecha_predicha = prediccion.get("fecha_predicha", "")
         razonamiento = prediccion.get("razonamiento", "Sin razonamiento proporcionado por la IA.")

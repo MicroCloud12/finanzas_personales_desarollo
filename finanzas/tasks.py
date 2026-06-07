@@ -68,6 +68,10 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
             context=contexto_usuario  # <-- Aquí le pasamos sus tarjetas y categorías
         )
         
+        # Si Gemini devuelve una lista, tomamos el primer elemento
+        if isinstance(extracted_data, list):
+            extracted_data = extracted_data[0] if extracted_data else {}
+
         # Verificamos si Gemini devolvió un error de procesamiento
         if extracted_data.get("error"):
              return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data.get('raw_response', 'Error desconocido')}
@@ -136,6 +140,9 @@ def process_single_inversion(self, user_id: int, file_id: str, file_name: str, m
         
         if mime_type not in ('image/jpeg', 'image/png', 'application/pdf'):
             return {'status': 'UNSUPPORTED', 'file_name': file_name, 'error': 'Unsupported file type'}
+            
+        if isinstance(extracted_data, list):
+            extracted_data = extracted_data[0] if extracted_data else {}
         
         # (El resto de tu lógica para procesar los datos de inversión se mantiene igual)
         try:
@@ -384,6 +391,9 @@ def process_single_invoice(self, user_id: int, file_id: str, file_name: str, mim
         if not datos_extraidos:
              return {'status': 'FAILURE', 'file_name': file_name, 'error': 'JSON vacío de Gemini'}
 
+        if isinstance(datos_extraidos, list):
+            datos_extraidos = datos_extraidos[0] if datos_extraidos else {}
+
         if datos_extraidos.get("es_transferencia", False):
              return {'status': 'SKIPPED', 'file_name': file_name, 'reason': 'Gemini detectó que es una transferencia o pago de servicios.'}
 
@@ -504,6 +514,9 @@ def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id
             text=texto_recibo
         )
         
+        if isinstance(datos, list):
+            datos = datos[0] if datos else {}
+            
         if datos.get("error"):
             return {'status': 'FAILURE', 'file_name': file_name, 'error': datos.get('error')}
             
