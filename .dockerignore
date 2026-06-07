@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Entornos virtuales
+virtual-enviroment/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno (¡Muy importante no subirlas!)
+.env
+
+# Logs y bases de datos locales
+debug.log
+dump.rdb
+db.sqlite3
+
+# Celery local
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+
+# Archivos de SO
+.DS_Store
+Thumbs.db
+
+# Node y npm (Si se compilan antes de dockerizar o si docker hace el build de tailwind)
+node_modules/
+npm-debug.log
+
+# Carpeta de IDEs y extensiones
+.vscode/
+.idea/
+.gemini/
