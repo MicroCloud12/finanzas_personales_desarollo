@@ -240,10 +240,6 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
         return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
     except Exception as e:
         return {'status': 'ERROR', 'message': str(e)}
-    
-
-
-    # ... (código existente) ...
 
 def _is_bank_transfer(text: str) -> bool:
     """Valida rápidamente si el texto corresponde a una transferencia bancaria."""
