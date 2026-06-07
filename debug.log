@@ -1353,3 +1353,4 @@ INFO 2026-06-01 20:57:29,641 tasks Tienda reconocida por IA: OXXO
 INFO 2026-06-01 20:57:34,660 tasks Tienda reconocida por IA: WALMART
 INFO 2026-06-01 20:57:37,991 tasks Tienda reconocida por IA: WALMART
 INFO 2026-06-01 20:57:39,772 tasks Tienda nueva detectada: LA COMER
+ERROR 2026-06-06 20:50:12,993 views Error en get_initial_task_result: unknown command `HELLO`, with args beginning with: `3`, 
