@@ -1406,3 +1406,16 @@ INFO 2026-06-07 00:16:10,137 tasks Tienda reconocida por IA: WALMART
 INFO 2026-06-07 00:16:11,033 tasks Tienda nueva detectada: LA COMER
 INFO 2026-06-07 00:16:14,011 tasks Tienda nueva detectada: LA COMER
 INFO 2026-06-07 00:16:16,540 tasks Tienda reconocida por IA: WALMART
+WARNING 2026-06-07 01:02:54,442 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,444 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,445 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,445 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,446 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,446 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,446 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,447 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,447 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,447 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,448 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 01:02:54,448 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+ERROR 2026-06-07 01:16:28,645 ai_service Gemini API Error: Unterminated string starting at: line 2 column 20 (char 21)

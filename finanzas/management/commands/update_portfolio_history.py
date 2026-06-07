@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from finanzas.models import PortfolioHistory
-from finanzas.utils import calculate_daily_portfolio_history
+from finanzas.services.finance_service import InvestmentService
 import time
 
 class Command(BaseCommand):
@@ -14,7 +14,7 @@ class Command(BaseCommand):
             
             # 1. Calculamos la historia diaria
             # Esto puede tardar varios minutos la primera vez debido a las pausas de la API
-            historial = calculate_daily_portfolio_history(usuario)
+            historial = InvestmentService.calculate_daily_portfolio_history(usuario)
             
             if not historial:
                 self.stdout.write(self.style.WARNING(f'No hay inversiones para {usuario.username}.'))

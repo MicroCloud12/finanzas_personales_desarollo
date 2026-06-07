@@ -21,7 +21,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from celery.result import AsyncResult, GroupResult
 
-from ..utils import parse_date_safely, generar_tabla_amortizacion
+from ..utils import parse_date_safely
+from ..services.finance_service import InvestmentService
 from ..tasks import (
     process_drive_tickets,
     process_drive_investments,
@@ -282,7 +283,7 @@ def datos_flujo_dinero(request):
 @login_required
 def datos_ganancias_mensuales(request):
     """Retorna las ganancias mensuales acumuladas de las inversiones del usuario.
-    profits = calculate_monthly_profit(request.user)
+    profits = InvestmentService.calculate_monthly_profit(request.user)
     labels = list(profits.keys())
     data = [profits[month] for month in labels]
     return JsonResponse({'labels': labels, 'data': data})

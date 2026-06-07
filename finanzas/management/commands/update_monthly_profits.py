@@ -3,7 +3,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from finanzas.models import GananciaMensual
-from finanzas.utils import calculate_monthly_profit
+from finanzas.services.finance_service import InvestmentService
 import time
 
 class Command(BaseCommand):
@@ -18,7 +18,7 @@ class Command(BaseCommand):
             GananciaMensual.objects.filter(propietario=usuario).delete()
             
             # 2. Calculamos los nuevos datos (aquí se hacen las llamadas a la API)
-            ganancias = calculate_monthly_profit(usuario)
+            ganancias = InvestmentService.calculate_monthly_profit(usuario)
             print(f'Ganancias calculadas para {usuario}: {ganancias}')
             time.sleep(15)
             # 3. Guardamos los nuevos datos en nuestra tabla

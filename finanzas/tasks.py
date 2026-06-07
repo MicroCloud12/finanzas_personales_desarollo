@@ -372,14 +372,13 @@ def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id
     try:
         user = User.objects.get(id=user_id)
         presupuesto = Presupuesto.objects.get(id=presupuesto_id, propietario=user)
-        file_bytes = GoogleDriveService(user).get_file_content(file_id).getvalue()
+        file_data = _get_optimized_file_data(GoogleDriveService(user), file_id, mime_type)
         
-        ocr_result = MistralOCRService().get_text_from_image(file_bytes, mime_type)
-        if "error" in ocr_result:
-            return {'status': 'FAILURE', 'file_name': file_name, 'error': f"Mistral OCR: {ocr_result['error']}"}
-            
-        texto_recibo = ocr_result['text_content']
-        datos = get_gemini_service().extract_from_text(prompt_name="recibo_servicio_from_text", text=texto_recibo)
+        datos = get_gemini_service().extract_data(
+            prompt_name="recibo_servicio",
+            file_data=file_data,
+            mime_type="application/pdf" if mime_type == "application/pdf" else "image/jpeg"
+        )
         
         if isinstance(datos, list):
             datos = datos[0] if datos else {}

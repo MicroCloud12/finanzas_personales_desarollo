@@ -21,7 +21,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from celery.result import AsyncResult, GroupResult
 
-from ..utils import parse_date_safely, generar_tabla_amortizacion
+from ..utils import parse_date_safely
 from ..tasks import (
     process_drive_tickets,
     process_drive_investments,
