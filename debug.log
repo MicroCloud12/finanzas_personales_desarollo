@@ -1354,3 +1354,55 @@ INFO 2026-06-01 20:57:34,660 tasks Tienda reconocida por IA: WALMART
 INFO 2026-06-01 20:57:37,991 tasks Tienda reconocida por IA: WALMART
 INFO 2026-06-01 20:57:39,772 tasks Tienda nueva detectada: LA COMER
 ERROR 2026-06-06 20:50:12,993 views Error en get_initial_task_result: unknown command `HELLO`, with args beginning with: `3`, 
+INFO 2026-06-06 22:10:05,861 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:10:10,821 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2026-06-06 22:10:17,291 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2026-06-06 22:10:17,577 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-06-06 22:10:17,855 tasks Tienda nueva detectada: LIVERPOOL
+INFO 2026-06-06 22:10:19,903 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:10:26,295 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:10:29,471 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:10:34,491 tasks Tienda reconocida por IA: OXXO
+INFO 2026-06-06 22:10:38,389 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:10:39,851 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:10:41,482 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:10:43,561 tasks Tienda reconocida por IA: WALMART
+ERROR 2026-06-06 22:22:38,870 transacciones Error en get_group_status: Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.
+INFO 2026-06-06 22:25:13,397 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2026-06-06 22:25:21,110 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:25:24,307 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2026-06-06 22:25:30,864 tasks Tienda nueva detectada: LIVERPOOL
+INFO 2026-06-06 22:25:33,430 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-06-06 22:25:33,651 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:25:39,029 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:25:42,037 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:25:43,070 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:25:48,097 tasks Tienda reconocida por IA: OXXO
+INFO 2026-06-06 22:25:49,800 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:25:51,627 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:25:56,169 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:28:46,716 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2026-06-06 22:28:58,086 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:29:00,218 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-06-06 22:29:07,884 tasks Tienda nueva detectada: LIVERPOOL
+INFO 2026-06-06 22:29:09,470 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:29:12,847 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2026-06-06 22:29:14,857 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:29:17,407 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:29:19,501 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:29:21,066 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-06 22:29:23,077 tasks Tienda reconocida por IA: OXXO
+INFO 2026-06-06 22:29:25,431 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-06 22:29:27,466 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 00:15:47,674 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 00:15:50,139 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-06-07 00:15:53,790 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2026-06-07 00:15:59,279 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2026-06-07 00:16:00,290 tasks Tienda reconocida por IA: LIVERPOOL
+INFO 2026-06-07 00:16:01,994 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-07 00:16:06,566 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 00:16:08,397 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 00:16:10,137 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 00:16:11,033 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-07 00:16:14,011 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-07 00:16:16,540 tasks Tienda reconocida por IA: WALMART
