@@ -1518,3 +1518,65 @@ INFO 2026-06-07 18:02:54,329 transacciones Tarea principal revocada: 5be0d34c-4e
 INFO 2026-06-07 18:02:54,333 transacciones Grupo de tareas revocado: 68df4b68-17ef-44bd-867a-29fe95d581d1
 INFO 2026-06-07 18:03:31,236 transacciones Tarea principal revocada: cc5b1800-a28b-48b9-ba39-1961be1815a8
 INFO 2026-06-07 18:03:31,239 transacciones Grupo de tareas revocado: e892c081-93f2-4669-9676-52df98fdfab4
+INFO 2026-06-07 18:31:36,529 tasks Tienda nueva detectada: KRISPY KREME
+INFO 2026-06-07 18:31:36,531 tasks Tienda reconocida por IA: FARMACIA SAN PABLO
+INFO 2026-06-07 18:31:36,622 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 18:31:42,112 tasks Tienda reconocida por IA: FARMACIAS SIMITLA
+INFO 2026-06-07 18:31:43,866 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-07 18:31:49,361 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 18:31:52,111 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 18:31:56,771 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 18:31:57,287 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-07 18:32:02,916 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-07 18:32:04,902 tasks Tienda reconocida por IA: WALMART
+INFO 2026-06-07 18:32:13,222 tasks Tienda reconocida por IA: LIVERPOOL
+WARNING 2026-06-07 18:43:17,648 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,649 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,649 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,650 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,650 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,650 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,651 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,651 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:43:17,652 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,729 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,729 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,730 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,730 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,730 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,731 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,731 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,731 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,731 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,732 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,732 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:44:15,732 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,588 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,589 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,590 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,590 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,591 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,592 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,592 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,592 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,593 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,593 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,594 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:57:42,594 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,261 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,264 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,265 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,266 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,266 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,266 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,267 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,267 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,268 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,269 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,269 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 18:58:14,270 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+ERROR 2026-06-07 18:59:14,266 market_data_service TwelveData API error for GOOGL: {"code":429,"message":"You have run out of API credits for the current minute. 9 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
+ERROR 2026-06-07 18:59:14,706 market_data_service TwelveData API error for CAH: {"code":429,"message":"You have run out of API credits for the current minute. 10 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
+ERROR 2026-06-07 18:59:19,199 market_data_service TwelveData API error for MRSN: {"code":429,"message":"You have run out of API credits for the current minute. 11 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
+ERROR 2026-06-07 18:59:20,368 market_data_service TwelveData API error for NVDA: {"code":429,"message":"You have run out of API credits for the current minute. 12 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
+ERROR 2026-06-07 18:59:20,679 market_data_service TwelveData API error for MSFT: {"code":429,"message":"You have run out of API credits for the current minute. 13 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}

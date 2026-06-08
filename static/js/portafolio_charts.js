@@ -1,126 +1,154 @@
-document.addEventListener('DOMContentLoaded', function () {
-    // Helper function to safely parse JSON from script tags
-    function getJsonData(id) {
-        const element = document.getElementById(id);
-        if (element) {
-            return JSON.parse(element.textContent);
-        }
-        console.warn(`Element with id ${id} not found.`);
+const CHART_COLORS = {
+    primary: {
+        solid: '#818cf8',      // Indigo-400
+        gradientStart: 'rgba(99, 102, 241, 0.5)',
+        gradientEnd: 'rgba(99, 102, 241, 0)'
+    },
+    tooltip: {
+        bg: 'rgba(17, 24, 39, 0.9)',
+        textMain: '#fff',
+        textMuted: '#e5e7eb',
+        border: 'rgba(255,255,255,0.1)'
+    },
+    allocation: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+};
+
+const CHART_IDS = {
+    MAIN: 'portfolioMainChart',
+    ALLOCATION: 'allocationChart'
+};
+
+const DATA_IDS = {
+    CHART_LABELS: 'chart-labels-data',
+    CHART_DATA: 'chart-data-data',
+    DIST_LABELS: 'dist-labels-data',
+    DIST_DATA: 'dist-data-data'
+};
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0
+    }).format(value);
+}
+
+function getJsonData(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        console.warn(`Element with id ${elementId} not found.`);
         return [];
     }
 
-    // Retrieve data from json_script tags
-    // Note: The data from Django is already a JSON string (via json.dumps), 
-    // so json_script adds another layer of quotes? 
-    // Let's verify: In views.py: 'chart_labels': json.dumps(chart_labels)
-    // So {{ chart_labels }} is "[ '2023-01', ... ]" string.
-    // {{ chart_labels|json_script }} makes <script type="application/json">"[ '2023-01', ... ]"</script>
-    // So JSON.parse(textContent) returns the string "[ '2023-01' ... ]"
-    // We need to parse THAT string again to get the array.
-
-    const rawChartLabels = getJsonData('chart-labels-data');
-    const rawChartData = getJsonData('chart-data-data');
-    const rawDistLabels = getJsonData('dist-labels-data');
-    const rawDistData = getJsonData('dist-data-data');
-
-    // Parse the inner JSON strings if they are strings
-    const chartLabels = typeof rawChartLabels === 'string' ? JSON.parse(rawChartLabels) : rawChartLabels;
-    const chartData = typeof rawChartData === 'string' ? JSON.parse(rawChartData) : rawChartData;
-    const distLabels = typeof rawDistLabels === 'string' ? JSON.parse(rawDistLabels) : rawDistLabels;
-    const distData = typeof rawDistData === 'string' ? JSON.parse(rawDistData) : rawDistData;
-
-    // --- MAIN PORTFOLIO LINE CHART ---
-    const ctxMainElement = document.getElementById('portfolioMainChart');
-    if (ctxMainElement) {
-        const ctxMain = ctxMainElement.getContext('2d');
-
-        // Create gradient
-        let gradient = ctxMain.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)'); // Indigo
-        gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
-
-        new Chart(ctxMain, {
-            type: 'line',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                    label: 'Valor Acumulado',
-                    data: chartData,
-                    borderColor: '#818cf8', // Indigo-400
-                    backgroundColor: gradient,
-                    borderWidth: 3,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                        titleColor: '#e5e7eb',
-                        bodyColor: '#fff',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        borderWidth: 1,
-                        padding: 10,
-                        callbacks: {
-                            label: function (context) {
-                                return '$' + Number(context.parsed.y).toLocaleString();
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: { display: false },
-                    y: { display: false, beginAtZero: false }
-                }
-            }
-        });
+    try {
+        const parsedContent = JSON.parse(element.textContent);
+        // Sometimes Django json_script double encodes strings. This handles it safely.
+        return typeof parsedContent === 'string' ? JSON.parse(parsedContent) : parsedContent;
+    } catch (error) {
+        console.error(`Error parsing JSON for element ${elementId}:`, error);
+        return [];
     }
+}
 
-    // --- ALLOCATION DOUGHNUT CHART ---
-    const ctxAllocElement = document.getElementById('allocationChart');
-    if (ctxAllocElement) {
-        const ctxAlloc = ctxAllocElement.getContext('2d');
-        new Chart(ctxAlloc, {
-            type: 'doughnut',
-            data: {
-                labels: distLabels,
-                datasets: [{
-                    data: distData,
-                    backgroundColor: [
-                        '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
+function getPortfolioData() {
+    return {
+        chartLabels: getJsonData(DATA_IDS.CHART_LABELS),
+        chartData: getJsonData(DATA_IDS.CHART_DATA),
+        distLabels: getJsonData(DATA_IDS.DIST_LABELS),
+        distData: getJsonData(DATA_IDS.DIST_DATA)
+    };
+}
+
+function initMainChart(labels, data) {
+    const canvas = document.getElementById(CHART_IDS.MAIN);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, CHART_COLORS.primary.gradientStart);
+    gradient.addColorStop(1, CHART_COLORS.primary.gradientEnd);
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Valor Acumulado',
+                data,
+                borderColor: CHART_COLORS.primary.solid,
+                backgroundColor: gradient,
+                borderWidth: 3,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: CHART_COLORS.tooltip.bg,
+                    titleColor: CHART_COLORS.tooltip.textMuted,
+                    bodyColor: CHART_COLORS.tooltip.textMain,
+                    borderColor: CHART_COLORS.tooltip.border,
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: (context) => formatCurrency(context.parsed.y)
+                    }
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += '$' + Number(context.parsed).toLocaleString();
-                                return label;
-                            }
+            scales: {
+                x: { display: false },
+                y: { display: false, beginAtZero: false }
+            }
+        }
+    });
+}
+
+function initAllocationChart(labels, data) {
+    const canvas = document.getElementById(CHART_IDS.ALLOCATION);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: CHART_COLORS.allocation,
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.label ? `${context.label}: ` : '';
+                            return `${label}${formatCurrency(context.parsed)}`;
                         }
                     }
                 }
             }
-        });
-    }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const data = getPortfolioData();
+    initMainChart(data.chartLabels, data.chartData);
+    initAllocationChart(data.distLabels, data.distData);
 });

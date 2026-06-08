@@ -1,116 +1,102 @@
-document.addEventListener('DOMContentLoaded', function () {
+// --- Utils & Constants ---
+const SPINNER_SVG = `<svg class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (const cookieStr of cookies) {
+            const cookie = cookieStr.trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+async function apiFetch(url, payload) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Error en el servidor: ${response.status}`);
+    }
+    return response.json();
+}
+
+function showLoading(btn, spinnerSize = 'h-5 w-5') {
+    const originalContent = Array.from(btn.childNodes);
+    const originalClass = btn.className;
+    btn.disabled = true;
+    btn.innerHTML = SPINNER_SVG.replace('h-4 w-4', spinnerSize);
+    return () => {
+        btn.disabled = false;
+        btn.replaceChildren(...originalContent);
+        btn.className = originalClass;
+    };
+}
+
+// --- Background Task Processor (DOMContentLoaded) ---
+document.addEventListener('DOMContentLoaded', () => {
+    initTaskProcessor();
+});
+
+function initTaskProcessor() {
     const startBtn = document.getElementById('start-processing-btn');
-    if (!startBtn) return;
+    const cancelBtn = document.getElementById('cancel-processing-btn');
     const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
     const progressPercent = document.getElementById('progress-percent');
-    const progressBar = document.getElementById('progress-bar');
-    const cancelBtn = document.getElementById('cancel-processing-btn'); // Nuevo botón de cancelar
-    let pollingInterval; // No se usa actualmente, se usa sleep
+    
+    if (!startBtn) return;
+
     let cancelRequested = false;
     let currentTaskId = null;
     let currentGroupId = null;
-    let currentSleepTimeout = null;
-    let currentSleepResolve = null;
+    let sleepResolver = null;
+    let sleepTimer = null;
 
-    function sleep(ms) { 
-        return new Promise(resolve => {
-            currentSleepResolve = resolve;
-            currentSleepTimeout = setTimeout(() => {
-                currentSleepResolve = null;
-                resolve();
-            }, ms);
-        }); 
-    }
-
-    function cancelSleep() {
-        if (currentSleepTimeout) clearTimeout(currentSleepTimeout);
-        if (currentSleepResolve) currentSleepResolve();
-    }
-
-    startBtn.addEventListener('click', async function () {
-        startBtn.disabled = true;
-        cancelRequested = false;
-        currentTaskId = null;
-        currentGroupId = null;
-        progressContainer.classList.remove('hidden');
-        if (cancelBtn) cancelBtn.classList.remove('hidden');
-        updateProgress(0, "Iniciando...", 'bg-indigo-600');
-
-        try {
-            const startUrl = startBtn.dataset.startUrl;
-            const redirectUrl = startBtn.dataset.redirectUrl;
-
-            const initialResponse = await fetch(startUrl);
-            const initialData = await initialResponse.json();
-            currentTaskId = initialData.task_id;
-
-            updateProgress(15, "Buscando tickets...");
-            currentGroupId = await waitForGroupId(currentTaskId);
-
-            updateProgress(25, "Procesando tickets...");
-            await monitorGroupProgress(currentGroupId);
-
-            if (!cancelRequested) {
-                updateProgress(100, "¡Proceso completado!", 'bg-green-500');
-                if (cancelBtn) cancelBtn.classList.add('hidden');
-                setTimeout(() => {
-                    window.location.href = redirectUrl;
-                }, 1500);
-            }
-
-        } catch (error) {
-            if (error.message === "Cancelado_por_usuario") {
-                updateProgress(100, "Proceso Cancelado", 'bg-yellow-500');
-                startBtn.disabled = false;
-                if (cancelBtn) {
-                    cancelBtn.classList.add('hidden');
-                    cancelBtn.innerText = "Cancelar Procesamiento";
-                    cancelBtn.disabled = false;
-                }
-            } else {
-                handleError(error.message);
-            }
-        }
+    const sleep = (ms) => new Promise(resolve => {
+        sleepResolver = resolve;
+        sleepTimer = setTimeout(() => {
+            sleepResolver = null;
+            resolve();
+        }, ms);
     });
 
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', function() {
-            cancelRequested = true;
-            this.disabled = true;
-            this.innerText = "Cancelando...";
-            cancelSleep(); // Despierta el loop inmediatamente para que lance la excepción
-            
-            let cancelType = 'tickets';
-            if (currentTaskId) {
-                // If we want to infer from startUrl, we can just grab it from the button
-                const startUrl = startBtn.dataset.startUrl || '';
-                if (startUrl.includes('inversiones')) cancelType = 'inversiones';
-                else if (startUrl.includes('deudas')) cancelType = 'deudas';
-                else if (startUrl.includes('factura')) cancelType = 'facturas';
-            }
+    const wakeUpEarly = () => {
+        if (sleepTimer) clearTimeout(sleepTimer);
+        if (sleepResolver) sleepResolver();
+    };
 
-            // Lanzamos la petición al servidor pero no bloqueamos la UI esperándola
-            fetch('/api/cancelar-procesamiento/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    task_id: currentTaskId,
-                    group_id: currentGroupId,
-                    cancel_type: cancelType
-                })
-            }).catch(e => console.error("Error al cancelar en servidor", e));
-        });
-    }
+    const updateUIProgress = (percentage, text, colorClass = 'bg-indigo-600') => {
+        progressBar.style.width = `${percentage}%`;
+        progressBar.className = `h-2.5 rounded-full transition-all duration-300 ease-out ${colorClass}`;
+        progressText.textContent = text;
+        if (progressPercent) progressPercent.textContent = `${percentage}%`;
+    };
 
-    async function waitForGroupId(taskId) {
+    const handleTaskError = (message) => {
+        console.error("Task Error:", message);
+        updateUIProgress(100, `Error: ${message}`, 'bg-red-500');
+        startBtn.disabled = false;
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+    };
+
+    const waitForGroupId = async (taskId) => {
         while (true) {
-            if (cancelRequested) throw new Error("Cancelado_por_usuario");
+            if (cancelRequested) throw new Error("UserCancelled");
             await sleep(2500);
-            if (cancelRequested) throw new Error("Cancelado_por_usuario");
+            if (cancelRequested) throw new Error("UserCancelled");
             
             const response = await fetch(`/resultado-tarea-inicial/${taskId}/`);
             const data = await response.json();
@@ -124,145 +110,144 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error(`Tarea inicial falló: ${data.info}`);
             }
         }
-    }
+    };
 
-    async function monitorGroupProgress(groupId) {
+    const monitorGroupProgress = async (groupId) => {
         while (true) {
-            if (cancelRequested) throw new Error("Cancelado_por_usuario");
+            if (cancelRequested) throw new Error("UserCancelled");
             await sleep(2500);
-            if (cancelRequested) throw new Error("Cancelado_por_usuario");
+            if (cancelRequested) throw new Error("UserCancelled");
             
             const response = await fetch(`/estado-grupo/${groupId}/`);
             const data = await response.json();
 
-            if (data.status === 'COMPLETED') {
-                return;
-            } else if (data.status === 'PROGRESS') {
-                updateProgress(data.progress, `Procesando... ${data.completed} de ${data.total} lotes listos.`);
+            if (data.status === 'COMPLETED') return;
+            if (data.status === 'PROGRESS') {
+                updateUIProgress(data.progress, `Procesando... ${data.completed} de ${data.total} lotes listos.`);
             } else if (data.status === 'FAILURE') {
                 throw new Error(`El procesamiento del grupo falló: ${data.info}`);
             }
         }
-    }
+    };
 
-    function updateProgress(percentage, text, color = 'bg-indigo-600') {
-        progressBar.style.width = `${percentage}%`;
-        progressBar.textContent = '';
-        if (progressPercent) progressPercent.textContent = `${percentage}%`;
-        progressBar.className = `h-2.5 rounded-full transition-all duration-300 ease-out ${color}`;
-        progressText.textContent = text;
-    }
+    startBtn.addEventListener('click', async () => {
+        startBtn.disabled = true;
+        cancelRequested = false;
+        currentTaskId = null;
+        currentGroupId = null;
+        
+        progressContainer.classList.remove('hidden');
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+        
+        updateUIProgress(0, "Iniciando...", 'bg-indigo-600');
 
-    function handleError(message) {
-        console.error("Error:", message);
-        updateProgress(100, `Error: ${message}`, 'bg-red-500');
-        startBtn.disabled = false;
-        if (cancelBtn) cancelBtn.classList.add('hidden');
-    }
-});
+        try {
+            const initialResponse = await fetch(startBtn.dataset.startUrl);
+            const initialData = await initialResponse.json();
+            currentTaskId = initialData.task_id;
 
-// finanzas/static/js/procesamiento.js
+            updateUIProgress(15, "Buscando tickets...");
+            currentGroupId = await waitForGroupId(currentTaskId);
 
-// 1. Obtener el token CSRF (Necesario para seguridad en Django)
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (const cookieStr of cookies) {
-            const cookie = cookieStr.trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+            updateUIProgress(25, "Procesando tickets...");
+            await monitorGroupProgress(currentGroupId);
+
+            if (!cancelRequested) {
+                updateUIProgress(100, "¡Proceso completado!", 'bg-green-500');
+                if (cancelBtn) cancelBtn.classList.add('hidden');
+                setTimeout(() => window.location.href = startBtn.dataset.redirectUrl, 1500);
+            }
+        } catch (error) {
+            if (error.message === "UserCancelled") {
+                updateUIProgress(100, "Proceso Cancelado", 'bg-yellow-500');
+                startBtn.disabled = false;
+                if (cancelBtn) {
+                    cancelBtn.classList.add('hidden');
+                    cancelBtn.innerText = "Cancelar Procesamiento";
+                    cancelBtn.disabled = false;
+                }
+            } else {
+                handleTaskError(error.message);
             }
         }
+    });
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            cancelRequested = true;
+            cancelBtn.disabled = true;
+            cancelBtn.innerText = "Cancelando...";
+            wakeUpEarly();
+
+            let cancelType = 'tickets';
+            const startUrl = startBtn.dataset.startUrl || '';
+            if (startUrl.includes('inversiones')) cancelType = 'inversiones';
+            else if (startUrl.includes('deudas')) cancelType = 'deudas';
+            else if (startUrl.includes('factura')) cancelType = 'facturas';
+
+            apiFetch('/api/cancelar-procesamiento/', {
+                task_id: currentTaskId,
+                group_id: currentGroupId,
+                cancel_type: cancelType
+            }).catch(e => console.error("Error al cancelar en servidor", e));
+        });
     }
-    return cookieValue;
 }
 
-// 2. Función para el botón "Guardar Configuración" (Disquete)
+// --- Global UI Actions ---
+
 async function guardarConfiguracion(btn) {
-    console.log("guardarConfiguracion function triggered");
-    // Obtenemos los datos desde los atributos data- del botón HTML
     const tienda = btn.dataset.tienda;
-    // Buscamos los checkboxes marcados dentro de la sección de campos sugeridos
     const container = document.getElementById('seccion-campos-sugeridos');
+    
     if (!container) {
         alert("Error: No se encontró la sección de campos para guardar.");
         return;
     }
-    const inputs = container.querySelectorAll('input[type="checkbox"]:checked');
-    const campos = Array.from(inputs).map(input => input.value);
 
-    const urlPortal = "";
+    const selectedInputs = container.querySelectorAll('input[type="checkbox"]:checked');
+    const campos = Array.from(selectedInputs).map(input => input.value);
 
     if (campos.length === 0) {
-        if (!confirm(`¡ATENCIÓN! No has marcado ninguna casilla.\n\nEsto hará que la tienda ${tienda} no requiera ningún campo y borrará su configuración.\n\n¿Estás seguro de continuar?`)) {
-            return;
-        }
+        if (!confirm(`¡ATENCIÓN! No has marcado ninguna casilla.\nEsto hará que la tienda ${tienda} no requiera ningún campo y borrará su configuración.\n¿Estás seguro?`)) return;
     } else {
         if (!confirm(`¿Guardar configuración para ${tienda} con ${campos.length} campos?`)) return;
     }
 
     try {
-        const response = await fetch('/api/guardar-config-tienda/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                tienda: tienda,
-                campos_seleccionados: campos,
-                url_portal: urlPortal
-            })
+        const data = await apiFetch('/api/guardar-config-tienda/', {
+            tienda,
+            campos_seleccionados: campos,
+            url_portal: ""
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Server returned ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
         if (data.status === 'success') {
             alert(data.message);
             window.location.reload();
         } else {
             alert('Error del servidor: ' + data.message);
         }
-
     } catch (error) {
-        console.error('Error al guardar configuración:', error);
-        alert('Hubo un error al guardar la configuración. Revisa la consola para más detalles.');
+        console.error('Error:', error);
+        alert('Hubo un error al guardar la configuración.');
     }
 }
 
-// 3. Función para el botón "Confirmar Factura" (Paloma)
 async function confirmarFactura(btn) {
-    // Leemos TODOS los datos que pusimos en el botón en el HTML
     const payload = {
         archivo_id: btn.dataset.archivoId,
         tienda: btn.dataset.tienda,
         total: btn.dataset.total,
         fecha: btn.dataset.fecha,
-        // El JSON completo de datos extraídos lo pasamos como string en el HTML y aquí lo parseamos de vuelta
         datos_facturacion: JSON.parse(btn.dataset.jsonCompleto)
     };
 
     try {
-        const response = await fetch('/api/confirmar-factura/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
+        const data = await apiFetch('/api/confirmar-factura/', payload);
         if (data.status === 'success') {
             alert("¡Factura guardada! Ya puedes verla en tu lista.");
-            // Opcional: Ocultar la tarjeta del ticket procesado visualmente
-            btn.closest('.card').remove();
+            const card = btn.closest('.card');
+            if (card) card.remove();
         } else {
             alert("Error: " + data.message);
         }
@@ -272,145 +257,72 @@ async function confirmarFactura(btn) {
     }
 }
 
-// 4. Función para agregar un nuevo campo a la tienda
-// 4. Función para agregar un nuevo campo a la tienda (INLINE - Refined)
 async function agregarCampoInline(btn) {
-    const tienda = btn.dataset.tienda;
-
-    // El input está en el contenedor hermano (col-span-11).
-    // Modificación robusta: Usar ID directo en lugar de traversing relativo
-    // El input tiene el ID "nuevo-campo-input"
     const inputField = document.getElementById('nuevo-campo-input');
+    if (!inputField) return;
 
-    if (!inputField) {
-        console.error("No se encontró el input con id: nuevo-campo-input");
-        return;
-    }
-
-    const nombreCampo = inputField.value;
-
-    if (!nombreCampo || nombreCampo.trim() === "") {
-        // Visual cue for empty input error? For now, just focus it.
+    const nombreCampo = inputField.value.trim();
+    if (!nombreCampo) {
         inputField.focus();
         inputField.classList.add('ring-2', 'ring-red-300');
         setTimeout(() => inputField.classList.remove('ring-2', 'ring-red-300'), 1500);
         return;
     }
 
+    const restoreBtn = showLoading(btn, 'h-5 w-5');
+    
     try {
-        // Disable button to prevent double submission
-        btn.disabled = true;
-        const originalNodes = Array.from(btn.childNodes);
-        // Simple spinner or just opacity change
-        btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>`;
-
-        const response = await fetch('/api/agregar-campo-tienda/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                tienda: tienda,
-                campo: nombreCampo.trim()
-            })
+        const data = await apiFetch('/api/agregar-campo-tienda/', {
+            tienda: btn.dataset.tienda,
+            campo: nombreCampo
         });
 
-        const data = await response.json();
-
         if (data.success) {
-            // Reload preserving scroll position using hash instead of full href manipulation
             window.location.hash = 'seccion-campos-sugeridos';
             window.location.reload();
         } else {
             alert('Error al agregar campo: ' + (data.error || data.mensaje));
-            btn.disabled = false;
-            btn.replaceChildren(...originalNodes);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        // Mostrar detalle del error para depuración
-        alert('Hubo un error al intentar agregar el campo.\nDetalle: ' + error.message);
-        btn.disabled = false;
-        btn.replaceChildren(...originalNodes);
-    }
-}
-
-// 5. Función para agregar un campo sugerido (Botón +)
-async function agregarCampoSugerido(btn) {
-    const tienda = btn.dataset.tienda;
-    const campo = btn.dataset.campo;
-    const originalNodes = Array.from(btn.childNodes);
-
-    try {
-        btn.disabled = true;
-        // Simple spinner
-        btn.innerHTML = `<svg class="animate-spin h-3 w-3 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>`;
-
-        const response = await fetch('/api/agregar-campo-tienda/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                tienda: tienda,
-                campo: campo
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // Reload preserving scroll position using hash instead of full href manipulation
-            window.location.hash = 'seccion-campos-sugeridos';
-            window.location.reload();
-        } else {
-            alert('Error al agregar campo: ' + (data.error || data.mensaje));
-            btn.disabled = false;
-            btn.replaceChildren(...originalNodes);
+            restoreBtn();
         }
     } catch (error) {
         console.error('Error:', error);
         alert('Hubo un error al intentar agregar el campo.');
-        btn.disabled = false;
-        btn.replaceChildren(...originalNodes);
+        restoreBtn();
     }
 }
 
-// 6. Función para ELIMINAR un campo de la configuración (Trash Icon)
-async function eliminarCampoConfigurado(btn) {
-    const tienda = btn.dataset.tienda;
-    const nombreCampo = btn.dataset.campo;
-
-    if (!confirm(`¿Estás seguro de que quieres dejar de solicitar el campo "${nombreCampo}" para ${tienda}?`)) {
-        return;
-    }
+async function agregarCampoSugerido(btn) {
+    const restoreBtn = showLoading(btn, 'h-3 w-3');
 
     try {
-        btn.disabled = true;
-        // Optional spin processing styling if needed, but simple disable is likely enough for delete
-
-        const response = await fetch('/api/eliminar-campo-tienda/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                tienda: tienda,
-                campo: nombreCampo
-            })
+        const data = await apiFetch('/api/agregar-campo-tienda/', {
+            tienda: btn.dataset.tienda,
+            campo: btn.dataset.campo
         });
 
-        const data = await response.json();
+        if (data.success) {
+            window.location.hash = 'seccion-campos-sugeridos';
+            window.location.reload();
+        } else {
+            alert('Error al agregar campo: ' + (data.error || data.mensaje));
+            restoreBtn();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Hubo un error al intentar agregar el campo.');
+        restoreBtn();
+    }
+}
 
+async function eliminarCampoConfigurado(btn) {
+    const { tienda, campo } = btn.dataset;
+
+    if (!confirm(`¿Estás seguro de que quieres eliminar el campo "${campo}" de ${tienda}?`)) return;
+
+    btn.disabled = true;
+
+    try {
+        const data = await apiFetch('/api/eliminar-campo-tienda/', { tienda, campo });
         if (data.success) {
             window.location.reload();
         } else {
@@ -419,148 +331,105 @@ async function eliminarCampoConfigurado(btn) {
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Hubo un error al intentar eliminar el campo.\nDetalle: ' + error.message);
+        alert('Hubo un error al intentar eliminar el campo.');
         btn.disabled = false;
     }
 }
 
-// 7. Funciones para editar campos sugeridos individualmente (Nombre del campo)
-function editarCampoSugerido(btn, campoNombreOriginal) {
-    // Buscar la fila
+function editarCampoSugerido(btn, nombreOriginal) {
     const row = btn.closest('.grid');
     const dt = row.querySelector('dt');
-    const nombreOriginal = dt.textContent.trim();
-
-    // Reemplazar <dt> por un input temporal de forma segura (previniendo XSS)
+    
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'w-full text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 p-1';
-    input.value = nombreOriginal;
-    dt.innerHTML = '';
-    dt.appendChild(input);
+    input.value = dt.textContent.trim();
+    
+    dt.replaceChildren(input);
     input.focus();
 
-    // Ocultar botón editar, mostrar botón guardar con texto claro
-    const btnOriginalNodes = Array.from(btn.childNodes);
-    const btnOriginalClass = btn.className;
+    const originalHTML = btn.innerHTML;
+    const originalClass = btn.className;
 
     btn.innerHTML = `<svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Guardar`;
     btn.className = "flex items-center text-white bg-green-500 hover:bg-green-600 transition-colors p-1 px-2 rounded-md text-xs font-bold";
 
-    const guardarCambios = () => {
-        guardarEdicionCampoSugerido(btn, campoNombreOriginal, input.value, btnOriginalNodes, btnOriginalClass, dt, row);
+    const triggerSave = () => {
+        guardarEdicionCampoSugerido(btn, nombreOriginal, input.value, originalHTML, originalClass, dt, row);
     };
 
-    btn.removeAttribute('onclick'); // Remover atributo HTML inline para evitar conflictos
-    btn.onclick = guardarCambios;
+    btn.removeAttribute('onclick');
+    btn.onclick = triggerSave;
 
-    // También guardar al presionar Enter
-    input.addEventListener('keypress', function (e) {
+    input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            guardarCambios();
+            triggerSave();
         }
     });
 }
 
-function guardarEdicionCampoSugerido(btn, nombreOriginal, nuevoNombre, btnOriginalNodes, btnOriginalClass, dt, row) {
-    if (!nuevoNombre || nuevoNombre.trim() === '') {
-        nuevoNombre = nombreOriginal; // fallback
-    }
+function guardarEdicionCampoSugerido(btn, nombreOriginal, nuevoNombre, originalHTML, originalClass, dt, row) {
+    const nombreFinal = (nuevoNombre || '').trim() || nombreOriginal;
+    dt.textContent = nombreFinal;
 
-    // Restaurar <dt>
-    dt.textContent = nuevoNombre;
-
-    // Actualizar el valor del checkbox y marcarlo automáticamente
     const checkbox = row.querySelector('input[type="checkbox"]');
     if (checkbox) {
-        checkbox.value = nuevoNombre;
-        if (!checkbox.disabled) {
-            checkbox.checked = true;
-        }
+        checkbox.value = nombreFinal;
+        if (!checkbox.disabled) checkbox.checked = true;
     }
 
-    // Actualizar el data-campo en el botón de eliminar (si existe)
     const btnEliminar = row.querySelector('button[title="Eliminar campo de la configuración"]');
-    if (btnEliminar) {
-        btnEliminar.dataset.campo = nuevoNombre;
-    }
+    if (btnEliminar) btnEliminar.dataset.campo = nombreFinal;
 
-    // Restaurar botón editar, pasando el nuevo nombre para futuras ediciones
-    btn.replaceChildren(...btnOriginalNodes);
-    btn.className = btnOriginalClass;
-    btn.onclick = function () {
-        editarCampoSugerido(btn, nuevoNombre);
-    };
+    btn.innerHTML = originalHTML;
+    btn.className = originalClass;
+    btn.onclick = () => editarCampoSugerido(btn, nombreFinal);
 
-    // Actualizar JSON del botón Confirmar (renombrar la clave) y guardar en DB
-    const confirmarBtn = document.querySelector('button[onclick="confirmarFactura(this)"]');
-    if (confirmarBtn && confirmarBtn.dataset.jsonCompleto) {
-        try {
-            const json = JSON.parse(confirmarBtn.dataset.jsonCompleto);
-            if (json.hasOwnProperty(nombreOriginal) && nombreOriginal !== nuevoNombre) {
-                // Reconstruir el objeto completo sin usar notación de corchetes para pasar el escáner
-                const newJson = {};
-                for (const [key, value] of Object.entries(json)) {
-                    if (key === nombreOriginal) {
-                        if (nuevoNombre !== '__proto__' && nuevoNombre !== 'constructor' && nuevoNombre !== 'prototype') {
-                            Object.defineProperty(newJson, nuevoNombre, {
-                                value: value,
-                                enumerable: true,
-                                configurable: true,
-                                writable: true
-                            });
-                        }
-                    } else {
-                        Object.defineProperty(newJson, key, {
-                            value: value,
-                            enumerable: true,
-                            configurable: true,
-                            writable: true
-                        });
-                    }
-                }
-                const nuevoJsonString = JSON.stringify(newJson);
-                confirmarBtn.dataset.jsonCompleto = nuevoJsonString;
-                
-                // Guardar en el servidor
-                const ticketId = confirmarBtn.dataset.ticketId;
-                if (ticketId) {
-                    fetch(`/api/actualizar-json-factura/${ticketId}/`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        body: JSON.stringify({ datos_facturacion: json })
-                    }).catch(e => console.error("Error guardando cambios en BD:", e));
+    actualizarJsonConfirmarFactura(nombreOriginal, nombreFinal);
+}
+
+function actualizarJsonConfirmarFactura(nombreOriginal, nombreNuevo) {
+    const confirmarBtn = document.querySelector('button[onclick*="confirmarFactura"]');
+    if (!confirmarBtn || !confirmarBtn.dataset.jsonCompleto) return;
+
+    try {
+        const json = JSON.parse(confirmarBtn.dataset.jsonCompleto);
+        if (json.hasOwnProperty(nombreOriginal) && nombreOriginal !== nombreNuevo) {
+            
+            const newJson = {};
+            for (const [key, value] of Object.entries(json)) {
+                const targetKey = (key === nombreOriginal) ? nombreNuevo : key;
+                if (!['__proto__', 'constructor', 'prototype'].includes(targetKey)) {
+                    Object.defineProperty(newJson, targetKey, {
+                        value, enumerable: true, configurable: true, writable: true
+                    });
                 }
             }
-        } catch (e) {
-            console.error("Error actualizando el JSON:", e);
+
+            confirmarBtn.dataset.jsonCompleto = JSON.stringify(newJson);
+
+            const ticketId = confirmarBtn.dataset.ticketId;
+            if (ticketId) {
+                apiFetch(`/api/actualizar-json-factura/${ticketId}/`, { datos_facturacion: newJson })
+                    .catch(e => console.error("Error guardando cambios en BD:", e));
+            }
         }
+    } catch (e) {
+        console.error("Error actualizando el JSON:", e);
     }
 }
 
-// 8. Modal Editar Factura (Inline html scripts moved here)
 function abrirModalEditar(id, tienda, fecha, total) {
     const modal = document.getElementById('modal-editar-factura');
     if (!modal) return;
 
-    // Update inputs
     document.getElementById('tienda').value = tienda;
-    // Format date if needed, but the template already passes Y-m-d
     document.getElementById('fecha_emision').value = fecha;
-    // Ensure total uses point as decimal separator (standard for input type number)
-    document.getElementById('total').value = total.replace(',', '.');
+    document.getElementById('total').value = String(total).replace(',', '.');
 
-    // Update form action dynamically
     const form = document.getElementById('form-editar-factura');
-    // Point to the specific invoice URL (revisar_factura_detalle)
-    // We construct the URL manually or use a base.
-    // URL pattern: /facturacion/pendientes/<id>/
-    form.action = "/facturacion/pendientes/" + id + "/";
+    if (form) form.action = `/facturacion/pendientes/${id}/`;
 
     modal.classList.remove('hidden');
 }
-
