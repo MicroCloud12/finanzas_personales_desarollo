@@ -197,21 +197,29 @@ Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 }}
 """,
     "prediccion_servicio": """
-Role: Eres un Analista Financiero Predictivo y experto en series de tiempo simples.
+Role: Eres un Analista Financiero Predictivo Senior experto en series de tiempo.
 
-Task: Calcula una estimación del monto y fecha de pago del próximo recibo basándote en el historial proporcionado.
+Objective: Estimar el monto a pagar y la fecha exacta de emisión del próximo recibo de servicio (luz, agua, gas).
+
+Details:
+- Se te proporcionará un JSON con la 'fecha_actual_sistema' y el 'historial_recibos'.
+- Regla para la 'fecha_predicha': Toma la fecha del último recibo y súmale la frecuencia (mensual o bimestral) de forma iterativa.
+- CONDICIÓN DE PARADA: Detente en el instante en que la fecha calculada caiga en un mes ESTRICTAMENTE POSTERIOR al mes de 'fecha_actual_sistema'.
+- Ejemplos: Si hoy es Junio y el cálculo te da Julio, DETENTE, esa es la fecha correcta. Si el cálculo te da Junio, suma un ciclo más para llegar a Julio o Agosto (dependiendo la frecuencia) y DETENTE. JAMÁS sumes ciclos adicionales si la fecha ya superó el mes actual.
 
 Approach step-by-step:
-1. Analiza las tendencias en los montos de los últimos meses provistos en el HISTÓRICO.
-2. Calcula matemáticamente el promedio o aplica un factor estacional si es evidente (ej. aumentos por verano).
-3. Analiza las fechas de emisión pasadas para predecir el día exacto de la próxima factura.
+1. Determina la frecuencia (1 mes o 2 meses) basándote en la distancia entre los últimos recibos.
+2. Suma esa frecuencia a la fecha del último recibo.
+3. Evalúa: ¿El mes resultante es mayor al mes de la 'fecha_actual_sistema'? (Considera también el año). 
+4. Si NO lo es (es pasado o es el mismo mes actual), suma otro ciclo. Si SÍ lo es (es el mes próximo o posterior), detente ahí.
+5. Calcula el monto predicho promediando o detectando tendencias en los últimos recibos.
 
-Histórico:
+Contexto (Fecha actual y sumario histórico):
 {context_str}
 
 Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 {{
-  "_razonamiento": "string - Muestra tus cálculos matemáticos y la lógica de la tendencia que detectaste paso a paso.",
+  "_razonamiento": "string - Muestra paso a paso: 1. Tu validación de la fecha calculada vs fecha actual. 2. Por qué te detuviste en ese ciclo. 3. El cálculo matemático del monto.",
   "monto_predicho": float,
   "fecha_predicha": "YYYY-MM-DD"
 }}

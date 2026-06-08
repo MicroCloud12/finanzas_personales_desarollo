@@ -210,7 +210,11 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
                 "consumo": h.datos_json.get("consumo", "Desconocido")
             })
             
-        contexto = json.dumps(datos_historial)
+        contexto_data = {
+            "fecha_actual_sistema": timezone.localtime(timezone.now()).strftime('%Y-%m-%d'),
+            "historial_recibos": datos_historial
+        }
+        contexto = json.dumps(contexto_data)
         
         # 2. Pedir predicción a Gemini
         prediccion = gemini_service.extract_from_text("prediccion_servicio", "", contexto)
