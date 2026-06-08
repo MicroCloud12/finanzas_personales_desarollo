@@ -81,6 +81,15 @@ document.addEventListener('DOMContentLoaded', function () {
             this.innerText = "Cancelando...";
             cancelSleep(); // Despierta el loop inmediatamente para que lance la excepción
             
+            let cancelType = 'tickets';
+            if (currentTaskId) {
+                // If we want to infer from startUrl, we can just grab it from the button
+                const startUrl = startBtn.dataset.startUrl || '';
+                if (startUrl.includes('inversiones')) cancelType = 'inversiones';
+                else if (startUrl.includes('deudas')) cancelType = 'deudas';
+                else if (startUrl.includes('factura')) cancelType = 'facturas';
+            }
+
             // Lanzamos la petición al servidor pero no bloqueamos la UI esperándola
             fetch('/api/cancelar-procesamiento/', {
                 method: 'POST',
@@ -90,7 +99,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({
                     task_id: currentTaskId,
-                    group_id: currentGroupId
+                    group_id: currentGroupId,
+                    cancel_type: cancelType
                 })
             }).catch(e => console.error("Error al cancelar en servidor", e));
         });

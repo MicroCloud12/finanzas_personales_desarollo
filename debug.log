@@ -1473,3 +1473,48 @@ INFO 2026-06-07 17:50:11,366 transacciones Tarea principal revocada: c4edc181-92
 INFO 2026-06-07 17:50:11,369 transacciones Grupo de tareas revocado: cd8ad67c-0748-4a37-95e7-6e5495d1352f
 INFO 2026-06-07 17:50:11,592 transacciones Tarea principal revocada: c4edc181-9272-4d37-b740-c27d5f4b0b26
 INFO 2026-06-07 17:50:11,598 transacciones Grupo de tareas revocado: cd8ad67c-0748-4a37-95e7-6e5495d1352f
+WARNING 2026-06-07 17:50:40,057 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,058 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,059 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,059 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,060 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,061 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,062 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,063 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,064 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,066 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,067 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:50:40,068 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+INFO 2026-06-07 17:53:35,573 transacciones Tarea principal revocada: d57f8ae5-43d8-4ac8-abc9-169b59f2d01e
+WARNING 2026-06-07 17:54:45,009 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,010 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,011 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,012 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,013 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,014 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,014 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,015 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,016 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,017 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,018 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:54:45,019 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+INFO 2026-06-07 17:54:54,924 transacciones Tarea principal revocada: 02c95ebf-fc54-49cd-ac90-f88a52a02ab7
+INFO 2026-06-07 17:55:47,716 transacciones Tarea principal revocada: b7e73b6a-8932-4a2f-841e-537a7d407394
+INFO 2026-06-07 17:55:47,723 transacciones Grupo de tareas revocado: dd198d4a-3c0d-4956-b62e-cd2d956881b5
+WARNING 2026-06-07 17:55:50,348 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,349 utils La fecha extraída '2023-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,349 utils La fecha extraída '2025-05-24' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,349 utils La fecha extraída '2023-05-18' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,350 utils La fecha extraída '2024-04-09' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,350 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,350 utils La fecha extraída '2023-04-08' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,351 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,351 utils La fecha extraída '2023-05-26' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,351 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,352 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,352 utils La fecha extraída '2023-05-20' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-07 17:55:50,353 utils La fecha extraída '2023-05-31' es muy antigua y fue descartada. Se usará la fecha actual.
+INFO 2026-06-07 18:02:54,329 transacciones Tarea principal revocada: 5be0d34c-4e01-4638-b541-55ed9716c6fb
+INFO 2026-06-07 18:02:54,333 transacciones Grupo de tareas revocado: 68df4b68-17ef-44bd-867a-29fe95d581d1
+INFO 2026-06-07 18:03:31,236 transacciones Tarea principal revocada: cc5b1800-a28b-48b9-ba39-1961be1815a8
+INFO 2026-06-07 18:03:31,239 transacciones Grupo de tareas revocado: e892c081-93f2-4669-9676-52df98fdfab4

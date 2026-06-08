@@ -297,6 +297,7 @@ def cancelar_procesamiento(request):
         data = json.loads(request.body)
         task_id = data.get('task_id')
         group_id = data.get('group_id')
+        cancel_type = data.get('cancel_type', 'tickets')
 
         if not task_id:
             return JsonResponse({'status': 'error', 'message': 'Falta task_id'}, status=400)
@@ -311,6 +312,16 @@ def cancelar_procesamiento(request):
             if group_result:
                 group_result.revoke()
                 logger.info(f"Grupo de tareas revocado: {group_id}")
+
+        # Rechazar los registros que pudieron haberse creado parcialmente antes de cancelar
+        if cancel_type == 'tickets':
+            TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente').update(estado='rechazada')
+        elif cancel_type == 'inversiones':
+            PendingInvestment.objects.filter(propietario=request.user, estado='pendiente').update(estado='rechazada')
+        elif cancel_type == 'deudas':
+            AmortizacionPendiente.objects.filter(deuda__propietario=request.user, estado='pendiente').update(estado='rechazada')
+        elif cancel_type == 'facturas':
+            Factura.objects.filter(usuario=request.user, estado='pendiente').update(estado='rechazada')
 
         return JsonResponse({'status': 'success', 'message': 'Procesamiento cancelado exitosamente.'})
     except Exception as e:
