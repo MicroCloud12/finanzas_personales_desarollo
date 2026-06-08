@@ -81,13 +81,13 @@ function renderCardInfo(card, index, totalCards, elements) {
     }
     
     if (elements.indexLabel) {
-        elements.indexLabel.textContent = `( ${index + 1}/${totalCards} )`;
+        elements.indexLabel.textContent = index + 1;
     }
 }
 
 function createAsterisksSpan() {
     const span = document.createElement('span');
-    span.className = 'inline-block relative top-[0.1em] transform translate-y-px opacity-70';
+    span.className = 'inline-block transform -translate-y-0.5 opacity-70';
     span.textContent = '•••• •••• ••••';
     return span;
 }
