@@ -1,255 +1,225 @@
-// Plugin para texto central
+// --- Global Config & Utilities ---
+const FONTS = {
+    primary: 'Outfit, sans-serif'
+};
+
+const COLORS = {
+    text: {
+        dark: '#111827',
+        medium: '#4B5563',
+        light: '#9CA3AF',
+        muted: '#D1D5DB'
+    },
+    border: '#E5E7EB',
+    grid: '#f3f4f6',
+    primary: '#8B5CF6',     // Purple
+    primaryLight: '#C4B5FD',
+    primaryBg: '#EDE9FE',
+    success: '#10B981',     // Emerald
+    white: '#ffffff'
+};
+
+const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-US', { 
+        style: 'currency', 
+        currency: 'USD',
+        minimumFractionDigits: 0
+    }).format(value);
+};
+
+const getCommonTooltipOptions = () => ({
+    backgroundColor: COLORS.white,
+    titleColor: '#1F2937', 
+    bodyColor: COLORS.text.medium,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    padding: 12,
+    titleFont: { family: FONTS.primary, size: 14, weight: 'bold' },
+    bodyFont: { family: FONTS.primary, size: 13, weight: 'bold' },
+    cornerRadius: 12,
+});
+
+const getCommonGridOptions = () => ({
+    color: COLORS.grid,
+    borderDash: [5, 5],
+    drawBorder: false
+});
+
+const getCommonTickOptions = () => ({
+    font: { family: FONTS.primary, size: 11 },
+    color: COLORS.text.light
+});
+
+async function fetchChartData(url) {
+    if (!url) return null;
+    try {
+        const response = await fetch(url);
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching chart data:', error);
+        return null;
+    }
+}
+
+// --- Plugins ---
 const centerTextPlugin = {
     id: 'centerText',
-    beforeDraw: function (chart) {
+    beforeDraw: (chart) => {
         if (chart.config.type !== 'doughnut') return;
-        var width = chart.width,
-            height = chart.height,
-            ctx = chart.ctx;
-
+        const { width, height, ctx, data } = chart;
         ctx.restore();
 
-        // Título secundario
-        ctx.font = '500 13px Outfit, sans-serif';
+        // Secondary Title
+        ctx.font = `500 13px ${FONTS.primary}`;
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#9CA3AF'; // text-gray-400
-        var text1 = 'Gastos de este mes',
-            textX1 = Math.round((width - ctx.measureText(text1).width) / 2),
-            textY1 = height / 2 - 15;
+        ctx.fillStyle = COLORS.text.light;
+        const text1 = 'Gastos de este mes';
+        const textX1 = Math.round((width - ctx.measureText(text1).width) / 2);
+        const textY1 = height / 2 - 15;
         ctx.fillText(text1, textX1, textY1);
 
-        // Monto principal
-        ctx.font = 'bold 28px Outfit, sans-serif';
-        ctx.fillStyle = '#111827'; // text-gray-900
+        // Main Amount
+        ctx.font = `bold 28px ${FONTS.primary}`;
+        ctx.fillStyle = COLORS.text.dark;
+        
         let sum = 0;
-        if (chart.data.datasets && chart.data.datasets[0] && chart.data.datasets[0].data) {
-            sum = chart.data.datasets[0].data.reduce((a, b) => Number(a) + Number(b), 0);
+        if (data.datasets?.[0]?.data) {
+            sum = data.datasets[0].data.reduce((a, b) => Number(a) + Number(b), 0);
         }
 
-        // Format to split decimal like design: "$6,222.00"
-        let formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-        let parts = formatter.formatToParts(sum);
+        const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+        const parts = formatter.formatToParts(sum);
+        
         let integerPart = '';
         let decimalPart = '';
         parts.forEach(p => {
-            if (p.type === 'decimal' || p.type === 'fraction') { decimalPart += p.value; }
-            else { integerPart += p.value; }
+            if (p.type === 'decimal' || p.type === 'fraction') decimalPart += p.value;
+            else integerPart += p.value;
         });
 
-        let text2 = integerPart;
-        let textX2 = Math.round((width - ctx.measureText(text2 + decimalPart).width) / 2);
-        let textY2 = height / 2 + 20;
-        ctx.fillText(text2, textX2, textY2);
+        const textX2 = Math.round((width - ctx.measureText(integerPart + decimalPart).width) / 2);
+        const textY2 = height / 2 + 20;
+        ctx.fillText(integerPart, textX2, textY2);
 
-        // Dibujamos la parte decimal más clara
-        let intWidth = ctx.measureText(text2).width;
-        ctx.fillStyle = '#D1D5DB'; // text-gray-300
-        ctx.font = 'bold 24px Outfit, sans-serif';
-        ctx.fillText(decimalPart, textX2 + intWidth, textY2 + 1); // ajustado 1px visual
+        // Decimal part
+        const intWidth = ctx.measureText(integerPart).width;
+        ctx.fillStyle = COLORS.text.muted;
+        ctx.font = `bold 24px ${FONTS.primary}`;
+        ctx.fillText(decimalPart, textX2 + intWidth, textY2 + 1);
 
         ctx.save();
     }
 };
 
-// Gráfico de gastos por categoría
-function initGastosChart() {
+// --- Chart Initializers ---
+
+async function initGastosChart() {
     const canvas = document.getElementById('gastosPorCategoriaChart');
     if (!canvas) return;
-    const url = canvas.dataset.url;
-    fetch(url)
-        .then(resp => resp.json())
-        .then(data => {
+    
+    const data = await fetchChartData(canvas.dataset.url);
+    if (!data) return;
 
-            const palette = [
-                '#8B5CF6', // Purple base
-                '#C4B5FD', // Light purple
-                '#EDE9FE', // Very light
-                '#4B5563', // Dark gray
-                '#9CA3AF', // Medium gray
-                '#E5E7EB', // Light gray
-                '#6D28D9', // Deep purple
-                '#A78BFA',
-                '#374151',
-                '#D1D5DB'
-            ];
+    const palette = [
+        COLORS.primary, '#C4B5FD', '#EDE9FE', '#4B5563', 
+        '#9CA3AF', '#E5E7EB', '#6D28D9', '#A78BFA', '#374151', '#D1D5DB'
+    ];
+    const backgroundColors = data.labels.map((_, i) => palette.at(i % palette.length));
 
-            const backgroundColors = data.labels.map((_, i) => palette.at(i % palette.length));
-
-            new Chart(canvas, {
-                type: 'doughnut',
-                plugins: [centerTextPlugin],
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        data: data.data,
-                        backgroundColor: backgroundColors,
-                        borderWidth: 4, // create space between segments
-                        borderColor: '#ffffff', // matching card background
-                        borderRadius: 20, // Circular border ends!
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: {
-                        padding: 20
-                    },
-                    cutout: '80%', // Thinner ring
-                    rotation: 180, // Start drawing angles nicely
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#ffffff',
-                            titleColor: '#1F2937',
-                            bodyColor: '#4B5563',
-                            borderColor: '#E5E7EB',
-                            borderWidth: 1,
-                            padding: 12,
-                            titleFont: { family: 'Outfit', size: 14, weight: 'bold' },
-                            bodyFont: { family: 'Outfit', size: 13, weight: 'bold' },
-                            cornerRadius: 12,
-                            displayColors: false,
-                            yAlign: 'bottom',
-                            callbacks: {
-                                title: () => null, // Hide title to just show "40% $2,500"
-                                label: function (context) {
-                                    let sum = context.dataset.data.reduce((a, b) => Number(a) + Number(b), 0);
-                                    let percentage = Math.round((context.parsed * 100) / sum);
-                                    let formattedVal = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(context.parsed);
-                                    return [percentage + '%', formattedVal];
-                                }
-                            }
-                        },
-                        datalabels: {
-                            display: false // Turn off old custom labels
+    new Chart(canvas, {
+        type: 'doughnut',
+        plugins: [centerTextPlugin],
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.data,
+                backgroundColor: backgroundColors,
+                borderWidth: 4,
+                borderColor: COLORS.white,
+                borderRadius: 20,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: 20 },
+            cutout: '80%',
+            rotation: 180,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    ...getCommonTooltipOptions(),
+                    displayColors: false,
+                    yAlign: 'bottom',
+                    callbacks: {
+                        title: () => null,
+                        label: (context) => {
+                            const sum = context.dataset.data.reduce((a, b) => Number(a) + Number(b), 0);
+                            const percentage = Math.round((context.parsed * 100) / sum);
+                            return `${percentage}% ${formatCurrency(context.parsed)}`;
                         }
                     }
-                }
-            });
-
-            // Generar la leyenda HTML dinámica personalizada
-            const legendContainer = document.getElementById('gastosLegend');
-            if (legendContainer) {
-                legendContainer.replaceChildren();
-                data.labels.forEach((label, i) => {
-                    const color = backgroundColors.at(i);
-                    
-                    const div = document.createElement('div');
-                    div.className = 'flex items-center gap-2 mb-2 w-auto min-w-[30%]';
-                    
-                    const colorSpan = document.createElement('span');
-                    colorSpan.className = 'w-2.5 h-2.5 rounded-full';
-                    colorSpan.style.backgroundColor = color;
-                    
-                    const labelSpan = document.createElement('span');
-                    labelSpan.className = 'text-xs font-semibold text-gray-700';
-                    labelSpan.textContent = label;
-                    
-                    div.appendChild(colorSpan);
-                    div.appendChild(labelSpan);
-                    legendContainer.appendChild(div);
-                });
-            }
-        });
-}
-
-// Removed initFlujoDineroChart (Finance Overview removed from dashboard)
-
-// Gráfico de evolución de inversión
-function initInversionesChart() {
-    const canvas = document.getElementById('investmentLineChart');
-    if (!canvas) return;
-    const url = canvas.dataset.url;
-    fetch(url)
-        .then(resp => resp.json())
-        .then(data => {
-            const ctx = canvas.getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)'); // Emerald
-            gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-
-            new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        label: 'Capital',
-                        data: data.data,
-                        fill: true,
-                        borderColor: '#10B981',
-                        backgroundColor: gradient,
-                        tension: 0.4, // Smooth curves
-                        pointRadius: 0,
-                        pointHoverRadius: 6
-                    }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false, // Auto scale
-                            grid: { display: true, borderDash: [4, 4], color: '#f3f4f6', drawBorder: false },
-                            ticks: { callback: value => '$' + value.toLocaleString() }
-                        },
-                        x: {
-                            grid: { display: false },
-                        }
-                    },
-                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
-                }
-            });
-        });
+                datalabels: { display: false }
+            }
+        }
+    });
+
+    renderGastosLegend(data.labels, backgroundColors);
 }
 
+function renderGastosLegend(labels, colors) {
+    const container = document.getElementById('gastosLegend');
+    if (!container) return;
+    
+    container.replaceChildren();
+    
+    labels.forEach((label, i) => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 mb-2 w-auto min-w-[30%]';
+        
+        const colorSpan = document.createElement('span');
+        colorSpan.className = 'w-2.5 h-2.5 rounded-full';
+        colorSpan.style.backgroundColor = colors.at(i);
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'text-xs font-semibold text-gray-700';
+        labelSpan.textContent = label;
+        
+        div.appendChild(colorSpan);
+        div.appendChild(labelSpan);
+        container.appendChild(div);
+    });
+}
 
-// Gráfico de Crecimiento de Ahorro (Total Balance Overview)
 function initSavingsGrowthChart() {
     const canvas = document.getElementById('savingsGrowthChart');
     if (!canvas) return;
 
-    // Retrieve data securely from json_script tags
-    const labelsScript = document.getElementById('savings-labels-data');
-    const valuesScript = document.getElementById('savings-values-data');
-
-    let labels = [];
-    let data = [];
-    if (labelsScript && valuesScript) {
-        labels = JSON.parse(labelsScript.textContent);
-        data = JSON.parse(valuesScript.textContent);
-    } else {
-        // Fallback mock labels for redesign test
-        labels = ['1 Jul', '3 Jul', '5 Jul', '7 Jul', '9 Jul', '11 Jul', '13 Jul', '15 Jul', '17 Jul'];
-        data = [16000, 15000, 9500, 13000, 18500, 12500, 16000, 13000, 17500];
-    }
-
-    // Mock "Same period last month" data
-    let data2 = data.map(v => Number(v) * (0.7 + Math.random() * 0.4));
-
+    const { labels, data } = getSavingsData();
+    const dataLastMonth = data.map(v => Number(v) * (0.7 + Math.random() * 0.4));
+    
     const ctx = canvas.getContext('2d');
-
-    // Create Purple Gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.4)'); // Purple-500 @ 40%
-    gradient.addColorStop(1, 'rgba(139, 92, 246, 0.05)'); // Transparent
+    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.4)');
+    gradient.addColorStop(1, 'rgba(139, 92, 246, 0.05)');
 
     new Chart(canvas, {
         type: 'line',
         data: {
-            labels: labels,
+            labels,
             datasets: [
                 {
                     label: 'This month',
                     data: data,
-                    borderColor: '#8B5CF6', // Purple-500
+                    borderColor: COLORS.primary,
                     backgroundColor: gradient,
                     borderWidth: 3,
                     fill: true,
-                    tension: 0.4, // Smooth curves
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#8B5CF6',
+                    tension: 0.4,
+                    pointBackgroundColor: COLORS.white,
+                    pointBorderColor: COLORS.primary,
                     pointBorderWidth: 2,
                     pointRadius: 4,
                     pointHoverRadius: 6,
@@ -257,12 +227,12 @@ function initSavingsGrowthChart() {
                 },
                 {
                     label: 'Same period last month',
-                    data: data2,
-                    borderColor: '#C4B5FD', // Light purple
+                    data: dataLastMonth,
+                    borderColor: COLORS.primaryLight,
                     borderWidth: 2,
                     borderDash: [5, 5],
                     fill: false,
-                    tension: 0.4, // Smooth curves
+                    tension: 0.4,
                     pointRadius: 0,
                     pointHoverRadius: 4
                 }
@@ -271,53 +241,30 @@ function initSavingsGrowthChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: {
-                padding: { top: 20, right: 20, left: 10, bottom: 10 }
-            },
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
+            layout: { padding: { top: 20, right: 20, left: 10, bottom: 10 } },
+            interaction: { mode: 'index', intersect: false },
             scales: {
                 y: {
                     beginAtZero: true,
                     suggestedMax: Math.max(...data) * 1.2,
-                    grid: {
-                        color: '#f3f4f6',
-                        drawBorder: false,
-                        borderDash: [5, 5]
-                    },
+                    grid: getCommonGridOptions(),
                     ticks: {
-                        callback: function (value) { return '$' + value.toLocaleString(); },
-                        font: { family: 'Outfit', size: 11 },
-                        color: '#9ca3af'
+                        ...getCommonTickOptions(),
+                        callback: (value) => formatCurrency(value)
                     }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: {
-                        font: { family: 'Outfit', size: 11 },
-                        color: '#9ca3af'
-                    }
+                    ticks: getCommonTickOptions()
                 }
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#ffffff',
-                    titleColor: '#1F2937',
-                    bodyColor: '#4B5563',
-                    borderColor: '#E5E7EB',
-                    borderWidth: 1,
-                    padding: 12,
-                    titleFont: { family: 'Outfit', size: 13, weight: 'bold' },
-                    bodyFont: { family: 'Outfit', size: 13, weight: 'bold' },
-                    cornerRadius: 12,
+                    ...getCommonTooltipOptions(),
                     displayColors: true,
                     callbacks: {
-                        label: function (context) {
-                            return context.dataset.label + ': $' + Number(context.parsed.y).toLocaleString();
-                        }
+                        label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
                     }
                 }
             }
@@ -325,84 +272,149 @@ function initSavingsGrowthChart() {
     });
 }
 
-function initBudgetVsActualChart() {
+function getSavingsData() {
+    const labelsScript = document.getElementById('savings-labels-data');
+    const valuesScript = document.getElementById('savings-values-data');
+
+    if (labelsScript && valuesScript) {
+        return {
+            labels: JSON.parse(labelsScript.textContent),
+            data: JSON.parse(valuesScript.textContent)
+        };
+    }
+    
+    return {
+        labels: ['1 Jul', '3 Jul', '5 Jul', '7 Jul', '9 Jul', '11 Jul', '13 Jul', '15 Jul', '17 Jul'],
+        data: [16000, 15000, 9500, 13000, 18500, 12500, 16000, 13000, 17500]
+    };
+}
+
+async function initBudgetVsActualChart() {
     const canvas = document.getElementById('budgetVsActualChart');
     if (!canvas) return;
-    const url = canvas.dataset.url;
-    if (!url) return;
     
-    fetch(url)
-        .then(resp => resp.json())
-        .then(data => {
-            new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: data.labels,
-                    datasets: [
-                        {
-                            label: 'Gasto Real',
-                            data: data.real,
-                            backgroundColor: '#8B5CF6', // Solid purple
-                            borderRadius: 4,
-                            barPercentage: 0.6,
-                            categoryPercentage: 0.7
-                        },
-                        {
-                            label: 'Presupuesto',
-                            data: data.presupuestado,
-                            backgroundColor: '#EDE9FE', // Light transparent purple
-                            borderRadius: 4,
-                            barPercentage: 0.6,
-                            categoryPercentage: 0.7
-                        }
-                    ]
+    const data = await fetchChartData(canvas.dataset.url);
+    if (!data) return;
+
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Gasto Real',
+                    data: data.real,
+                    backgroundColor: COLORS.primary,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.7
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: { padding: { top: 20, right: 10, left: 10, bottom: 0 } },
-                    scales: {
-                        x: {
-                            stacked: false,
-                            grid: { display: false },
-                            ticks: { font: { family: 'Outfit', size: 11 }, color: '#9ca3af' }
-                        },
-                        y: {
-                            stacked: false,
-                            beginAtZero: true,
-                            grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
-                            ticks: {
-                                callback: function (value) { return '$' + value.toLocaleString(); },
-                                font: { family: 'Outfit', size: 11 }, color: '#9ca3af'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#ffffff',
-                            titleColor: '#1F2937',
-                            bodyColor: '#4B5563',
-                            borderColor: '#E5E7EB',
-                            borderWidth: 1,
-                            padding: 12,
-                            titleFont: { family: 'Outfit', size: 13, weight: 'bold' },
-                            bodyFont: { family: 'Outfit', size: 13, weight: 'bold' },
-                            cornerRadius: 12,
-                            callbacks: {
-                                label: function (context) {
-                                    return context.dataset.label + ': $' + Number(context.parsed.y).toLocaleString();
-                                }
-                            }
-                        }
+                {
+                    label: 'Presupuesto',
+                    data: data.presupuestado,
+                    backgroundColor: COLORS.primaryBg,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.7
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 20, right: 10, left: 10, bottom: 0 } },
+            scales: {
+                x: {
+                    stacked: false,
+                    grid: { display: false },
+                    ticks: getCommonTickOptions()
+                },
+                y: {
+                    stacked: false,
+                    beginAtZero: true,
+                    grid: getCommonGridOptions(),
+                    ticks: {
+                        ...getCommonTickOptions(),
+                        callback: (value) => formatCurrency(value)
                     }
                 }
-            });
-        });
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    ...getCommonTooltipOptions(),
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function initInversionesChart() {
+    const canvas = document.getElementById('investmentLineChart');
+    if (!canvas) return;
+    
+    const data = await fetchChartData(canvas.dataset.url);
+    if (!data) return;
+
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Capital',
+                data: data.data,
+                fill: true,
+                borderColor: COLORS.success,
+                backgroundColor: gradient,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    grid: getCommonGridOptions(),
+                    ticks: {
+                        ...getCommonTickOptions(),
+                        callback: (value) => formatCurrency(value)
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: getCommonTickOptions()
+                }
+            },
+            plugins: { 
+                legend: { display: false }, 
+                tooltip: { 
+                    ...getCommonTooltipOptions(),
+                    mode: 'index', 
+                    intersect: false,
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
+                    }
+                } 
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false }
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     initGastosChart();
     initSavingsGrowthChart();
     initBudgetVsActualChart();
+    initInversionesChart(); 
 });

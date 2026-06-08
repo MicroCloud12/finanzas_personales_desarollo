@@ -1,4 +1,6 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', initDashboardCards);
+
+function initDashboardCards() {
     const dataEl = document.getElementById('tarjetas-data');
     if (!dataEl) return;
     
@@ -6,183 +8,170 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tarjetas.length === 0) return;
 
     let currentIndex = 0;
+    const elements = getCardElements();
     
-    const visualCardName = document.getElementById('visualCardName');
-    const visualCardNumber = document.getElementById('visualCardNumber');
-    const indexLabel = document.getElementById('visualCardIndexLabel');
-    const widget = document.getElementById('myCardsWidget');
+    setupEventListeners(elements, () => {
+        currentIndex = getNextIndex(currentIndex, tarjetas.length, 1);
+        updateCardDisplay(currentIndex, tarjetas, elements);
+    }, () => {
+        currentIndex = getNextIndex(currentIndex, tarjetas.length, -1);
+        updateCardDisplay(currentIndex, tarjetas, elements);
+    });
+
+    // Initialize the first card
+    updateCardDisplay(currentIndex, tarjetas, elements);
+}
+
+function getCardElements() {
+    return {
+        visualCardName: document.getElementById('visualCardName'),
+        visualCardNumber: document.getElementById('visualCardNumber'),
+        indexLabel: document.getElementById('visualCardIndexLabel'),
+        widget: document.getElementById('myCardsWidget'),
+        prevBtn: document.getElementById('prevCardBtn'),
+        nextBtn: document.getElementById('nextCardBtn'),
+        monthSelect: document.querySelector('select[name="month"]'),
+        yearSelect: document.querySelector('select[name="year"]')
+    };
+}
+
+function setupEventListeners(elements, onNext, onPrev) {
+    if (elements.prevBtn) elements.prevBtn.addEventListener('click', onPrev);
+    if (elements.nextBtn) elements.nextBtn.addEventListener('click', onNext);
+}
+
+function getNextIndex(currentIndex, total, step) {
+    let nextIndex = currentIndex + step;
+    if (nextIndex >= total) return 0;
+    if (nextIndex < 0) return total - 1;
+    return nextIndex;
+}
+
+const BACKGROUND_GRADIENTS = [
+    'linear-gradient(135deg, #0f172a 0%, #172554 40%, #991b1b 100%)',
+    'linear-gradient(135deg, #020617 0%, #064e3b 40%, #10b981 100%)',
+    'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 40%, #f43f5e 100%)',
+    'linear-gradient(135deg, #0a0a0a 0%, #262626 50%, #ea580c 100%)'
+];
+
+function updateCardDisplay(index, tarjetas, elements) {
+    const card = tarjetas.at(index);
+    if (!card) return;
+
+    elements.widget.style.opacity = '0.7';
     
-    const prevBtn = document.getElementById('prevCardBtn');
-    const nextBtn = document.getElementById('nextCardBtn');
+    setTimeout(() => {
+        renderCardInfo(card, index, tarjetas.length, elements);
+        elements.widget.style.background = BACKGROUND_GRADIENTS.at(index % BACKGROUND_GRADIENTS.length);
+        elements.widget.style.opacity = '1';
+        
+        fetchIncomeMetrics(card.nombre, elements.monthSelect, elements.yearSelect);
+    }, 150);
+}
+
+function renderCardInfo(card, index, totalCards, elements) {
+    if (elements.visualCardName) {
+        elements.visualCardName.textContent = card.nombre;
+    }
     
-    // Arrays for random premium gradient variations for the Main Container
-    const backgroundGradients = [
-        'linear-gradient(135deg, #0f172a 0%, #172554 40%, #991b1b 100%)', // Original Red/Navy abstract look
-        'linear-gradient(135deg, #020617 0%, #064e3b 40%, #10b981 100%)', // Emerald abstract
-        'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 40%, #f43f5e 100%)', // Purple/Rose abstract
-        'linear-gradient(135deg, #0a0a0a 0%, #262626 50%, #ea580c 100%)'  // Ember/Slate abstract
-    ];
+    if (elements.visualCardNumber) {
+        elements.visualCardNumber.replaceChildren();
+        elements.visualCardNumber.appendChild(createAsterisksSpan());
+        elements.visualCardNumber.appendChild(createTermSpan(card.terminacion));
+    }
+    
+    if (elements.indexLabel) {
+        elements.indexLabel.textContent = `( ${index + 1}/${totalCards} )`;
+    }
+}
 
-    function updateCardDisplay(index) {
-        const card = tarjetas.at(index);
+function createAsterisksSpan() {
+    const span = document.createElement('span');
+    span.className = 'inline-block relative top-[0.1em] transform translate-y-px opacity-70';
+    span.textContent = '•••• •••• ••••';
+    return span;
+}
+
+function createTermSpan(terminacion) {
+    const span = document.createElement('span');
+    span.className = 'ml-4 opacity-90 font-medium';
+    span.textContent = terminacion || '0000';
+    return span;
+}
+
+async function fetchIncomeMetrics(cuentaNombre, monthSelect, yearSelect) {
+    if (!monthSelect || !yearSelect) return;
+    
+    const month = monthSelect.value;
+    const year = yearSelect.value;
+    const url = `/api/dashboard/ingresos-tarjeta/?cuenta_nombre=${encodeURIComponent(cuentaNombre)}&month=${month}&year=${year}`;
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
         
-        // Small fade animation
-        widget.style.opacity = '0.7';
-        
-        setTimeout(() => {
-            // Update content
-            visualCardName.textContent = card.nombre;
-            
-            visualCardNumber.replaceChildren();
-            const asterisksSpan = document.createElement('span');
-            asterisksSpan.className = 'inline-block relative top-[0.1em] transform translate-y-px opacity-70';
-            asterisksSpan.textContent = '•••• •••• ••••';
-            
-            const termSpan = document.createElement('span');
-            termSpan.className = 'ml-4 opacity-90 font-medium';
-            termSpan.textContent = card.terminacion || '0000';
-            
-            visualCardNumber.appendChild(asterisksSpan);
-            visualCardNumber.appendChild(termSpan);
-            
-            if(indexLabel) indexLabel.textContent = '( ' + (index + 1) + '/' + tarjetas.length + ' )';
-            
-            // Cycle gradients smoothly on the main block
-            widget.style.background = backgroundGradients.at(index % backgroundGradients.length);
-            
-            // Restore animation
-            widget.style.opacity = '1';
-            
-            // --- NEW: Trigger update for Income Card ---
-            fetchIncomeMetrics(card.nombre);
-        }, 150);
+        if (data.status === 'success') {
+            updateAllMetrics(data);
+        }
+    } catch (error) {
+        console.error("Error al obtener las estadísticas de ingresos:", error);
+    }
+}
+
+function updateAllMetrics(data) {
+    updateMetricSection('income', data.ingresos, { positiveIsGood: true });
+    updateMetricSection('expense', data.gastos, { positiveIsGood: false });
+    updateMetricSection('balance', data.balance, { positiveIsGood: true, handleNegative: true });
+}
+
+function updateMetricSection(prefix, metricData, config) {
+    if (!metricData) return;
+
+    let rawTotal = String(metricData.total);
+    let isNegative = config.handleNegative && rawTotal.startsWith('-');
+    
+    if (isNegative) {
+        rawTotal = rawTotal.substring(1);
+    }
+    
+    const [wholePart, decimalPart] = rawTotal.split('.');
+    
+    updateTextContent(`${prefix}TotalAmount`, (isNegative ? '-' : '') + wholePart);
+    updateTextContent(`${prefix}DecimalAmount`, decimalPart || '00');
+    updateTextContent(`${prefix}PercentageText`, `${metricData.porcentaje}%`);
+    updateTextContent(`${prefix}ExtraAmount`, `$${metricData.diferencia_monto}`);
+    updateTextContent(`${prefix}TxCount`, `${metricData.transactions} transacciones`);
+    updateTextContent(`${prefix}CatCount`, `${metricData.categories} categorías`);
+    
+    updateBadgeTrend(prefix, metricData.es_positivo, config.positiveIsGood);
+}
+
+function updateTextContent(elementId, text) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = text;
+    }
+}
+
+function updateBadgeTrend(prefix, isPositive, positiveIsGoodColor) {
+    const badge = document.getElementById(`${prefix}PercentageBadge`);
+    const trendPath = document.getElementById(`${prefix}TrendArrow`);
+    const earnText = document.getElementById(`${prefix}EarnText`);
+    
+    if (!badge || !trendPath || !earnText) return;
+
+    if (isPositive) {
+        trendPath.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
+        earnText.textContent = "extra";
+    } else {
+        trendPath.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
+        earnText.textContent = "menos";
     }
 
-    // Función para mandar a traer los ingresos cruzados con filtros
-    function fetchIncomeMetrics(cuentaNombre) {
-        const monthSelect = document.querySelector('select[name="month"]');
-        const yearSelect = document.querySelector('select[name="year"]');
-        if (!monthSelect || !yearSelect) return;
-        
-        const month = monthSelect.value;
-        const year = yearSelect.value;
-        
-        const url = `/api/dashboard/ingresos-tarjeta/?cuenta_nombre=${encodeURIComponent(cuentaNombre)}&month=${month}&year=${year}`;
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // --- UPDATE INGRESOS ---
-                    const ing = data.ingresos;
-                    const partsIng = String(ing.total).split('.');
-                    document.getElementById('incomeTotalAmount').textContent = partsIng[0];
-                    if (document.getElementById('incomeDecimalAmount')) {
-                        document.getElementById('incomeDecimalAmount').textContent = partsIng[1] || '00';
-                    }
-                    
-                    document.getElementById('incomePercentageText').textContent = ing.porcentaje + '%';
-                    document.getElementById('incomeExtraAmount').textContent = '$' + ing.diferencia_monto;
-                    document.getElementById('incomeTxCount').textContent = ing.transactions + ' transacciones';
-                    document.getElementById('incomeCatCount').textContent = ing.categories + ' categorías';
-                    
-                    const badgeIng = document.getElementById('incomePercentageBadge');
-                    const trendPathIng = document.getElementById('incomeTrendArrow');
-                    const earnTextIng = document.getElementById('incomeEarnText');
-                    
-                    if (ing.es_positivo) {
-                        badgeIng.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        trendPathIng.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
-                        earnTextIng.textContent = "extra";
-                    } else {
-                        badgeIng.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        trendPathIng.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
-                        earnTextIng.textContent = "menos";
-                    }
-
-                    // --- UPDATE GASTOS ---
-                    const gas = data.gastos;
-                    const partsGas = String(gas.total).split('.');
-                    document.getElementById('expenseTotalAmount').textContent = partsGas[0];
-                    if (document.getElementById('expenseDecimalAmount')) {
-                        document.getElementById('expenseDecimalAmount').textContent = partsGas[1] || '00';
-                    }
-                    
-                    document.getElementById('expensePercentageText').textContent = gas.porcentaje + '%';
-                    document.getElementById('expenseExtraAmount').textContent = '$' + gas.diferencia_monto;
-                    document.getElementById('expenseTxCount').textContent = gas.transactions + ' transacciones';
-                    document.getElementById('expenseCatCount').textContent = gas.categories + ' categorías';
-                    
-                    const badgeGas = document.getElementById('expensePercentageBadge');
-                    const trendPathGas = document.getElementById('expenseTrendArrow');
-                    const earnTextGas = document.getElementById('expenseEarnText');
-                    
-                    // In expenses, going up (es_positivo = true) is visually "bad/red" 
-                    // Going down (es_positivo = false) is visually "good/green"
-                    if (gas.es_positivo) {
-                        badgeGas.className = "inline-flex items-center gap-1 bg-red-50 text-red-500 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        trendPathGas.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
-                        earnTextGas.textContent = "extra";
-                    } else {
-                        badgeGas.className = "inline-flex items-center gap-1 bg-green-50 text-green-500 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        trendPathGas.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
-                        earnTextGas.textContent = "menos";
-                    }
-                    // --- UPDATE TOTAL BALANCE ---
-                    const bal = data.balance;
-                    
-                    // We need to handle potential negative signs on the total
-                    let rawBal = String(bal.total);
-                    let isNegative = rawBal.startsWith('-');
-                    if (isNegative) {
-                        rawBal = rawBal.substring(1);
-                    }
-                    const partsBal = rawBal.split('.');
-                    
-                    document.getElementById('balanceTotalAmount').textContent = (isNegative ? '-' : '') + partsBal[0];
-                    if (document.getElementById('balanceDecimalAmount')) {
-                        document.getElementById('balanceDecimalAmount').textContent = partsBal[1] || '00';
-                    }
-                    
-                    document.getElementById('balancePercentageText').textContent = bal.porcentaje + '%';
-                    document.getElementById('balanceExtraAmount').textContent = '$' + bal.diferencia_monto;
-                    document.getElementById('balanceTxCount').textContent = bal.transactions + ' transacciones';
-                    document.getElementById('balanceCatCount').textContent = bal.categories + ' categorías';
-                    
-                    const badgeBal = document.getElementById('balancePercentageBadge');
-                    const trendPathBal = document.getElementById('balanceTrendArrow');
-                    const earnTextBal = document.getElementById('balanceEarnText');
-                    
-                    if (bal.es_positivo) {
-                        badgeBal.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        trendPathBal.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
-                        earnTextBal.textContent = "extra";
-                    } else {
-                        badgeBal.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
-                        trendPathBal.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
-                        earnTextBal.textContent = "menos";
-                    }
-                }
-            })
-            .catch(error => console.error("Error al obtener las estadísticas de ingresos:", error));
+    const isGood = isPositive === positiveIsGoodColor;
+    if (isGood) {
+        badge.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+    } else {
+        badge.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
     }
-
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-            currentIndex = (currentIndex === 0) ? tarjetas.length - 1 : currentIndex - 1;
-            updateCardDisplay(currentIndex);
-        });
-    }
-
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            currentIndex = (currentIndex === tarjetas.length - 1) ? 0 : currentIndex + 1;
-            updateCardDisplay(currentIndex);
-        });
-    }
-
-    // Initialize the real data for the first card on load
-    if (tarjetas.length > 0) {
-        fetchIncomeMetrics(tarjetas.at(currentIndex).nombre);
-    }
-});
+}
