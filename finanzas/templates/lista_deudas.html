@@ -130,11 +130,15 @@
                         <td class="px-6 py-4 bg-white text-sm align-middle">
                             {# Simple visual bar for debt usage/remaining #}
                             <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-200 mt-1">
-                                <!-- Logic: Width = (Saldo / Monto) * 100. -->
-                                <div class="bg-red-500 h-1.5 rounded-full"
-                                    style="width: {% widthratio deuda.saldo_pendiente deuda.monto_total 100 %}%"></div>
+                                <div class="h-1.5 rounded-full debt-progress-bar transition-colors duration-500 bg-gray-300"
+                                     data-tipo="{{ deuda.tipo_deuda }}"
+                                     data-saldo="{{ deuda.saldo_pendiente|stringformat:'f' }}"
+                                     data-monto="{{ deuda.monto_total|stringformat:'f' }}"
+                                     style="width: {% widthratio deuda.saldo_pendiente deuda.monto_total 100 %}%"></div>
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1">Saldo restante</p>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Crédito disponible{% else %}Deuda restante{% endif %}
+                            </p>
                         </td>
 
                         <td class="px-6 py-4 bg-white text-sm text-right">
@@ -271,4 +275,32 @@
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.debt-progress-bar').forEach(bar => {
+        const tipo = bar.dataset.tipo;
+        const saldo = parseFloat(bar.dataset.saldo) || 0;
+        const monto = parseFloat(bar.dataset.monto) || 1;
+        const pct = (saldo / monto) * 100;
+        
+        bar.classList.remove('bg-gray-300');
+        if (tipo === 'TARJETA_CREDITO') {
+            // Para tarjetas: saldo pendiente es el crédito disponible.
+            // Más crédito disponible (100%) = Verde. Menos (0%) = Rojo.
+            if (pct >= 85) bar.classList.add('bg-green-500');
+            else if (pct >= 30) bar.classList.add('bg-yellow-500');
+            else bar.classList.add('bg-red-500');
+        } else {
+            // Para préstamos: saldo pendiente es la deuda restante.
+            // Menos deuda restante (0%) = Verde. Más deuda (100%) = Rojo.
+            if (pct <= 15) bar.classList.add('bg-green-500');
+            else if (pct <= 70) bar.classList.add('bg-yellow-500');
+            else bar.classList.add('bg-red-500');
+        }
+    });
+});
+</script>
 {% endblock %}
