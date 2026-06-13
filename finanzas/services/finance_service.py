@@ -27,14 +27,14 @@ class TransactionService:
             ticket = TransaccionPendiente.objects.get(id=ticket_id, propietario=user)
             datos = ticket.datos_json
             tipo_documento = datos.get("tipo_documento")
+            tipo_movimiento = datos.get("tipo_movimiento")
             
             descripcion_final = datos.get("descripcion_corta", "Sin descripción")
             
-            if tipo_documento == 'TRANSFERENCIA':
+            if tipo_documento == 'TRANSFERENCIA' or tipo_movimiento == 'TRANSFERENCIA':
                 descripcion_final = re.sub(r'(?i)^transferencias?\s*(de|por)?\s*', '', descripcion_final).strip()
-            
-            if tipo_documento == 'TICKET_COMPRA':
-                descripcion_final = datos.get("establecimiento", "Compra sin establecimiento")
+            elif tipo_documento == 'TICKET_COMPRA' or tipo_movimiento == 'GASTO':
+                descripcion_final = datos.get("establecimiento", descripcion_final)
             
             fecha_segura = parse_date_safely(datos.get("fecha") or datos.get("fecha_emision"))
             monto_str = str(datos.get("total") or datos.get("total_pagado") or 0.0)
@@ -56,7 +56,6 @@ class TransactionService:
             return ticket
         except TransaccionPendiente.DoesNotExist:
             return None
-
 
 class InvestmentService:
     """Service for handling investment operations."""
@@ -230,7 +229,6 @@ class InvestmentService:
             fecha_iter += relativedelta(days=1)
 
         return historial
-
 
 class DebtService:
     """Service for handling debt operations like amortizations."""

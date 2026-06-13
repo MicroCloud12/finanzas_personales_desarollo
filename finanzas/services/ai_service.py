@@ -80,7 +80,6 @@ def get_gemini_service() -> GeminiService:
         _gemini_singleton = GeminiService()
     return _gemini_singleton
 
-
 class MistralOCRService:
     """Service for Mistral OCR processing."""
     def __init__(self):

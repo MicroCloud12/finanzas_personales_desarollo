@@ -9,10 +9,11 @@ Task: Extrae la información del recibo o ticket y mapea los valores exactamente
 
 Approach step-by-step:
 1. Analiza el nombre del establecimiento comercial principal. ESTANDARIZA el nombre eliminando razones sociales (ej. "S.A. de C.V.", "Sociedad Financiera Popular", "S. de R.L."). Por ejemplo, "Nu méxico financiera, s.a. de c.v." debe ser "Nu Mexico", "Farmacias simila, s.a. de c.v." debe ser "Farmacias Similares". Ignora bancos de terminales como BBVA/CLIP. Si dice "Express", asume "DIDI".
-2. Identifica el monto total final pagado, asegurándote de no confundirlo con subtotales o propinas.
+2. Identifica el monto total final pagado, asegurándote de no confundirlo con subtotales o propinas. Si el monto aparece con signo negativo (ej. -626.80), extrae siempre el valor absoluto positivo (ej. 626.80).
 3. Clasifica el movimiento obligatoriamente como GASTO, INGRESO o TRANSFERENCIA.
 4. Identifica la cuenta de origen. Busca en el comprobante los últimos 4 dígitos de la tarjeta o el nombre del banco emisor (ej. Nu, Santander, Amex). Crúzalo con las 'Cuentas disponibles' del CONTEXTO. IMPORTANTE: Devuelve ÚNICAMENTE el 'nombre' de la cuenta del contexto sin terminación ni comillas (ej. si el contexto dice 'Nu Mexico' (Terminación: N/A), devuelve "Nu Mexico"). Si fue en efectivo, devuelve la cuenta de efectivo. Si de plano no hay pistas, devuelve "".
 5. Selecciona la categoría más adecuada basándote estrictamente en las opciones del CONTEXTO.
+6. Identifica el CONCEPTO de la operación para usarlo como descripción corta. Si es una transferencia o SPEI, busca el valor indicado como 'concepto', 'motivo' o 'mensaje'. Si no aparecen esas palabras clave, busca la frase descriptiva que suele estar suelta debajo del monto o la fecha (ej. 'PAGO GAS JUNIO', 'Ahorro', 'Renta'). NUNCA uses el nombre del banco origen o destino como descripción corta. Si es una compra, resume el giro del ticket.
 
 Contexto del usuario:
 {context_str}
@@ -27,7 +28,7 @@ Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
   "categoria_sugerida": "string",
   "cuenta_origen_sugerida": "string",
   "cuenta_destino_sugerida": "string o N/A",
-  "descripcion_corta": "string - Concepto central omitiendo palabras como 'Transferencia de'",
+  "descripcion_corta": "string - Concepto o motivo de la operación (ej. 'Ahorro', 'Comida'). NUNCA el nombre del banco.",
   "confianza_extraccion": "ALTA|MEDIA|BAJA"
 }}
 """,

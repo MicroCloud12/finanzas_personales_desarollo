@@ -76,9 +76,9 @@
                                 {{ ticket.fecha_formateada }}
                             </td>
                             <td class="px-4 py-4 bg-white text-sm text-gray-900">
-                                {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' %}
-                                <span>{{ ticket.datos_json.establecimiento|lower|capfirst }}</span>
-                                {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' %}
+                                {% if ticket.datos_json.tipo_documento == 'TICKET_COMPRA' or ticket.datos_json.tipo_movimiento == 'GASTO' %}
+                                <span>{{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta|lower|capfirst }}</span>
+                                {% elif ticket.datos_json.tipo_documento == 'TRANSFERENCIA' or ticket.datos_json.tipo_movimiento == 'TRANSFERENCIA' %}
                                 <span class="italic text-gray-600">{{ ticket.datos_json.descripcion_corta|lower|capfirst }}</span>
                                 {% else %}
                                 {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta|lower|capfirst }}

@@ -101,8 +101,6 @@ class TransaccionesForm(forms.ModelForm):
             
         return cleaned_data
 
-
-
 class FormularioRegistroPersonalizado(UserCreationForm):
     # El campo de email y la validación que ya teníamos están perfectos.
     email = forms.EmailField(

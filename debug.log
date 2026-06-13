@@ -1582,3 +1582,11 @@ ERROR 2026-06-07 18:59:20,368 market_data_service TwelveData API error for NVDA:
 ERROR 2026-06-07 18:59:20,679 market_data_service TwelveData API error for MSFT: {"code":429,"message":"You have run out of API credits for the current minute. 13 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
 ERROR 2026-06-07 19:37:40,015 ai_service Gemini API Error: Unterminated string starting at: line 2 column 20 (char 21)
 ERROR 2026-06-07 19:40:16,210 ai_service Gemini API Error: Unterminated string starting at: line 2 column 20 (char 21)
+ERROR 2026-06-12 21:31:47,907 transacciones Error en get_initial_task_result: Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.
+WARNING 2026-06-12 21:33:30,925 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-12 21:34:29,829 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-12 21:39:02,849 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-12 21:47:22,833 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-12 21:51:29,826 utils La cadena de fecha 'N/A' no pudo ser procesada. Se usará la fecha actual.
+WARNING 2026-06-12 21:57:02,844 utils La cadena de fecha 'N/A' no pudo ser procesada. Se usará la fecha actual.
+WARNING 2026-06-12 22:00:27,534 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
