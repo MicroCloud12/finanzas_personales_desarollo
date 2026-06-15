@@ -8,28 +8,28 @@ Role: Eres un experto analista contable especializado en extracción de datos fi
 Task: Extrae la información del recibo o ticket y mapea los valores exactamente a la estructura JSON requerida.
 
 Approach step-by-step:
-1. Analiza el nombre del establecimiento comercial principal. ESTANDARIZA el nombre eliminando razones sociales (ej. "S.A. de C.V.", "Sociedad Financiera Popular", "S. de R.L."). Por ejemplo, "Nu méxico financiera, s.a. de c.v." debe ser "Nu Mexico", "Farmacias simila, s.a. de c.v." debe ser "Farmacias Similares". Ignora bancos de terminales como BBVA/CLIP. Si dice "Express", asume "DIDI".
-2. Identifica el monto total final pagado, asegurándote de no confundirlo con subtotales o propinas. Si el monto aparece con signo negativo (ej. -626.80), extrae siempre el valor absoluto positivo (ej. 626.80).
-3. Clasifica el movimiento obligatoriamente como GASTO, INGRESO o TRANSFERENCIA.
-4. Identifica la cuenta de origen. Busca en el comprobante los últimos 4 dígitos de la tarjeta o el nombre del banco emisor (ej. Nu, Santander, Amex). Crúzalo con las 'Cuentas disponibles' del CONTEXTO. IMPORTANTE: Devuelve ÚNICAMENTE el 'nombre' de la cuenta del contexto sin terminación ni comillas (ej. si el contexto dice 'Nu Mexico' (Terminación: N/A), devuelve "Nu Mexico"). Si fue en efectivo, devuelve la cuenta de efectivo. Si de plano no hay pistas, devuelve "".
+1. Analiza el nombre del establecimiento comercial principal. ESTANDARIZA el nombre eliminando razones sociales (ej. "S.A. de C.V."). Ignora bancos de terminales como BBVA/CLIP. Si el ticket es de un cajero automático y dice "RETIRO DE EFECTIVO" o "DISPOSICION", el establecimiento debe ser "Cajero [Nombre del Banco]" (ej. "Cajero Banorte"). Si es una captura de transferencia bancaria, IGNORA el título de la app (ej. "Santander Universidades"); el establecimiento debe ser el nombre del destinatario, o en su defecto, dejarlo vacío.
+2. Identifica el monto total final pagado (o retirado). Si el monto aparece con signo negativo, extrae el valor absoluto positivo.
+3. Clasifica el movimiento como GASTO, INGRESO o TRANSFERENCIA. Un retiro en cajero suele ser una TRANSFERENCIA a cuenta de efectivo, o GASTO.
+4. Identifica la cuenta de origen. Busca los últimos 4 dígitos de la tarjeta o banco emisor. Crúzalo con las 'Cuentas disponibles' del CONTEXTO y devuelve ÚNICAMENTE el 'nombre'. Si es un retiro de efectivo de un banco, la cuenta origen es el banco.
 5. Selecciona la categoría más adecuada basándote estrictamente en las opciones del CONTEXTO.
-6. Identifica el CONCEPTO de la operación para usarlo como descripción corta. Si es una transferencia o SPEI, busca el valor indicado como 'concepto', 'motivo' o 'mensaje'. Si no aparecen esas palabras clave, busca la frase descriptiva que suele estar suelta debajo del monto o la fecha (ej. 'PAGO GAS JUNIO', 'Ahorro', 'Renta'). NUNCA uses el nombre del banco origen o destino como descripción corta. Si es una compra, resume el giro del ticket.
+6. Identifica el CONCEPTO de la operación para usarlo como descripción corta. Si es un ticket de cajero automático (ej. "RETIRO DE EFECTIVO"), la descripción DEBE SER obligatoriamente "Retiro en efectivo" y NUNCA el nombre del banco. Para transferencias o comprobantes SPEI, busca 'concepto', 'motivo' o 'mensaje'. Si no aparecen, la descripción ES la frase descriptiva que aparece resaltada debajo del monto o la fecha (ej. "PAGO GAS JUNIO", "Ahorro"). NUNCA uses "N/A" si hay una frase así. NUNCA uses el nombre del banco o de la app (ej. "Santander") como descripción. Si es una compra, resume el giro del ticket.
 
 Contexto del usuario:
 {context_str}
 
 Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 {{
-  "_razonamiento": "string - Explica paso a paso cómo identificaste el total y la cuenta origen basándote en el contexto.",
-  "fecha": "YYYY-MM-DD",
-  "establecimiento": "string",
-  "total": float,
-  "tipo_movimiento": "GASTO|INGRESO|TRANSFERENCIA",
-  "categoria_sugerida": "string",
-  "cuenta_origen_sugerida": "string",
-  "cuenta_destino_sugerida": "string o N/A",
-  "descripcion_corta": "string - Concepto o motivo de la operación (ej. 'Ahorro', 'Comida'). NUNCA el nombre del banco.",
-  "confianza_extraccion": "ALTA|MEDIA|BAJA"
+    "_razonamiento": "string - Explica paso a paso cómo identificaste el total, la cuenta origen y por qué elegiste el establecimiento y concepto.",
+    "fecha": "YYYY-MM-DD",
+    "establecimiento": "string - Comercio o destinatario. Si es una app bancaria, déjalo vacío. PROHIBIDO usar 'Universidades' o el nombre del banco.",
+    "total": float,
+    "tipo_movimiento": "GASTO|INGRESO|TRANSFERENCIA",
+    "categoria_sugerida": "string",
+    "cuenta_origen_sugerida": "string",
+    "cuenta_destino_sugerida": "string o N/A",
+    "descripcion_corta": "string - Concepto o motivo. En transferencias, DEBES extraer la frase debajo del monto/fecha (ej. 'PAGO GAS JUNIO'). PROHIBIDO usar 'N/A' a menos que realmente no haya ningún texto descriptivo.",
+    "confianza_extraccion": "ALTA|MEDIA|BAJA"
 }}
 """,
     "inversion": """
