@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
-{% load static %}
+{% load static compress %}
 
 {% block title %}Facturación | Finanzas Personales{% endblock %}
 
@@ -253,7 +253,7 @@
     </div>
   </div>
 </div>
-{% block javascript %}
-<script src="{% static 'js/lista_facturacion.js' %}"></script>
-{% endblock javascript %}
+{% compress js %}
+<script defer src="{% static 'js/lista_facturacion.js' %}"></script>
+{% endcompress %}
 {% endblock %}

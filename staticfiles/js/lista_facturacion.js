@@ -1,0 +1,61 @@
+const MODAL_ID = 'jsonModal';
+const CONTENT_CONTAINER_ID = 'formattedContent';
+
+function openModal(scriptId) {
+    const scriptTag = document.getElementById(scriptId);
+    if (!scriptTag) {
+        console.error("Script no encontrado con ID:", scriptId);
+        return;
+    }
+
+    try {
+        const data = JSON.parse(scriptTag.textContent);
+        renderModalContent(data);
+        document.getElementById(MODAL_ID)?.classList.remove('hidden');
+    } catch (error) {
+        console.error("Error al procesar los datos para el modal:", error);
+    }
+}
+
+function closeModal() {
+    document.getElementById(MODAL_ID)?.classList.add('hidden');
+}
+
+function renderModalContent(data) {
+    const container = document.getElementById(CONTENT_CONTAINER_ID);
+    if (!container) return;
+
+    container.replaceChildren();
+
+    if (!isValidData(data)) {
+        container.innerHTML = '<p class="text-sm text-gray-500">No hay datos estructurados disponibles.</p>';
+        return;
+    }
+
+    Object.entries(data).forEach(([key, value]) => {
+        if (!value) return;
+        container.appendChild(createDataRow(key, value));
+    });
+}
+
+function isValidData(data) {
+    return data && typeof data === 'object' && Object.keys(data).length > 0;
+}
+
+function createDataRow(key, value) {
+    const div = document.createElement('div');
+    div.className = "flex justify-between md:grid md:grid-cols-3 gap-4 pb-2";
+
+    const dt = document.createElement('dt');
+    dt.className = "text-sm font-medium text-gray-500 capitalize md:col-span-1";
+    dt.textContent = key.replace(/_/g, ' ');
+
+    const dd = document.createElement('dd');
+    dd.className = "text-sm text-gray-900 font-semibold md:col-span-2 break-all text-right md:text-left";
+    dd.textContent = value;
+
+    div.appendChild(dt);
+    div.appendChild(dd);
+    
+    return div;
+}

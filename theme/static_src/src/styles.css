@@ -52,4 +52,21 @@
     .glass-card {
         @apply bg-white/50 dark:bg-gray-900/50 backdrop-blur-lg border border-white/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2;
     }
+
+    .card-premium {
+        background-color: white;
+        border-radius: 1.5rem;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        border: 1px solid #f3f4f6;
+        padding: 1.5rem;
+        transition: transform 0.2s;
+    }
+
+    .card-premium:hover {
+        transform: scale(1.01);
+    }
+
+    .gradient-blue {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    }
 }

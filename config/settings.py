@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     # Proveedor específico de Google
     'allauth.socialaccount.providers.google',
+    'compressor',
 ]
 
 MIDDLEWARE = [
@@ -145,6 +146,16 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'compressor.finders.CompressorFinder',
+]
+
+COMPRESS_ENABLED = not DEBUG
+COMPRESS_OFFLINE = True # It's better for production
+
 
 # Configuración de almacenamiento para WhiteNoise (optimiza el caché).
 STORAGES = {

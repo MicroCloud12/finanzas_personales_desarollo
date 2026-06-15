@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
-{% load static %}
+{% load humanize static compress %}
 
 {% block content %}
 <div class="space-y-6">
@@ -227,13 +226,13 @@
 {% endblock %}
 
 {% block javascript %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 {# Inject data securely into the DOM #}
 {{ chart_labels|json_script:"chart-labels-data" }}
 {{ chart_data|json_script:"chart-data-data" }}
 {{ dist_labels|json_script:"dist-labels-data" }}
 {{ dist_data|json_script:"dist-data-data" }}
 
-<script src="{% static 'js/portafolio_charts.js' %}?v=1"></script>
+{% compress js %}
+<script defer src="{% static 'js/portafolio_charts.js' %}"></script>
+{% endcompress %}
 {% endblock %}

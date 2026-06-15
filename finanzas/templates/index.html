@@ -11,7 +11,7 @@
             <div class="flex-shrink-0">
                 <a href="{% if user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'home' %}{% endif %}"
                     class="flex items-center space-x-2">
-                    <img src="{% static 'img/Prisma2.svg' %}" alt="Logo de FinanzasApp" class="h-12 sm:h-18 w-auto">
+                    <img src="{% static 'img/Prisma2.svg' %}" alt="Logo de FinanzasApp" class="h-12 sm:h-18 w-auto" width="160" height="48">
                 </a>
             </div>
             <!-- Navegación de escritorio -->
@@ -39,9 +39,16 @@
 {# ================================================================ #}
 {% block content %}
 <section class="relative min-h-screen flex items-center bg-gray-900 pt-20 sm:pt-0">
-    <div class="absolute inset-0 w-full h-full bg-cover bg-center"
-        alt="Vista panorámica de una ciudad con rascacielos al atardecer"
-        style="background-image: url('{% static 'img/hero-background.jpg' %}');"></div>
+    <div class="absolute inset-0 w-full h-full">
+        <picture>
+            <source srcset="{% static 'img/hero-background.webp' %}" type="image/webp">
+            <img src="{% static 'img/hero-background.jpg' %}" 
+                 class="w-full h-full object-cover" 
+                 alt="Vista panorámica de una ciudad con rascacielos al atardecer" 
+                 loading="eager" 
+                 fetchpriority="high">
+        </picture>
+    </div>
     <div class="absolute inset-0 w-full h-full bg-black/60"></div>
 
     <div class="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-0">

@@ -1,0 +1,177 @@
+document.addEventListener('DOMContentLoaded', initDashboardCards);
+
+function initDashboardCards() {
+    const dataEl = document.getElementById('tarjetas-data');
+    if (!dataEl) return;
+    
+    const tarjetas = JSON.parse(dataEl.textContent);
+    if (tarjetas.length === 0) return;
+
+    let currentIndex = 0;
+    const elements = getCardElements();
+    
+    setupEventListeners(elements, () => {
+        currentIndex = getNextIndex(currentIndex, tarjetas.length, 1);
+        updateCardDisplay(currentIndex, tarjetas, elements);
+    }, () => {
+        currentIndex = getNextIndex(currentIndex, tarjetas.length, -1);
+        updateCardDisplay(currentIndex, tarjetas, elements);
+    });
+
+    // Initialize the first card
+    updateCardDisplay(currentIndex, tarjetas, elements);
+}
+
+function getCardElements() {
+    return {
+        visualCardName: document.getElementById('visualCardName'),
+        visualCardNumber: document.getElementById('visualCardNumber'),
+        indexLabel: document.getElementById('visualCardIndexLabel'),
+        widget: document.getElementById('myCardsWidget'),
+        prevBtn: document.getElementById('prevCardBtn'),
+        nextBtn: document.getElementById('nextCardBtn'),
+        monthSelect: document.querySelector('select[name="month"]'),
+        yearSelect: document.querySelector('select[name="year"]')
+    };
+}
+
+function setupEventListeners(elements, onNext, onPrev) {
+    if (elements.prevBtn) elements.prevBtn.addEventListener('click', onPrev);
+    if (elements.nextBtn) elements.nextBtn.addEventListener('click', onNext);
+}
+
+function getNextIndex(currentIndex, total, step) {
+    let nextIndex = currentIndex + step;
+    if (nextIndex >= total) return 0;
+    if (nextIndex < 0) return total - 1;
+    return nextIndex;
+}
+
+const BACKGROUND_GRADIENTS = [
+    'linear-gradient(135deg, #0f172a 0%, #172554 40%, #991b1b 100%)',
+    'linear-gradient(135deg, #020617 0%, #064e3b 40%, #10b981 100%)',
+    'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 40%, #f43f5e 100%)',
+    'linear-gradient(135deg, #0a0a0a 0%, #262626 50%, #ea580c 100%)'
+];
+
+function updateCardDisplay(index, tarjetas, elements) {
+    const card = tarjetas.at(index);
+    if (!card) return;
+
+    elements.widget.style.opacity = '0.7';
+    
+    setTimeout(() => {
+        renderCardInfo(card, index, tarjetas.length, elements);
+        elements.widget.style.background = BACKGROUND_GRADIENTS.at(index % BACKGROUND_GRADIENTS.length);
+        elements.widget.style.opacity = '1';
+        
+        fetchIncomeMetrics(card.nombre, elements.monthSelect, elements.yearSelect);
+    }, 150);
+}
+
+function renderCardInfo(card, index, totalCards, elements) {
+    if (elements.visualCardName) {
+        elements.visualCardName.textContent = card.nombre;
+    }
+    
+    if (elements.visualCardNumber) {
+        elements.visualCardNumber.replaceChildren();
+        elements.visualCardNumber.appendChild(createAsterisksSpan());
+        elements.visualCardNumber.appendChild(createTermSpan(card.terminacion));
+    }
+    
+    if (elements.indexLabel) {
+        elements.indexLabel.textContent = index + 1;
+    }
+}
+
+function createAsterisksSpan() {
+    const span = document.createElement('span');
+    span.className = 'inline-block transform -translate-y-0.5 opacity-70';
+    span.textContent = '•••• •••• ••••';
+    return span;
+}
+
+function createTermSpan(terminacion) {
+    const span = document.createElement('span');
+    span.className = 'ml-4 opacity-90 font-medium';
+    span.textContent = terminacion || '0000';
+    return span;
+}
+
+async function fetchIncomeMetrics(cuentaNombre, monthSelect, yearSelect) {
+    if (!monthSelect || !yearSelect) return;
+    
+    const month = monthSelect.value;
+    const year = yearSelect.value;
+    const url = `/api/dashboard/ingresos-tarjeta/?cuenta_nombre=${encodeURIComponent(cuentaNombre)}&month=${month}&year=${year}`;
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            updateAllMetrics(data);
+        }
+    } catch (error) {
+        console.error("Error al obtener las estadísticas de ingresos:", error);
+    }
+}
+
+function updateAllMetrics(data) {
+    updateMetricSection('income', data.ingresos, { positiveIsGood: true });
+    updateMetricSection('expense', data.gastos, { positiveIsGood: false });
+    updateMetricSection('balance', data.balance, { positiveIsGood: true, handleNegative: true });
+}
+
+function updateMetricSection(prefix, metricData, config) {
+    if (!metricData) return;
+
+    let rawTotal = String(metricData.total);
+    let isNegative = config.handleNegative && rawTotal.startsWith('-');
+    
+    if (isNegative) {
+        rawTotal = rawTotal.substring(1);
+    }
+    
+    const [wholePart, decimalPart] = rawTotal.split('.');
+    
+    updateTextContent(`${prefix}TotalAmount`, (isNegative ? '-' : '') + wholePart);
+    updateTextContent(`${prefix}DecimalAmount`, decimalPart || '00');
+    updateTextContent(`${prefix}PercentageText`, `${metricData.porcentaje}%`);
+    updateTextContent(`${prefix}ExtraAmount`, `$${metricData.diferencia_monto}`);
+    updateTextContent(`${prefix}TxCount`, `${metricData.transactions} transacciones`);
+    updateTextContent(`${prefix}CatCount`, `${metricData.categories} categorías`);
+    
+    updateBadgeTrend(prefix, metricData.es_positivo, config.positiveIsGood);
+}
+
+function updateTextContent(elementId, text) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = text;
+    }
+}
+
+function updateBadgeTrend(prefix, isPositive, positiveIsGoodColor) {
+    const badge = document.getElementById(`${prefix}PercentageBadge`);
+    const trendPath = document.getElementById(`${prefix}TrendArrow`);
+    const earnText = document.getElementById(`${prefix}EarnText`);
+    
+    if (!badge || !trendPath || !earnText) return;
+
+    if (isPositive) {
+        trendPath.setAttribute('d', 'M5 10l7-7m0 0l7 7m-7-7v18');
+        earnText.textContent = "extra";
+    } else {
+        trendPath.setAttribute('d', 'M19 14l-7 7m0 0l-7-7m7 7V3');
+        earnText.textContent = "menos";
+    }
+
+    const isGood = isPositive === positiveIsGoodColor;
+    if (isGood) {
+        badge.className = "inline-flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+    } else {
+        badge.className = "inline-flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors";
+    }
+}

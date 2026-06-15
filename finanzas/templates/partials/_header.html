@@ -12,7 +12,7 @@
           </svg>
         </button>
         <a href="{% url 'dashboard' %}" class="ml-4 flex items-center gap-2">
-          <img src="{% static 'img/Prisma.svg' %}" alt="Logo" class="h-8 w-auto">
+          <img src="{% static 'img/Prisma.svg' %}" alt="Logo" class="h-8 w-auto" width="120" height="32">
           <span class="text-lg font-bold text-gray-800">Prisma</span>
         </a>
       </div>
@@ -39,7 +39,7 @@
         {% else %}
         {# --- Logo for Unauthenticated Users --- #}
         <a href="{% url 'home' %}" class="flex items-center gap-2">
-          <img src="{% static 'img/Prisma.svg' %}" alt="Logo" class="h-16 w-auto">
+          <img src="{% static 'img/Prisma.svg' %}" alt="Logo" class="h-16 w-auto" width="240" height="64">
         </a>
         {% endif %}
 
