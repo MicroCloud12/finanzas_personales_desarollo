@@ -91,27 +91,27 @@
             <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style="scrollbar-width: none; -ms-overflow-style: none;">
                 {% for inv in inversiones %}
                 <div class="bg-[#1a1a1c] border border-zinc-800 rounded-2xl p-5 min-w-[140px] shrink-0 flex flex-col justify-between cursor-pointer transition-transform duration-200 hover:-translate-y-1 {% if inv.porcentaje_rendimiento >= 0 %}border-t-emerald-500/40 shadow-[inset_0_1px_10px_-5px_rgba(16,185,129,0.15)]{% else %}border-t-red-500/40 shadow-[inset_0_1px_10px_-5px_rgba(239,68,68,0.15)]{% endif %}">
-                    <div class="mb-6">
-                        <p class="text-white font-bold text-lg m-0 font-sans">$ {{ inv.precio_actual_titulo|floatformat:1|intcomma }}</p>
+                    <div class="mb-5">
+                        <p class="font-bold text-xl m-0 font-sans {% if inv.porcentaje_rendimiento >= 0 %}text-emerald-400{% else %}text-red-400{% endif %}">$ {{ inv.precio_actual_titulo|floatformat:1|intcomma }}</p>
                         <p class="text-[0.6875rem] font-semibold mt-1 mb-0 {% if inv.porcentaje_rendimiento >= 0 %}text-emerald-500{% else %}text-red-500{% endif %}">
                             {% if inv.porcentaje_rendimiento >= 0 %}+{% endif %}{{ inv.ganancia_perdida_no_realizada|floatformat:1 }} ({{ inv.porcentaje_rendimiento|floatformat:1 }}%)
                         </p>
                     </div>
                     <div class="flex justify-between items-end">
                         <div class="flex flex-col gap-1.5">
-                            <div class="h-6 flex items-center justify-start">
+                            <div class="h-8 flex items-center justify-start">
                                 <img src="https://financialmodelingprep.com/image-stock/{{ inv.emisora_ticker }}.png"
                                     alt="{{ inv.emisora_ticker }}"
-                                    class="h-6 w-auto max-w-[4rem] object-contain object-left p-0.5"
+                                    class="h-8 w-auto max-w-[5rem] object-contain object-left p-0.5"
                                     style="filter: brightness(0) invert(1) opacity(0.6);"
                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="w-6 h-6 rounded-md bg-white/5 items-center justify-center text-xs font-bold text-zinc-400 border border-white/10" style="display: none;">
+                                <div class="w-8 h-8 rounded-md bg-white/5 items-center justify-center text-sm font-bold text-zinc-400 border border-white/10" style="display: none;">
                                     {{ inv.emisora_ticker|slice:":1" }}
                                 </div>
                             </div>
                             <span class="text-zinc-400 text-[0.6875rem] font-semibold tracking-wide leading-none">{{ inv.emisora_ticker|slice:":4" }}</span>
                         </div>
-                        <div class="text-zinc-500 text-[0.6875rem] font-medium leading-none">
+                        <div class="text-zinc-500 text-[0.6875rem] font-medium leading-none mb-0.5">
                             <span class="text-white font-semibold">{{ inv.numero_titulos }}</span>
                         </div>
                     </div>

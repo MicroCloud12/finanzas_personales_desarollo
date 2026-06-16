@@ -247,6 +247,12 @@ class inversiones(models.Model):
     def __str__(self):
         return f"{self.get_tipo_inversion_display()} de {self.propietario.username} en {self.nombre_activo}"
 
+    @property
+    def porcentaje_rendimiento(self):
+        if self.costo_total_adquisicion and self.costo_total_adquisicion > 0:
+            return (self.ganancia_perdida_no_realizada / self.costo_total_adquisicion) * 100
+        return 0
+
     def save(self, *args, **kwargs):
         # La lógica de cálculo sigue funcionando igual
         self.costo_total_adquisicion = self.cantidad_titulos * self.precio_compra_titulo
