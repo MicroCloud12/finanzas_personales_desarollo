@@ -125,78 +125,126 @@
         </div>
     </div>
 
+    {# --- PORTFOLIO PERFORMANCE (evolución diaria del valor / G-P) --- #}
+    {% if perf_labels %}
+    <div class="card-premium p-6 sm:p-7">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h3 class="text-gray-900 font-bold text-lg">Portfolio Performance</h3>
+            <div id="perfRangeButtons"
+                class="flex items-center gap-1 bg-gray-50 rounded-full p-1 border border-gray-100 self-start sm:self-auto">
+                <button type="button" data-range="1" class="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors">1D</button>
+                <button type="button" data-range="7" class="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors">1W</button>
+                <button type="button" data-range="30" class="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors">1M</button>
+                <button type="button" data-range="180" class="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors">6M</button>
+                <button type="button" data-range="365" class="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors">1Y</button>
+            </div>
+        </div>
+        <div class="relative w-full" style="height: 32rem;">
+            <canvas id="portfolioPerformanceChart"></canvas>
+        </div>
+    </div>
+    {% else %}
+    <div class="card-premium p-7 text-center">
+        <h3 class="text-gray-900 font-bold text-lg mb-2">Portfolio Performance</h3>
+        <p class="text-sm text-gray-500 max-w-md mx-auto">Aún no hay historial de rendimiento. Se generará automáticamente cuando se ejecute el cálculo diario del portafolio
+            (<code class="text-gray-600">manage.py update_portfolio_history</code>).</p>
+    </div>
+    {% endif %}
+
     {# --- ASSETS LIST (Similar to "My Top Coins" / "Markets") --- #}
-    <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-6 border-b border-gray-50 flex justify-between items-center">
-            <h3 class="font-bold text-lg text-gray-900">Mis Activos</h3>
-            <div class="flex gap-2">
-                <button
-                    class="text-xs font-medium text-gray-500 hover:text-indigo-600 px-3 py-1 rounded-full bg-gray-50 hover:bg-indigo-50 transition-colors">Todos</button>
-                <button
-                    class="text-xs font-medium text-gray-500 hover:text-indigo-600 px-3 py-1 rounded-full hover:bg-indigo-50 transition-colors">Ganadores</button>
-                <button
-                    class="text-xs font-medium text-gray-500 hover:text-indigo-600 px-3 py-1 rounded-full hover:bg-indigo-50 transition-colors">Perdedores</button>
+    <div class="bg-[#0b0b0d] rounded-3xl border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] overflow-hidden">
+        <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h3 class="font-semibold text-lg text-gray-100 font-sans">Mis Activos</h3>
+            <div id="assetsFilter" class="flex items-center gap-2 self-start sm:self-auto">
+                <button type="button" data-filter="all"
+                    class="text-xs font-semibold px-4 py-1.5 rounded-full bg-blue-500 text-white transition-colors">Todos</button>
+                <button type="button" data-filter="win"
+                    class="text-xs font-semibold px-4 py-1.5 rounded-full border border-white/15 text-gray-300 hover:bg-white/5 transition-colors">Ganadores</button>
+                <button type="button" data-filter="lose"
+                    class="text-xs font-semibold px-4 py-1.5 rounded-full border border-white/15 text-gray-300 hover:bg-white/5 transition-colors">Perdedores</button>
             </div>
         </div>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full leading-normal">
+            <table id="assetsTable" class="min-w-full leading-normal">
                 <thead>
-                    <tr class="bg-gray-50/50 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <tr class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-y border-white/5">
                         <th class="px-6 py-4">Activo</th>
-                        <th class="px-6 py-4 text-right">Precio Actual</th>
-                        <th class="px-6 py-4 text-right">Balance</th>
-                        <th class="px-6 py-4 text-right">Inversión</th>
-                        <th class="px-6 py-4 text-right">P/L ($)</th>
-                        <th class="px-6 py-4 text-right">P/L (%)</th>
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="1">
+                            <span class="inline-flex items-center justify-end gap-1.5">Precio Actual
+                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
+                        </th>
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="2">
+                            <span class="inline-flex items-center justify-end gap-1.5">Balance
+                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
+                        </th>
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="3">
+                            <span class="inline-flex items-center justify-end gap-1.5">Inversión
+                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
+                        </th>
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="4">
+                            <span class="inline-flex items-center justify-end gap-1.5">P/L ($)
+                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
+                        </th>
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="5">
+                            <span class="inline-flex items-center justify-end gap-1.5">P/L (%)
+                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
+                        </th>
+                        <th class="px-6 py-4 text-center">Últimos 7 días</th>
                         <th class="px-6 py-4"></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50">
+                <tbody id="assetsBody" class="divide-y divide-white/5">
                     {% for inv in inversiones %}
-                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                    <tr class="asset-row hover:bg-white/5 transition-colors group" data-pl="{{ inv.ganancia_perdida_no_realizada }}">
                         <td class="px-6 py-4">
                             <div class="flex items-center">
                                 <div
-                                    class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mr-3 text-lg font-bold text-gray-600 overflow-hidden border border-gray-200">
+                                    class="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center mr-3 text-lg font-bold text-gray-300 overflow-hidden border border-white/10">
                                     <img src="https://financialmodelingprep.com/image-stock/{{ inv.emisora_ticker }}.png"
-                                        alt="{{ inv.emisora_ticker }}" class="w-full h-full object-contain"
+                                        alt="{{ inv.emisora_ticker }}" class="w-full h-full object-contain p-1"
+                                        style="filter: brightness(0) invert(1) opacity(0.7);"
                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                     <span style="display: none;">{{ inv.nombre_activo|make_list|first|upper }}</span>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-900">{{ inv.nombre_activo }}</p>
+                                    <p class="font-semibold text-gray-100">{{ inv.nombre_activo }}</p>
                                     <p class="text-xs text-gray-500">{{ inv.emisora_ticker }}</p>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-right">
-                            <span class="font-medium text-gray-900">${{ inv.precio_actual_titulo|floatformat:2|intcomma }}</span>
+                        <td class="px-6 py-4 text-right" data-value="{{ inv.precio_actual_titulo }}">
+                            <span class="font-medium text-gray-200">${{ inv.precio_actual_titulo|floatformat:2|intcomma }}</span>
                         </td>
-                        <td class="px-6 py-4 text-right">
-                            <p class="font-bold text-gray-900">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}
-                            </p>
+                        <td class="px-6 py-4 text-right" data-value="{{ inv.valor_actual_mercado }}">
+                            <p class="font-semibold text-gray-100">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</p>
                             <p class="text-xs text-gray-500">{{ inv.cantidad_titulos|floatformat:4 }} Und.</p>
                         </td>
-                        <td class="px-6 py-4 text-right text-sm text-gray-500">
+                        <td class="px-6 py-4 text-right text-sm text-gray-400" data-value="{{ inv.costo_total_adquisicion }}">
                             ${{ inv.costo_total_adquisicion|floatformat:2|intcomma }}
                         </td>
-                        <td class="px-6 py-4 text-right">
+                        <td class="px-6 py-4 text-right" data-value="{{ inv.ganancia_perdida_no_realizada }}">
                             <span
-                                class="font-bold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                class="font-bold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
                                 {% if inv.ganancia_perdida_no_realizada >= 0 %}+{% endif %}${{ inv.ganancia_perdida_no_realizada|floatformat:2|intcomma }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-right">
+                        <td class="px-6 py-4 text-right" data-value="{{ inv.porcentaje_rendimiento }}">
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if inv.porcentaje_rendimiento >= 0 %}bg-green-50 text-green-700{% else %}bg-red-50 text-red-700{% endif %}">
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {% if inv.porcentaje_rendimiento >= 0 %}bg-green-500/10 text-green-400{% else %}bg-red-500/10 text-red-400{% endif %}">
                                 {% if inv.porcentaje_rendimiento >= 0 %}+{% endif %}{{ inv.porcentaje_rendimiento|floatformat:2 }}%
                             </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex justify-center">
+                                <span class="spark" data-trend="{{ inv.porcentaje_rendimiento|floatformat:4 }}"
+                                    data-seed="{{ inv.emisora_ticker|default:inv.nombre_activo }}"></span>
+                            </div>
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-2">
                                 <a href="{% url 'editar_inversion' inv.id %}"
-                                    class="p-1 text-gray-400 hover:text-indigo-600 transition-colors">
+                                    class="p-1 text-gray-500 hover:text-blue-400 transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -207,7 +255,7 @@
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{% url 'portafolio' %}">
                                     <button type="submit"
-                                        class="p-1 text-gray-400 hover:text-red-600 transition-colors">
+                                        class="p-1 text-gray-500 hover:text-red-400 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
@@ -220,16 +268,16 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center">
-                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
+                                <svg class="w-12 h-12 text-gray-700 mb-3" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <p>No tienes activos en tu portafolio aún.</p>
                                 <a href="{% url 'crear_inversion' %}"
-                                    class="mt-2 text-indigo-600 hover:text-indigo-800 font-medium text-sm">Añadir
+                                    class="mt-2 text-blue-400 hover:text-blue-300 font-medium text-sm">Añadir
                                     Inversión</a>
                             </div>
                         </td>
@@ -243,14 +291,13 @@
 {% endblock %}
 
 {% block javascript %}
-{# Inject data securely into the DOM #}
-{{ chart_labels|json_script:"chart-labels-data" }}
-{{ chart_data|json_script:"chart-data-data" }}
-{{ dist_labels|json_script:"dist-labels-data" }}
-{{ dist_data|json_script:"dist-data-data" }}
+{# Datos de la serie de rendimiento (listas crudas → arreglos JS directos) #}
+{{ perf_labels|json_script:"perf-labels-data" }}
+{{ perf_valores|json_script:"perf-valores-data" }}
+{{ perf_ganancias|json_script:"perf-ganancias-data" }}
 
-{# Chart.js solo se carga en las páginas que dibujan gráficos #}
+{# Chart.js solo se carga en esta página #}
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-<script defer src="{% static 'js/portafolio_charts.js' %}"></script>
+<script defer src="{% static 'js/portfolio_performance.js' %}"></script>
+<script defer src="{% static 'js/assets_table.js' %}"></script>
 {% endblock %}

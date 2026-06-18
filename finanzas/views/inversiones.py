@@ -1,4 +1,3 @@
-import json
 import logging
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -39,9 +38,9 @@ from ..services import (
 )
 from ..models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
-    inversiones, GananciaMensual, PendingInvestment, Deuda, 
+    inversiones, PendingInvestment, Deuda,
     PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory,
-    GoogleCredentials, TiendaFacturacion, Cuenta, Presupuesto, 
+    GoogleCredentials, TiendaFacturacion, Cuenta, Presupuesto,
     HistorialReciboServicio
 )
 
@@ -73,34 +72,15 @@ def vista_portafolio(request):
     if total_invertido > 0:
         porcentaje_ganancia = ((valor_total - total_invertido) / total_invertido) * 100
 
-    # --- DATOS PARA GRÁFICAS ---
-    # --- DATOS PARA GRÁFICAS ---
-    # 1. Historia del Portafolio (Line/Area Chart - Diario)
-    # Consultamos el historial diario ya calculado
-    historial_diario = PortfolioHistory.objects.filter(usuario=request.user).order_by('fecha')
-    
-    chart_labels = []
-    chart_data = []
-    
-    # Si no hay historial diario (primer uso), intentamos usar lo mensual como fallback temporal
-    # o simplemente mostramos vacío hasta que corran el comando.
-    if historial_diario.exists():
-        for dia in historial_diario:
-            chart_labels.append(dia.fecha.strftime('%Y-%m-%d'))
-            chart_data.append(str(dia.valor_total))
-    else:
-        # Fallback: Usamos la lógica mensual anterior si no han corrido el script aún
-        historial_ganancias = GananciaMensual.objects.filter(propietario=request.user).order_by('mes')
-        # ... (Lógica de fallback omitida para limpieza, asumimos que correrán el script)
-        pass
-
-    # 2. Distribución (Doughnut)
-    # Agrupar por tipo (Cripto vs Acciones) o por Activo
-    distribucion_labels = []
-    distribucion_data = []
-    for inv in mis_inversiones[:5]: # Top 5 activos
-        distribucion_labels.append(inv.nombre_activo)
-        distribucion_data.append(float(inv.valor_actual_mercado))
+    # --- GRÁFICA DE RENDIMIENTO (evolución diaria del portafolio) ---
+    historial = PortfolioHistory.objects.filter(usuario=request.user).order_by('fecha')
+    perf_labels = []
+    perf_valores = []
+    perf_ganancias = []
+    for h in historial:
+        perf_labels.append(h.fecha.strftime('%Y-%m-%d'))
+        perf_valores.append(float(h.valor_total))
+        perf_ganancias.append(float(h.ganancia_no_realizada))
 
     context = {
         'inversiones': mis_inversiones,
@@ -108,11 +88,11 @@ def vista_portafolio(request):
         'total_invertido': total_invertido,
         'ganancia_total': ganancia_total,
         'porcentaje_ganancia': porcentaje_ganancia,
-        'chart_labels': json.dumps(chart_labels),
-        'chart_data': json.dumps(chart_data),
-        'dist_labels': json.dumps(distribucion_labels),
-        'dist_data': json.dumps(distribucion_data),
         'es_usuario_premium': es_usuario_premium,
+        # Series para la gráfica de rendimiento (listas crudas; json_script las serializa)
+        'perf_labels': perf_labels,
+        'perf_valores': perf_valores,
+        'perf_ganancias': perf_ganancias,
     }
     return render(request, 'portafolio.html', context)
 
