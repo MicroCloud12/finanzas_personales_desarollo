@@ -561,6 +561,9 @@
 </div>
 
 {% block javascript %}
+{# Chart.js solo se carga en las páginas que dibujan gráficos #}
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script defer src="{% static 'js/dashboard_charts.js' %}"></script>
 <script defer src="{% static 'js/dashboard_cards.js' %}"></script>
 {% endblock javascript %}

@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 
+{# Precargamos la imagen hero (elemento LCP) para que empiece a descargar cuanto antes #}
+{% block head_extra %}
+<link rel="preload" as="image" href="{% static 'img/hero-background.webp' %}" type="image/webp" fetchpriority="high">
+{% endblock %}
+
 {# ================================================================= #}
 {# SOBRESCRIBIMOS EL BLOQUE DEL HEADER CON LA VERSIÓN HERO #}
 {# ================================================================= #}

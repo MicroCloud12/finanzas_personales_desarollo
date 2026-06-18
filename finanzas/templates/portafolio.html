@@ -249,5 +249,8 @@
 {{ dist_labels|json_script:"dist-labels-data" }}
 {{ dist_data|json_script:"dist-data-data" }}
 
+{# Chart.js solo se carga en las páginas que dibujan gráficos #}
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script defer src="{% static 'js/portafolio_charts.js' %}"></script>
 {% endblock %}

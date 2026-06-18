@@ -23,12 +23,17 @@
     />-->
   <meta name="description"
     content="Toma el control de tus finanzas personales. Registra transacciones, administra inversiones y optimiza tu dinero con nuestra aplicación de finanzas.">
-  <!-- Google Fonts: Inter & Outfit -->
+  <!-- Google Fonts: Inter & Outfit (solo los pesos usados; carga sin bloquear el render) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet">
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet">
+  </noscript>
 
   <link rel="preload" as="style" href="{% static 'css/styles.css' %}?v=1.2" onload="this.rel = 'stylesheet'">
   <link rel="shortcut icon" type="image/png" href="{% static 'img/favicon.ico' %}" />
@@ -38,8 +43,8 @@
       font-family: 'Outfit', 'Inter', sans-serif;
     }
   </style>
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  {# Precargas/recursos específicos de cada página (p. ej. imagen LCP) #}
+  {% block head_extra %}{% endblock %}
   <script defer src="{% static 'js/main.js' %}"></script>
 </head>
 
