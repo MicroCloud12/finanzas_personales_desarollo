@@ -32,17 +32,12 @@
 
   <div class="flex flex-wrap gap-4 mb-8">
         {# --- TOTAL HOLDING CARD --- #}
-        <div class="bg-[#0b0b0d] rounded-3xl p-7 text-white flex flex-col justify-between relative overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] flex-1 min-w-[300px] max-w-full"
-             style="background-image: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 40%);">
-            <!-- Simulated subtle wave overlay -->
-            <div class="absolute inset-0 opacity-20 pointer-events-none mix-blend-screen"
-                 style="background: radial-gradient(circle at 80% 20%, #2a2a35 0%, transparent 50%);"></div>
-
+        <div class="bg-white rounded-[1.5rem] p-7 flex flex-col justify-between relative overflow-hidden shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex-1 min-w-[300px] max-w-full">
             <div class="relative z-10 flex justify-between items-start mb-8">
-                <span class="text-gray-200 font-medium text-[0.9375rem] tracking-wide font-sans">Total Holding</span>
+                <span class="text-gray-900 font-bold text-[0.9375rem] tracking-wide">Total Holding</span>
                 <div class="flex items-center gap-2">
-                    <button class="px-4 py-1.5 rounded-full border border-white/20 text-xs font-medium text-white bg-transparent cursor-pointer transition-colors hover:bg-white/10">6M</button>
-                    <button class="w-[2.125rem] h-[2.125rem] flex justify-center items-center rounded-full border border-white/20 text-white bg-transparent cursor-pointer transition-colors hover:bg-white/10">
+                    <button class="px-4 py-1.5 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-transparent cursor-pointer transition-colors hover:bg-gray-50">6M</button>
+                    <button class="w-[2.125rem] h-[2.125rem] flex justify-center items-center rounded-full border border-gray-200 text-gray-600 bg-transparent cursor-pointer transition-colors hover:bg-gray-50">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
@@ -51,11 +46,11 @@
             </div>
 
             <div class="relative z-10 mt-6">
-                <h2 class="text-[2.75rem] font-semibold tracking-tight mb-3 text-white leading-none font-sans">$ {{ valor_total|floatformat:2|intcomma }}</h2>
+                <h2 class="text-[2.75rem] font-semibold tracking-tight mb-3 text-gray-900 leading-none">$ {{ valor_total|floatformat:2|intcomma }}</h2>
                 <div class="flex items-center gap-2.5 mt-3">
-                    <span class="text-gray-400 text-[0.8125rem] font-medium">Return</span>
+                    <span class="text-gray-500 text-[0.8125rem] font-medium">Return</span>
                     <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center justify-center w-[1.375rem] h-[1.375rem] rounded-md {% if porcentaje_ganancia >= 0 %}text-emerald-500 border border-emerald-500/30 bg-emerald-500/10{% else %}text-red-500 border border-red-500/30 bg-red-500/10{% endif %}">
+                        <span class="inline-flex items-center justify-center w-[1.375rem] h-[1.375rem] rounded-md {% if porcentaje_ganancia >= 0 %}text-emerald-600 border border-emerald-500/30 bg-emerald-500/10{% else %}text-red-600 border border-red-500/30 bg-red-500/10{% endif %}">
                             {% if porcentaje_ganancia >= 0 %}
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -66,7 +61,7 @@
                             </svg>
                             {% endif %}
                         </span>
-                        <span class="text-[0.8125rem] font-semibold {% if porcentaje_ganancia >= 0 %}text-emerald-500{% else %}text-red-500{% endif %}">
+                        <span class="text-[0.8125rem] font-semibold {% if porcentaje_ganancia >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}">
                             {% if porcentaje_ganancia >= 0 %}+{% endif %}{{ porcentaje_ganancia|floatformat:1 }}% (${{ ganancia_total|floatformat:0|intcomma }})
                         </span>
                     </div>
@@ -75,12 +70,12 @@
         </div>
 
         {# --- MY PORTFOLIO CARDS --- #}
-        <div class="bg-[#0b0b0d] rounded-3xl p-7 border border-white/5 flex flex-col justify-between overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] flex-[2] min-w-[300px]">
+        <div class="bg-white rounded-[1.5rem] p-7 border border-gray-100 flex flex-col justify-between overflow-hidden shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex-[2] min-w-[300px]">
             <div class="flex justify-between items-center mb-6">
-                <span class="text-gray-200 font-medium text-[0.9375rem] tracking-wide font-sans">My Portfolio</span>
+                <span class="text-gray-900 font-bold text-[0.9375rem] tracking-wide">My Portfolio</span>
                 <div class="flex items-center gap-2">
-                    <button class="px-4 py-1.5 rounded-full border border-white/20 text-xs font-medium text-white bg-transparent cursor-pointer transition-colors hover:bg-white/10">See all</button>
-                    <button class="w-[2.125rem] h-[2.125rem] flex justify-center items-center rounded-full border border-white/20 text-white bg-transparent cursor-pointer transition-colors hover:bg-white/10">
+                    <button class="px-4 py-1.5 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-transparent cursor-pointer transition-colors hover:bg-gray-50">See all</button>
+                    <button class="w-[2.125rem] h-[2.125rem] flex justify-center items-center rounded-full border border-gray-200 text-gray-600 bg-transparent cursor-pointer transition-colors hover:bg-gray-50">
                         <svg class="w-3.5 h-3.5 -rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m-7-7H3" />
                         </svg>
@@ -90,9 +85,9 @@
 
             <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style="scrollbar-width: none; -ms-overflow-style: none;">
                 {% for inv in inversiones %}
-                <div class="bg-[#1a1a1c] border border-zinc-800 rounded-2xl p-5 min-w-[140px] shrink-0 flex flex-col justify-between cursor-pointer transition-transform duration-200 hover:-translate-y-1 {% if inv.porcentaje_rendimiento >= 0 %}border-t-emerald-500/40 shadow-[inset_0_1px_10px_-5px_rgba(16,185,129,0.15)]{% else %}border-t-red-500/40 shadow-[inset_0_1px_10px_-5px_rgba(239,68,68,0.15)]{% endif %}">
+                <div class="bg-gray-50 border border-gray-100 rounded-2xl p-5 min-w-[140px] shrink-0 flex flex-col justify-between cursor-pointer transition-transform duration-200 hover:-translate-y-1 {% if inv.porcentaje_rendimiento >= 0 %}border-t-emerald-500/50 shadow-[inset_0_1px_10px_-5px_rgba(16,185,129,0.25)]{% else %}border-t-red-500/50 shadow-[inset_0_1px_10px_-5px_rgba(239,68,68,0.25)]{% endif %}">
                     <div class="mb-5">
-                        <p class="font-bold text-xl m-0 font-sans {% if inv.porcentaje_rendimiento >= 0 %}text-emerald-400{% else %}text-red-400{% endif %}">$ {{ inv.precio_actual_titulo|floatformat:1|intcomma }}</p>
+                        <p class="font-bold text-xl m-0 {% if inv.porcentaje_rendimiento >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}">$ {{ inv.precio_actual_titulo|floatformat:1|intcomma }}</p>
                         <p class="text-[0.6875rem] font-semibold mt-1 mb-0 {% if inv.porcentaje_rendimiento >= 0 %}text-emerald-500{% else %}text-red-500{% endif %}">
                             {% if inv.porcentaje_rendimiento >= 0 %}+{% endif %}{{ inv.ganancia_perdida_no_realizada|floatformat:1 }} ({{ inv.porcentaje_rendimiento|floatformat:1 }}%)
                         </p>
@@ -103,21 +98,20 @@
                                 <img src="https://financialmodelingprep.com/image-stock/{{ inv.emisora_ticker }}.png"
                                     alt="{{ inv.emisora_ticker }}"
                                     class="h-8 w-auto max-w-[5rem] object-contain object-left p-0.5"
-                                    style="filter: brightness(0) invert(1) opacity(0.6);"
                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="w-8 h-8 rounded-md bg-white/5 items-center justify-center text-sm font-bold text-zinc-400 border border-white/10" style="display: none;">
+                                <div class="w-8 h-8 rounded-md bg-gray-100 items-center justify-center text-sm font-bold text-gray-500 border border-gray-200" style="display: none;">
                                     {{ inv.emisora_ticker|slice:":1" }}
                                 </div>
                             </div>
-                            <span class="text-zinc-400 text-[0.6875rem] font-semibold tracking-wide leading-none">{{ inv.emisora_ticker|slice:":4" }}</span>
+                            <span class="text-gray-500 text-[0.6875rem] font-semibold tracking-wide leading-none">{{ inv.emisora_ticker|slice:":4" }}</span>
                         </div>
-                        <div class="text-zinc-500 text-[0.6875rem] font-medium leading-none mb-0.5">
-                            <span class="text-white font-semibold">{{ inv.numero_titulos }}</span>
+                        <div class="text-gray-500 text-[0.6875rem] font-medium leading-none mb-0.5">
+                            <span class="text-gray-900 font-semibold">{{ inv.numero_titulos }}</span>
                         </div>
                     </div>
                 </div>
                 {% empty %}
-                <div class="text-zinc-500 text-sm flex items-center justify-center w-full py-6">
+                <div class="text-gray-500 text-sm flex items-center justify-center w-full py-6">
                     No tienes activos registrados.
                 </div>
                 {% endfor %}
@@ -152,41 +146,41 @@
     {% endif %}
 
     {# --- ASSETS LIST (Similar to "My Top Coins" / "Markets") --- #}
-    <div class="bg-[#0b0b0d] rounded-3xl border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] overflow-hidden">
+    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 class="font-semibold text-lg text-gray-100 font-sans">Mis Activos</h3>
+            <h3 class="font-bold text-lg text-gray-900">Mis Activos</h3>
             <div id="assetsFilter" class="flex items-center gap-2 self-start sm:self-auto">
                 <button type="button" data-filter="all"
-                    class="text-xs font-semibold px-4 py-1.5 rounded-full bg-blue-500 text-white transition-colors">Todos</button>
+                    class="text-xs font-semibold px-4 py-1.5 rounded-full bg-indigo-600 text-white transition-colors">Todos</button>
                 <button type="button" data-filter="win"
-                    class="text-xs font-semibold px-4 py-1.5 rounded-full border border-white/15 text-gray-300 hover:bg-white/5 transition-colors">Ganadores</button>
+                    class="text-xs font-semibold px-4 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Ganadores</button>
                 <button type="button" data-filter="lose"
-                    class="text-xs font-semibold px-4 py-1.5 rounded-full border border-white/15 text-gray-300 hover:bg-white/5 transition-colors">Perdedores</button>
+                    class="text-xs font-semibold px-4 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Perdedores</button>
             </div>
         </div>
 
         <div class="overflow-x-auto">
             <table id="assetsTable" class="min-w-full leading-normal">
                 <thead>
-                    <tr class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-y border-white/5">
+                    <tr class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider border-y border-gray-100">
                         <th class="px-6 py-4">Activo</th>
-                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="1">
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-700 transition-colors" data-sort-index="1">
                             <span class="inline-flex items-center justify-end gap-1.5">Precio Actual
                                 <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
                         </th>
-                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="2">
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-700 transition-colors" data-sort-index="2">
                             <span class="inline-flex items-center justify-end gap-1.5">Balance
                                 <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
                         </th>
-                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="3">
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-700 transition-colors" data-sort-index="3">
                             <span class="inline-flex items-center justify-end gap-1.5">Inversión
                                 <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
                         </th>
-                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="4">
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-700 transition-colors" data-sort-index="4">
                             <span class="inline-flex items-center justify-end gap-1.5">P/L ($)
                                 <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
                         </th>
-                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors" data-sort-index="5">
+                        <th class="px-6 py-4 text-right cursor-pointer select-none hover:text-gray-700 transition-colors" data-sort-index="5">
                             <span class="inline-flex items-center justify-end gap-1.5">P/L (%)
                                 <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg></span>
                         </th>
@@ -194,44 +188,43 @@
                         <th class="px-6 py-4"></th>
                     </tr>
                 </thead>
-                <tbody id="assetsBody" class="divide-y divide-white/5">
+                <tbody id="assetsBody" class="divide-y divide-gray-100">
                     {% for inv in inversiones %}
-                    <tr class="asset-row hover:bg-white/5 transition-colors group" data-pl="{{ inv.ganancia_perdida_no_realizada }}">
+                    <tr class="asset-row hover:bg-gray-50 transition-colors group" data-pl="{{ inv.ganancia_perdida_no_realizada }}">
                         <td class="px-6 py-4">
                             <div class="flex items-center">
                                 <div
-                                    class="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center mr-3 text-lg font-bold text-gray-300 overflow-hidden border border-white/10">
+                                    class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mr-3 text-lg font-bold text-gray-600 overflow-hidden border border-gray-200">
                                     <img src="https://financialmodelingprep.com/image-stock/{{ inv.emisora_ticker }}.png"
                                         alt="{{ inv.emisora_ticker }}" class="w-full h-full object-contain p-1"
-                                        style="filter: brightness(0) invert(1) opacity(0.7);"
                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                     <span style="display: none;">{{ inv.nombre_activo|make_list|first|upper }}</span>
                                 </div>
                                 <div>
-                                    <p class="font-semibold text-gray-100">{{ inv.nombre_activo }}</p>
+                                    <p class="font-semibold text-gray-900">{{ inv.nombre_activo }}</p>
                                     <p class="text-xs text-gray-500">{{ inv.emisora_ticker }}</p>
                                 </div>
                             </div>
                         </td>
                         <td class="px-6 py-4 text-right" data-value="{{ inv.precio_actual_titulo }}">
-                            <span class="font-medium text-gray-200">${{ inv.precio_actual_titulo|floatformat:2|intcomma }}</span>
+                            <span class="font-medium text-gray-900">${{ inv.precio_actual_titulo|floatformat:2|intcomma }}</span>
                         </td>
                         <td class="px-6 py-4 text-right" data-value="{{ inv.valor_actual_mercado }}">
-                            <p class="font-semibold text-gray-100">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</p>
+                            <p class="font-semibold text-gray-900">${{ inv.valor_actual_mercado|floatformat:2|intcomma }}</p>
                             <p class="text-xs text-gray-500">{{ inv.cantidad_titulos|floatformat:4 }} Und.</p>
                         </td>
-                        <td class="px-6 py-4 text-right text-sm text-gray-400" data-value="{{ inv.costo_total_adquisicion }}">
+                        <td class="px-6 py-4 text-right text-sm text-gray-500" data-value="{{ inv.costo_total_adquisicion }}">
                             ${{ inv.costo_total_adquisicion|floatformat:2|intcomma }}
                         </td>
                         <td class="px-6 py-4 text-right" data-value="{{ inv.ganancia_perdida_no_realizada }}">
                             <span
-                                class="font-bold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                                class="font-bold {% if inv.ganancia_perdida_no_realizada >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
                                 {% if inv.ganancia_perdida_no_realizada >= 0 %}+{% endif %}${{ inv.ganancia_perdida_no_realizada|floatformat:2|intcomma }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right" data-value="{{ inv.porcentaje_rendimiento }}">
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {% if inv.porcentaje_rendimiento >= 0 %}bg-green-500/10 text-green-400{% else %}bg-red-500/10 text-red-400{% endif %}">
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {% if inv.porcentaje_rendimiento >= 0 %}bg-green-50 text-green-700{% else %}bg-red-50 text-red-700{% endif %}">
                                 {% if inv.porcentaje_rendimiento >= 0 %}+{% endif %}{{ inv.porcentaje_rendimiento|floatformat:2 }}%
                             </span>
                         </td>
@@ -244,7 +237,7 @@
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-2">
                                 <a href="{% url 'editar_inversion' inv.id %}"
-                                    class="p-1 text-gray-500 hover:text-blue-400 transition-colors">
+                                    class="p-1 text-gray-400 hover:text-indigo-600 transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -255,7 +248,7 @@
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{% url 'portafolio' %}">
                                     <button type="submit"
-                                        class="p-1 text-gray-500 hover:text-red-400 transition-colors">
+                                        class="p-1 text-gray-400 hover:text-red-600 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
@@ -270,14 +263,14 @@
                     <tr>
                         <td colspan="8" class="px-6 py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center">
-                                <svg class="w-12 h-12 text-gray-700 mb-3" fill="none" stroke="currentColor"
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <p>No tienes activos en tu portafolio aún.</p>
                                 <a href="{% url 'crear_inversion' %}"
-                                    class="mt-2 text-blue-400 hover:text-blue-300 font-medium text-sm">Añadir
+                                    class="mt-2 text-indigo-600 hover:text-indigo-800 font-medium text-sm">Añadir
                                     Inversión</a>
                             </div>
                         </td>

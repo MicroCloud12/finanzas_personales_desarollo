@@ -50,11 +50,11 @@ document.addEventListener('DOMContentLoaded', function () {
     filterBtns.forEach((btn) => {
         btn.addEventListener('click', () => {
             filterBtns.forEach((b) => {
-                b.classList.remove('bg-blue-500', 'text-white');
-                b.classList.add('border', 'border-white/15', 'text-gray-300');
+                b.classList.remove('bg-indigo-600', 'text-white');
+                b.classList.add('border', 'border-gray-200', 'text-gray-600');
             });
-            btn.classList.add('bg-blue-500', 'text-white');
-            btn.classList.remove('border', 'border-white/15', 'text-gray-300');
+            btn.classList.add('bg-indigo-600', 'text-white');
+            btn.classList.remove('border', 'border-gray-200', 'text-gray-600');
 
             const f = btn.dataset.filter;
             body.querySelectorAll('.asset-row').forEach((row) => {
