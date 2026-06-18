@@ -1,4 +1,4 @@
-{% load static tailwind_tags compress %}
+{% load static tailwind_tags %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -33,18 +33,14 @@
   <link rel="preload" as="style" href="{% static 'css/styles.css' %}?v=1.2" onload="this.rel = 'stylesheet'">
   <link rel="shortcut icon" type="image/png" href="{% static 'img/favicon.ico' %}" />
   {% tailwind_css %}
-  {% compress css %}
   <style>
     body {
       font-family: 'Outfit', 'Inter', sans-serif;
     }
   </style>
-  {% endcompress %}
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-  {% compress js %}
   <script defer src="{% static 'js/main.js' %}"></script>
-  {% endcompress %}
 </head>
 
 <body class="bg-gray-50 font-sans antialiased text-gray-900">

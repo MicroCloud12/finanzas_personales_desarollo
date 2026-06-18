@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize static compress %}
+{% load humanize static %}
 {% block title %}Dashboard de Finanzas Personales | Tu Resumen Financiero{% endblock %}
 {% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5 md:p-8 lg:p-10{% endblock %}
 
@@ -561,9 +561,7 @@
 </div>
 
 {% block javascript %}
-{% compress js %}
 <script defer src="{% static 'js/dashboard_charts.js' %}"></script>
 <script defer src="{% static 'js/dashboard_cards.js' %}"></script>
-{% endcompress %}
 {% endblock javascript %}
 {% endblock %}

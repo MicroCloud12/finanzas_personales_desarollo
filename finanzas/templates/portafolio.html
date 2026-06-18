@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize static compress %}
+{% load humanize static %}
 
 {% block content %}
 <div class="space-y-6">
@@ -249,7 +249,5 @@
 {{ dist_labels|json_script:"dist-labels-data" }}
 {{ dist_data|json_script:"dist-data-data" }}
 
-{% compress js %}
 <script defer src="{% static 'js/portafolio_charts.js' %}"></script>
-{% endcompress %}
 {% endblock %}
