@@ -35,14 +35,8 @@
       rel="stylesheet">
   </noscript>
 
-  <link rel="preload" as="style" href="{% static 'css/styles.css' %}?v=1.2" onload="this.rel = 'stylesheet'">
   <link rel="shortcut icon" type="image/png" href="{% static 'img/favicon.ico' %}" />
   {% tailwind_css %}
-  <style>
-    body {
-      font-family: 'Outfit', 'Inter', sans-serif;
-    }
-  </style>
   {# Precargas/recursos específicos de cada página (p. ej. imagen LCP) #}
   {% block head_extra %}{% endblock %}
   <script defer src="{% static 'js/main.js' %}"></script>

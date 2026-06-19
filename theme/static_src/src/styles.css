@@ -9,6 +9,11 @@
   */
 @source "../../../**/*.{html,py,js}";
 
+/* --- Tipografía base de la app (antes inline en base.html) --- */
+@theme {
+    --font-sans: "Outfit", "Inter", sans-serif;
+}
+
 /* ... al final de tu archivo ... */
 
 /* --- Animación para el fondo de gradiente --- */

@@ -375,7 +375,7 @@
         </div>
 
         <!-- My Cards Interactive Widget -->
-        <div class="relative rounded-[1.2rem] shadow-xl p-7 min-h-[260px] flex flex-col justify-between overflow-hidden transition-all duration-300 group border border-gray-700/50" id="myCardsWidget" style="background: linear-gradient(135deg, #1a1c29 0%, #2a2d3e 50%, #11121a 100%);">
+        <div class="relative rounded-[1.2rem] shadow-xl p-7 min-h-[260px] flex flex-col justify-between overflow-hidden transition-all duration-300 group border border-gray-700/50 bg-[linear-gradient(135deg,#1a1c29_0%,#2a2d3e_50%,#11121a_100%)]" id="myCardsWidget">
             
             <!-- Texture Overlay for realistic plastic/metal feel -->
             <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
@@ -418,18 +418,18 @@
                 
                 <!-- Number -->
                 <div>
-                    <h4 class="text-xl sm:text-[1.65rem] tracking-[0.2em] font-mono leading-none text-gray-100 flex items-center shadow-black/50" id="visualCardNumber" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);"><span class="inline-block transform -translate-y-0.5 opacity-70">•••• •••• ••••</span> <span class="ml-4 opacity-90 font-medium">{{ tarjetas_list.0.terminacion }}</span></h4>
+                    <h4 class="text-xl sm:text-[1.65rem] tracking-[0.2em] font-mono leading-none text-gray-100 flex items-center shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]" id="visualCardNumber"><span class="inline-block transform -translate-y-0.5 opacity-70">•••• •••• ••••</span> <span class="ml-4 opacity-90 font-medium">{{ tarjetas_list.0.terminacion }}</span></h4>
                 </div>
 
                 <!-- Footer details -->
                 <div class="flex justify-between items-end mt-1">
                     <div class="flex flex-col gap-1">
                         <p class="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Titular de la tarjeta</p>
-                        <p class="text-sm sm:text-base uppercase tracking-widest font-medium text-gray-200 shadow-black/50" id="visualCardName" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">{{ tarjetas_list.0.nombre }}</p>
+                        <p class="text-sm sm:text-base uppercase tracking-widest font-medium text-gray-200 shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]" id="visualCardName">{{ tarjetas_list.0.nombre }}</p>
                     </div>
                     <div class="text-right flex flex-col gap-1">
                         <p class="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Válida hasta</p>
-                        <p class="text-sm sm:text-base uppercase tracking-widest font-mono text-gray-200 shadow-black/50" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">12/28</p>
+                        <p class="text-sm sm:text-base uppercase tracking-widest font-mono text-gray-200 shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]">12/28</p>
                     </div>
                 </div>
             </div>
