@@ -80,7 +80,6 @@ class StockPriceService:
         series = self.get_monthly_series(ticker, month_start, target_date)
         return float(series[0]["close"]) if series else None
 
-
 class ExchangeRateService:
     """Service to fetch USD/MXN historical exchange rates."""
     

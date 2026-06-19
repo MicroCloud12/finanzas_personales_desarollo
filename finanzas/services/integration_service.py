@@ -59,7 +59,6 @@ class GoogleDriveService:
         request = self.service.files().get_media(fileId=file_id)
         return BytesIO(request.execute())
 
-
 class MercadoPagoService:
     """Service for Mercado Pago business logic."""
     def __init__(self):
@@ -71,7 +70,6 @@ class MercadoPagoService:
     def crear_link_suscripcion(self, user, back_url: str):
         base_url = "https://www.mercadopago.com.mx/subscriptions/checkout"
         return f"{base_url}?preapproval_plan_id={self.plan_id}"
-
 
 class RISCService:
     """Service to handle Google RISC security events."""
