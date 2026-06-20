@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!startBtn) return;
     const progressContainer = document.getElementById('progress-container');
     const progressText = document.getElementById('progress-text');
+    const progressPercent = document.getElementById('progress-percent');
     const progressBar = document.getElementById('progress-bar');
 
     startBtn.addEventListener('click', async function () {
@@ -69,10 +70,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-    function updateProgress(percentage, text, color = 'bg-blue-500') {
+    function updateProgress(percentage, text, color = 'bg-indigo-600') {
         progressBar.style.width = `${percentage}%`;
-        progressBar.textContent = `${percentage}%`;
-        progressBar.className = `text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full ${color}`;
+        progressBar.className = `h-2.5 rounded-full transition-all duration-300 ease-out ${color}`;
+        progressPercent.textContent = `${percentage}%`;
         progressText.textContent = text;
     }
 

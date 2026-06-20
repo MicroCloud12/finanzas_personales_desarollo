@@ -1620,3 +1620,21 @@ ERROR 2026-06-15 12:07:18,906 market_data_service TwelveData API error for MRSN:
 ERROR 2026-06-15 12:07:19,739 market_data_service TwelveData API error for GOOGL: {"code":429,"message":"You have run out of API credits for the current minute. 13 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
 ERROR 2026-06-15 12:07:19,966 market_data_service TwelveData API error for NVDA: {"code":429,"message":"You have run out of API credits for the current minute. 14 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
 ERROR 2026-06-15 12:07:21,066 market_data_service TwelveData API error for MSFT: {"code":429,"message":"You have run out of API credits for the current minute. 15 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelvedata.com/pricing","status":"error"}
+WARNING 2026-06-19 20:07:51,770 utils La fecha extraída '2023-06-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-19 20:07:51,772 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-19 20:07:51,773 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
+INFO 2026-06-19 20:08:48,795 tasks Tienda reconocida por IA: H&M
+INFO 2026-06-19 20:08:49,022 tasks Tienda nueva detectada: AJ HELADOS SA DE CV
+INFO 2026-06-19 20:08:55,227 tasks Tienda nueva detectada: MONKEY PAPAS
+INFO 2026-06-19 20:08:56,930 tasks Tienda nueva detectada: LA COMER
+INFO 2026-06-19 20:09:03,184 tasks Tienda reconocida por IA: CINEMEX
+INFO 2026-06-19 20:09:18,313 tasks Tienda reconocida por IA: LA COMER
+INFO 2026-06-19 20:14:59,053 tasks Tienda reconocida por IA: H&M
+INFO 2026-06-19 20:14:59,497 tasks Tienda nueva detectada: MONKEY PAPAS
+INFO 2026-06-19 20:14:59,576 tasks Tienda nueva detectada: AJ HELADOS SA DE CV
+INFO 2026-06-19 20:15:09,283 tasks Tienda reconocida por IA: LA COMER
+INFO 2026-06-19 20:15:19,312 tasks Tienda reconocida por IA: CINEMEX
+INFO 2026-06-19 20:15:22,206 tasks Tienda nueva detectada: LA COMER
+WARNING 2026-06-19 20:30:37,250 utils La fecha extraída '2023-06-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-19 20:30:37,252 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
+WARNING 2026-06-19 20:30:37,253 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
