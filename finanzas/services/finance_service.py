@@ -7,6 +7,7 @@ from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from .market_data_service import StockPriceService
 from ..models import TransaccionPendiente, registro_transacciones, User, inversiones, PendingInvestment, Deuda, PagoAmortizacion
+from ..utils import parse_date_safely
 import time
 
 logger = logging.getLogger(__name__)

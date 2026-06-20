@@ -3,6 +3,10 @@ from difflib import get_close_matches
 from ..models import TiendaFacturacion
 import json
 
+_CLAVES_META = frozenset(['tienda', 'fecha', 'total', 'es_conocida', 'campos_adicionales',
+    'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado',
+    'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', '_razonamiento'])
+
 class BillingService:
     @staticmethod
     def guardar_configuracion_tienda(nombre_tienda: str, campos_seleccionados: list):
@@ -100,16 +104,14 @@ class BillingService:
                 if valor: datos_para_cliente[campo] = valor
                 else: campos_faltantes.append(campo)
         else:
-            claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', 'campos_adicionales', '_razonamiento']
             for k, v in campos_encontrados.items():
-                if k not in claves_ignorar and isinstance(v, (str, int, float)) and v:
+                if k not in _CLAVES_META and isinstance(v, (str, int, float)) and v:
                      datos_para_cliente[k] = v
 
-        claves_ignorar = ['tienda', 'fecha', 'total', 'es_conocida', 'campos_adicionales', 'tipo_documento', 'confianza_extraccion', 'fecha_emision', 'total_pagado', 'establecimiento', 'texto_ocr_preview', 'archivo_drive_id', 'nombre_archivo', '_razonamiento']
         campos_en_config = set(datos_para_cliente.keys()) | set(campos_faltantes)
         campos_extra_detectados = {}
         for k, v in campos_encontrados.items():
-            if k not in claves_ignorar and k not in campos_en_config and isinstance(v, (str, int, float)) and v:
+            if k not in _CLAVES_META and k not in campos_en_config and isinstance(v, (str, int, float)) and v:
                  campos_extra_detectados[k] = v
 
         return {

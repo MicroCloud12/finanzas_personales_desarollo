@@ -6,8 +6,7 @@ class StaticViewSitemap(Sitemap):
     changefreq = 'monthly'
 
     def items(self):
-        # Lista de las vistas estáticas que quieres incluir
-        return ['home', 'login', 'registro_usuarios', 'lista_transacciones', 'lista_inversiones']
+        return ['home', 'login', 'registro_usuarios']
 
     def location(self, item):
         return reverse(item)

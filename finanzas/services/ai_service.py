@@ -5,6 +5,7 @@ import logging
 import base64
 import numpy as np
 import cv2
+from functools import lru_cache
 import google.generativeai as genai
 from mistralai import Mistral
 from django.conf import settings
@@ -73,12 +74,9 @@ class GeminiService:
 
         return self._generate_and_parse(prompt, None)
 
-_gemini_singleton = None
+@lru_cache(maxsize=1)
 def get_gemini_service() -> GeminiService:
-    global _gemini_singleton
-    if _gemini_singleton is None:
-        _gemini_singleton = GeminiService()
-    return _gemini_singleton
+    return GeminiService()
 
 class MistralOCRService:
     """Service for Mistral OCR processing."""

@@ -1,3 +1,19 @@
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-20 right-5 z-50 flex flex-col gap-3 pointer-events-none';
+        document.body.appendChild(container);
+    }
+    const colors = { success: 'border-green-500 text-green-700', error: 'border-red-500 text-red-700', warning: 'border-yellow-500 text-yellow-700', info: 'border-blue-500 text-blue-700' };
+    const toast = document.createElement('div');
+    toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 bg-white/90 backdrop-blur-md rounded-lg shadow-2xl border-l-4 ${colors[type] || colors.info}`;
+    toast.innerHTML = `<div class="pl-2 text-sm font-semibold">${message}</div>`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+
 function buscarRecibos(btn, presupuestoId) {
     const url = btn.dataset.url;
     const iconLupa = btn.querySelector('.icon-lupa');
@@ -20,7 +36,7 @@ function buscarRecibos(btn, presupuestoId) {
         iconLupa.classList.remove('hidden');
 
         if (data.error) {
-            alert(data.error);
+            showToast(data.error, 'error');
         } else if (data.cantidad !== undefined) {
             badge.textContent = data.cantidad;
             badge.classList.remove('hidden');
@@ -29,7 +45,7 @@ function buscarRecibos(btn, presupuestoId) {
     .catch(error => {
         iconSpinner.classList.add('hidden');
         iconLupa.classList.remove('hidden');
-        alert("Ocurrió un error al buscar recibos.");
+        showToast("Ocurrió un error al buscar recibos.", 'error');
         console.error(error);
     });
 }
@@ -54,22 +70,16 @@ function predecirRecibo(btn, presupuestoId) {
         iconMagia.classList.remove('hidden');
 
         if (data.error) {
-            alert(data.error);
+            showToast(data.error, 'error');
         } else if (data.success) {
-            let mensaje = `¡Predicción generada!\n\nMonto estimado: $${data.monto_predicho}\n`;
-            if (data.fecha_predicha) {
-                mensaje += `Fecha estimada: ${data.fecha_predicha}\n`;
-            }
-            mensaje += `Razonamiento: ${data.razonamiento}`;
-            alert(mensaje);
-            // Recargar la página para que se vea el nuevo presupuesto
+            showToast(`Predicción: $${data.monto_predicho}${data.fecha_predicha ? ' · ' + data.fecha_predicha : ''}`, 'success');
             window.location.reload();
         }
     })
     .catch(error => {
         iconSpinner.classList.add('hidden');
         iconMagia.classList.remove('hidden');
-        alert("Ocurrió un error al predecir el recibo. Esto puede tardar si hay muchos recibos.");
+        showToast("Ocurrió un error al predecir el recibo.", 'error');
         console.error(error);
     });
 }
@@ -93,20 +103,19 @@ function procesarRecibosAnteriores(btn, presupuestoId) {
         if (data.error) {
             iconSpinner.classList.add('hidden');
             iconProcesar.classList.remove('hidden');
-            alert(data.error);
+            showToast(data.error, 'error');
         } else if (data.task_id) {
-            // Empezar a sondear la tarea inicial
             checkInitialTask(data.task_id);
         } else {
             iconSpinner.classList.add('hidden');
             iconProcesar.classList.remove('hidden');
-            alert(data.mensaje || "Hecho");
+            showToast(data.mensaje || "Hecho", 'info');
         }
     })
     .catch(error => {
         iconSpinner.classList.add('hidden');
         iconProcesar.classList.remove('hidden');
-        alert("Ocurrió un error al procesar los recibos.");
+        showToast("Ocurrió un error al procesar los recibos.", 'error');
         console.error(error);
     });
 
@@ -117,23 +126,21 @@ function procesarRecibosAnteriores(btn, presupuestoId) {
             if (data.status === 'SUCCESS') {
                 const result = data.result;
                 if (result.status === 'STARTED') {
-                    // La tarea inicial preparó el grupo, ahora sondeamos el grupo
                     checkGroupTask(result.task_group_id, result.total_tasks);
                 } else if (result.status === 'NO_FILES') {
                     iconSpinner.classList.add('hidden');
                     iconProcesar.classList.remove('hidden');
-                    alert(result.message);
+                    showToast(result.message, 'warning');
                 } else {
                     iconSpinner.classList.add('hidden');
                     iconProcesar.classList.remove('hidden');
-                    alert(result.message || 'Error en tarea');
+                    showToast(result.message || 'Error en tarea', 'error');
                 }
             } else if (data.status === 'FAILURE') {
                 iconSpinner.classList.add('hidden');
                 iconProcesar.classList.remove('hidden');
-                alert("Hubo un error en el worker de Celery.");
+                showToast("Hubo un error en el worker de Celery.", 'error');
             } else {
-                // status === 'PENDING'
                 setTimeout(() => checkInitialTask(taskId), 2000);
             }
         }).catch(err => {
@@ -149,10 +156,9 @@ function procesarRecibosAnteriores(btn, presupuestoId) {
             if (data.status === 'COMPLETED') {
                 iconSpinner.classList.add('hidden');
                 iconProcesar.classList.remove('hidden');
-                alert(`¡Se procesaron ${totalTasks} recibos exitosamente!`);
+                showToast(`¡Se procesaron ${totalTasks} recibos exitosamente!`, 'success');
                 window.location.reload();
             } else {
-                // status === 'PROGRESS' o 'PENDING'
                 setTimeout(() => checkGroupTask(groupId, totalTasks), 2000);
             }
         }).catch(err => {

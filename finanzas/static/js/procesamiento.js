@@ -4,9 +4,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const progressContainer = document.getElementById('progress-container');
     const progressText = document.getElementById('progress-text');
     const progressBar = document.getElementById('progress-bar');
-    let pollingInterval;
 
-    startBtn.addEventListener('click', async function() {
+    startBtn.addEventListener('click', async function () {
         startBtn.disabled = true;
         progressContainer.classList.remove('hidden');
         updateProgress(0, "Iniciando...", 'bg-blue-500');
@@ -78,7 +77,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleError(message) {
-        if (pollingInterval) clearInterval(pollingInterval);
         console.error("Error:", message);
         updateProgress(100, `Error: ${message}`, 'bg-red-500');
         startBtn.disabled = false;

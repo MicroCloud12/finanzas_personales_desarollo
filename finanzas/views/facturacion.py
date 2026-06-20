@@ -63,15 +63,6 @@ def facturacion(request):
     }
     return render(request, 'lista_facturacion.html', context)
 
-@login_required
-def iniciar_procesamiento_facturacion(request):
-    """Inicia la sincronización de tickets pensada para facturación."""
-    try:
-        task = process_drive_for_invoices.delay(request.user.id)
-        return JsonResponse({"task_id": task.id}, status=202)
-    except Exception as e:
-        return JsonResponse({"error": f"No se pudo iniciar la tarea: {str(e)}"}, status=400)
-
 # --- VISTA 2: Listado de Pendientes (La redirección) ---
 def revisar_facturas_pendientes(request):
     """Lista los tickets pendientes para facturación."""
