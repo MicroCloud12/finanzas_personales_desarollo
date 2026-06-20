@@ -1,19 +1,17 @@
-function openModal(jsonData) {
+function openModal(scriptId) {
     try {
-        const scriptTag = document.getElementById(jsonData);
-        let obj = null;
-        if (scriptTag) {
-            obj = JSON.parse(scriptTag.textContent);
-        } else {
-            console.error("No se encontró script con ID:", jsonData);
+        const scriptTag = document.getElementById(scriptId);
+        if (!scriptTag) {
+            console.error("No se encontró script con ID:", scriptId);
             return;
         }
+        const data = JSON.parse(scriptTag.textContent);
 
         const container = document.getElementById('formattedContent');
         container.innerHTML = '';
 
-        if (obj && typeof obj === 'object') {
-            for (const [key, value] of Object.entries(obj)) {
+        if (data && typeof data === 'object') {
+            for (const [key, value] of Object.entries(data)) {
                 if (!value) continue;
                 const div = document.createElement('div');
                 div.className = "flex justify-between md:grid md:grid-cols-3 gap-4 pb-2";
