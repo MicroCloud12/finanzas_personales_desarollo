@@ -392,7 +392,16 @@ def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id
             datos_json=datos,
             archivo_drive_id=file_id
         )
-        
+
+        # Reflejar el recibo más reciente (por fecha) como monto real del presupuesto.
+        # ponytail: gana el de fecha_emision más nueva, no el último del lote.
+        ultimo = (HistorialReciboServicio.objects
+                  .filter(presupuesto=presupuesto)
+                  .order_by('-fecha_emision', '-id').first())
+        if ultimo:
+            presupuesto.monto_real = ultimo.monto_total
+            presupuesto.save(update_fields=['monto_real'])
+
         return {'status': 'SUCCESS', 'file_name': file_name}
     except Exception as e:
         self.retry(exc=e)

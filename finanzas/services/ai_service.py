@@ -41,12 +41,16 @@ class GeminiService:
     def _generate_and_parse(self, prompt: str, content) -> dict:
         inputs = [prompt, content] if content else prompt
         try:
-            response = self.model.generate_content(inputs, safety_settings=self.safety_settings)
+            # ponytail: timeout duro para que un cuelgue de la API no deje el request colgado
+            response = self.model.generate_content(
+                inputs, safety_settings=self.safety_settings,
+                request_options={"timeout": 30}
+            )
             # Since response_mime_type="application/json", response.text is guaranteed valid JSON
             return json.loads(response.text)
         except Exception as e:
             logger.error(f"Gemini API Error: {e}")
-            return {"error": "Failed to parse AI response or API error"}
+            return {"error": str(e)}
 
     def extract_data(self, prompt_name: str, file_data, mime_type: str, context: str = "") -> dict:
         if prompt_name not in PROMPTS:

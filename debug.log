@@ -1638,3 +1638,8 @@ INFO 2026-06-19 20:15:22,206 tasks Tienda nueva detectada: LA COMER
 WARNING 2026-06-19 20:30:37,250 utils La fecha extraída '2023-06-14' es muy antigua y fue descartada. Se usará la fecha actual.
 WARNING 2026-06-19 20:30:37,252 utils La fecha extraída '2023-05-14' es muy antigua y fue descartada. Se usará la fecha actual.
 WARNING 2026-06-19 20:30:37,253 utils La fecha extraída '2023-10-27' es muy antigua y fue descartada. Se usará la fecha actual.
+ERROR 2026-06-19 21:39:08,413 ai_service Gemini API Error: Unterminated string starting at: line 2 column 20 (char 21)
+ERROR 2026-06-19 22:03:18,664 ai_service Gemini API Error: 504 The request timed out. Please try again.
+ERROR 2026-06-19 22:03:55,034 ai_service Gemini API Error: 504 The request timed out. Please try again.
+ERROR 2026-06-19 22:21:52,793 ai_service Gemini API Error: 504 The request timed out. Please try again.
+ERROR 2026-06-19 22:22:29,266 ai_service Gemini API Error: 504 The request timed out. Please try again.

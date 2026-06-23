@@ -2,6 +2,7 @@ import json
 import logging
 from decimal import Decimal
 from datetime import datetime, timedelta
+from statistics import median
 
 from django.utils import timezone
 from django.urls import reverse
@@ -46,6 +47,38 @@ from ..models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def cadencia_dias(fechas, categoria):
+    """Días típicos entre recibos: mediana de los últimos gaps; default por categoría con <2 fechas."""
+    if len(fechas) >= 2:
+        gaps = [(fechas[i] - fechas[i - 1]).days for i in range(1, len(fechas))]
+        return max(1, int(round(median(gaps[-6:]))))  # max(1,..) evita loop infinito si hay fechas duplicadas
+    return 30 if categoria == 'gas' else 61  # ponytail: agua/luz suelen ser bimestrales; gas mensual
+
+
+def proxima_fecha(base, paso, hoy):
+    """Primera fecha de facturación estrictamente posterior a hoy, anclada al último recibo."""
+    f = base + timedelta(days=paso)
+    while f <= hoy:
+        f += timedelta(days=paso)
+    return f
+
+
+def estimar_monto(montos):
+    """Extrapola un periodo con regresión lineal sobre los últimos 6 recibos; acota ±25% sobre la media."""
+    ys = montos[-6:]
+    n = len(ys)
+    if n <= 1:
+        return round(ys[0], 2) if ys else 0.0
+    mx = (n - 1) / 2
+    my = sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in range(n))
+    sxy = sum((x - mx) * (y - my) for x, y in enumerate(ys))
+    slope = sxy / sxx if sxx else 0.0
+    pred = my + slope * (n - mx)  # siguiente punto (x = n)
+    return round(min(max(pred, my * 0.75), my * 1.25), 2)
+
 
 @login_required
 def presupuesto_view(request):
@@ -182,9 +215,7 @@ def procesar_recibos_anteriores_presupuesto(request, presupuesto_id):
 @login_required
 def predecir_recibo_presupuesto(request, presupuesto_id):
     from django.shortcuts import get_object_or_404
-    from ..services import get_gemini_service
-    from datetime import datetime
-    
+
     if request.headers.get('x-requested-with') != 'XMLHttpRequest':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
@@ -195,69 +226,36 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
         return JsonResponse({'error': 'Predicción no configurada para esta categoría'}, status=400)
 
     try:
-        gemini_service = get_gemini_service()
-                
-        # 1. Obtener todo el historial de la base de datos
-        historial = HistorialReciboServicio.objects.filter(presupuesto=presupuesto).order_by('fecha_emision')
-        if not historial.exists():
+        historial = list(
+            HistorialReciboServicio.objects.filter(presupuesto=presupuesto).order_by('fecha_emision')
+        )
+        if not historial:
             return JsonResponse({'error': 'No hay historial de recibos. Asegúrate de procesar tus recibos primero.'}, status=400)
-            
-        datos_historial = []
-        for h in historial:
-            datos_historial.append({
-                "fecha_emision": str(h.fecha_emision) if h.fecha_emision else "Desconocida",
-                "monto_total": float(h.monto_total),
-                "consumo": h.datos_json.get("consumo", "Desconocido")
-            })
-            
-        contexto_data = {
-            "fecha_actual_sistema": timezone.localtime(timezone.now()).strftime('%Y-%m-%d'),
-            "historial_recibos": datos_historial
-        }
-        contexto = json.dumps(contexto_data)
-        
-        # 2. Pedir predicción a Gemini
-        prediccion = gemini_service.extract_from_text("prediccion_servicio", "", contexto)
-        
-        if isinstance(prediccion, list):
-            prediccion = prediccion[0] if prediccion else {}
-            
-        monto_predicho = prediccion.get("monto_predicho", 0)
-        fecha_predicha = prediccion.get("fecha_predicha", "")
-        razonamiento = prediccion.get("razonamiento", "Sin razonamiento proporcionado por la IA.")
-        
-        try:
-            monto_predicho = float(monto_predicho)
-        except:
-            monto_predicho = 0.0
-            
-        fecha_obj = None
-        if fecha_predicha:
-            try:
-                fecha_obj = datetime.strptime(fecha_predicha, '%Y-%m-%d').date()
-            except ValueError:
-                pass
-                
-        # 3. Actualizar presupuesto
-        actualizado = False
-        if monto_predicho > 0:
-            presupuesto.monto_presupuestado = monto_predicho
-            actualizado = True
-            
-        if fecha_obj:
-            presupuesto.fecha_proximo_recibo = fecha_obj
-            actualizado = True
-            
-        if actualizado:
-            presupuesto.save()
-            
+
+        fechas = sorted(h.fecha_emision for h in historial if h.fecha_emision)
+        montos = [float(h.monto_total) for h in historial]
+
+        # Próxima fecha = primer ciclo futuro, anclado al último recibo con la cadencia real (mediana de días).
+        hoy = timezone.localdate()
+        paso = cadencia_dias(fechas, categoria_lower)
+        base = fechas[-1] if fechas else hoy
+        fecha_obj = proxima_fecha(base, paso, hoy)
+
+        monto_predicho = estimar_monto(montos)
+        razonamiento = (f"{len(montos)} recibo(s) · cadencia ~{paso} días desde {base:%d/%m/%Y} · "
+                        f"regresión lineal sobre últimos {min(len(montos), 6)}")
+
+        presupuesto.monto_presupuestado = monto_predicho
+        presupuesto.fecha_proximo_recibo = fecha_obj
+        presupuesto.save(update_fields=['monto_presupuestado', 'fecha_proximo_recibo'])
+
         return JsonResponse({
             'success': True,
             'monto_predicho': monto_predicho,
-            'fecha_predicha': fecha_predicha,
+            'fecha_predicha': fecha_obj.strftime('%Y-%m-%d'),
             'razonamiento': razonamiento
         })
-        
+
     except Exception as e:
         import traceback
         traceback.print_exc()

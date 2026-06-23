@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
@@ -67,10 +68,10 @@
               </div>
             </td>
             <td class="px-6 py-4 bg-white text-sm text-gray-600 font-bold">
-              ${{ p.monto_presupuestado|floatformat:2 }}
+              ${{ p.monto_presupuestado|floatformat:2|intcomma }}
             </td>
             <td class="px-6 py-4 bg-white text-sm text-gray-900 font-bold">
-              ${{ p.monto_real|floatformat:2 }}
+              ${{ p.monto_real|floatformat:2|intcomma }}
             </td>
             <td class="px-6 py-4 bg-white text-sm">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -140,4 +141,6 @@
 
 {% endblock %}
 
+{% block javascript %}
 <script defer src="{% static 'js/presupuesto.js' %}"></script>
+{% endblock javascript %}
