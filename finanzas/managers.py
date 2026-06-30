@@ -38,7 +38,6 @@ class TransaccionManager(models.Manager):
             ahorro_total=Sum('monto', filter=Q(tipo='TRANSFERENCIA', categoria='Ahorro', cuenta_origen__in=cuentas_debito, cuenta_destino='Cuenta Ahorro')),
             transferencias_efectivo=Sum('monto', filter=Q(tipo='TRANSFERENCIA') & ~Q(categoria='Ahorro') & Q(cuenta_origen__in=cuentas_debito)),
             gastos_ahorro=Sum('monto', filter=Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'], cuenta_origen='Cuenta Ahorro')),
-            ingresos_ahorro=Sum('monto', filter=Q(tipo='INGRESO', cuenta_origen='Cuenta Ahorro')),
         )
         
         # Limpiamos los None (si no hay datos devuelve None, queremos 0)

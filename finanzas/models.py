@@ -46,6 +46,21 @@ class registro_transacciones(models.Model):
         return f"{self.id} - {self.descripcion}"
 
     def delete(self, *args, **kwargs):
+        ya_procesado_transferencia_tc = False
+        # BUG1 FIX: reversión del pago a TC vía TRANSFERENCIA
+        if self.tipo == 'TRANSFERENCIA' and self.cuenta_destino:
+            try:
+                deuda_tarjeta = Deuda.objects.get(
+                    propietario=self.propietario,
+                    nombre=self.cuenta_destino,
+                    tipo_deuda='TARJETA_CREDITO'
+                )
+                deuda_tarjeta.saldo_pendiente -= self.monto
+                deuda_tarjeta.save()
+                ya_procesado_transferencia_tc = True
+            except Deuda.DoesNotExist:
+                pass
+
         # 1. Revertimos el saldo si afectó a la cuenta de tarjeta de crédito (por su nombre)
         if self.tipo == 'GASTO':
             try:
@@ -69,7 +84,7 @@ class registro_transacciones(models.Model):
             elif self.tipo_pago == 'CAPITAL':
                 deuda.saldo_pendiente = (deuda.saldo_pendiente or 0) + self.monto
                 deuda.save()
-            elif deuda.tipo_deuda == 'TARJETA_CREDITO':
+            elif deuda.tipo_deuda == 'TARJETA_CREDITO' and not ya_procesado_transferencia_tc:
                 deuda.saldo_pendiente = (deuda.saldo_pendiente or 0) + self.monto
                 deuda.save()
             elif deuda.tipo_deuda == 'PRESTAMO' and self.tipo_pago == 'MENSUALIDAD':
@@ -88,7 +103,9 @@ class registro_transacciones(models.Model):
     # Tu método save que modificamos anteriormente va aquí...
     def save(self, *args, **kwargs):
         is_new = self.pk is None
-        
+        ya_restado_por_nombre = False
+        ya_procesado_transferencia_tc = False
+
         # Mapeo de los nuevos tipos de pago a la lógica interna (deuda_asociada y tipo_pago)
         if self.tipo in ['PAGO_MENSUALIDAD', 'PAGO_CAPITAL'] and self.cuenta_destino:
             try:
@@ -101,6 +118,20 @@ class registro_transacciones(models.Model):
                 pass
                 
         super().save(*args, **kwargs)
+
+        # BUG1 FIX: pago a TC vía TRANSFERENCIA restaura el saldo disponible de la tarjeta
+        if is_new and self.tipo == 'TRANSFERENCIA' and self.cuenta_destino:
+            try:
+                deuda_tarjeta = Deuda.objects.get(
+                    propietario=self.propietario,
+                    nombre=self.cuenta_destino,
+                    tipo_deuda='TARJETA_CREDITO'
+                )
+                deuda_tarjeta.saldo_pendiente += self.monto
+                deuda_tarjeta.save()
+                ya_procesado_transferencia_tc = True
+            except Deuda.DoesNotExist:
+                pass
 
         # Si la transacción es un GASTO nuevo y su cuenta origen es una tarjeta de crédito en Deudas
         if is_new and self.tipo == 'GASTO':
@@ -115,6 +146,7 @@ class registro_transacciones(models.Model):
                 if not (self.deuda_asociada == deuda_tarjeta and self.tipo_pago == 'TARJETA_CREDITO'):
                     deuda_tarjeta.saldo_pendiente -= self.monto
                     deuda_tarjeta.save()
+                    ya_restado_por_nombre = True
             except Deuda.DoesNotExist:
                 pass
 
@@ -153,7 +185,7 @@ class registro_transacciones(models.Model):
                         # Una mejora futura podría ser manejar pagos parciales a capital.
                         break
 
-            elif deuda.tipo_deuda == 'TARJETA_CREDITO':
+            elif deuda.tipo_deuda == 'TARJETA_CREDITO' and not ya_restado_por_nombre and not ya_procesado_transferencia_tc:
                 # Esta lógica sigue igual
                 deuda.saldo_pendiente -= self.monto
                 deuda.save()

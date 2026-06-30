@@ -519,12 +519,16 @@
             <div class="flex justify-between items-center mb-2">
                 <h3 class="font-bold text-lg text-gray-900">Estadísticas</h3>
                 <div class="flex items-center gap-2">
-                    <!--
-                    <select
-                        class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 flex items-center justify-center cursor-pointer outline-none">
-                        <option>Expence</option>
+                    <select id="gastosTipoFilter"
+                        class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none">
+                        <option value="GASTO">Gastos</option>
+                        <option value="INGRESO">Ingresos</option>
                     </select>
-                    -->
+                    <select id="gastosAgruparFilter"
+                        class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none">
+                        <option value="categoria">Por categoría</option>
+                        <option value="descripcion">Por descripción</option>
+                    </select>
                     <button
                         class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none flex items-center justify-center gap-1 hover:bg-gray-100">
                         Detalles
@@ -540,7 +544,7 @@
                 Tienes un incremento de gastos en varias categorías este mes
             </p>
 
-            <div class="relative flex-grow flex items-center justify-center min-h-[22rem]">
+            <div class="relative flex-grow min-h-[24rem]">
                 <canvas id="gastosPorCategoriaChart"
                     data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>

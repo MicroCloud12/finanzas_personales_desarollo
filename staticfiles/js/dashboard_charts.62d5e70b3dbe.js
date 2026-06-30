@@ -29,13 +29,7 @@ function initGastosChart() {
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
-                            }
-                        }
+                        plugins: { legend: { position: 'top' } }
                     }
                 });
             });

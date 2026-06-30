@@ -49,7 +49,7 @@
         </div>
 
         <div id="div_cuenta_destino" style="display: none;">
-            <label for="{{ form.cuenta_destino.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.cuenta_destino.label }}</label>
+            <label for="{{ form.cuenta_destino.id_for_label }}" class="block text-sm font-medium text-gray-700">Cuenta / Tarjeta Destino</label>
             <div class="mt-1">
                 {{ form.cuenta_destino }}
             </div>
@@ -64,3 +64,8 @@
   </div>
 </div>
 {% endblock %}
+
+{% load static %}
+{% block javascript %}
+<script defer src="{% static 'js/transacciones_form.js' %}"></script>
+{% endblock javascript %}

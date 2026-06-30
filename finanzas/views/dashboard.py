@@ -126,7 +126,6 @@ def vista_dashboard(request):
     ahorro_total = bal['ahorro_total']
     transferencias = bal['transferencias_efectivo']
     gastos_ahorro = bal['gastos_ahorro']
-    ingresos_ahorro = bal['ingresos_ahorro']
 
     inversion_inicial_usd = agregados_inversion.get('total_inicial') or Decimal('0.00')
     inversion_actual = agregados_inversion.get('total_actual') or Decimal('0.00')
@@ -235,17 +234,27 @@ def datos_gastos_categoria(request):
         month = int(request.GET.get('month', datetime.now().month))
     except ValueError:
         return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
-    gastos_por_categoria = registro_transacciones.objects.filter(
+
+    # Filtros del frontend: tipo (gasto/ingreso) y agrupación (categoria/descripcion)
+    tipos = ['INGRESO'] if request.GET.get('tipo') == 'INGRESO' else ['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL']
+    agrupar = 'descripcion' if request.GET.get('agrupar') == 'descripcion' else 'categoria'
+
+    resumen = list(registro_transacciones.objects.filter(
         propietario=request.user,
-        tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'],
+        tipo__in=tipos,
         fecha__year=year,
         fecha__month=month
-    ).values('categoria').annotate(total=Sum('monto')).order_by('-total')
-    data = {
-        'labels': [item['categoria'] for item in gastos_por_categoria],
-        'data': [item['total'] for item in gastos_por_categoria],
-    }
-    return JsonResponse(data)
+    ).values(agrupar).annotate(total=Sum('monto')).order_by('-total'))
+
+    # Mostramos solo las 9 mayores; el resto se agrupa en "Otros" para que la dona sea legible
+    LIMITE = 9
+    labels = [item[agrupar] for item in resumen[:LIMITE]]
+    montos = [item['total'] for item in resumen[:LIMITE]]
+    otros = sum((item['total'] for item in resumen[LIMITE:]), Decimal('0'))
+    if otros:
+        labels.append('Otros')
+        montos.append(otros)
+    return JsonResponse({'labels': labels, 'data': montos})
 
 @login_required
 @require_GET
@@ -281,8 +290,9 @@ def datos_flujo_dinero(request):
         fecha__year=year,
         fecha__month=month
     )
-    ingresos = transacciones_del_mes.filter(tipo='INGRESO').exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-    gastos = transacciones_del_mes.filter(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL']).exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    cuentas_debito = list(Cuenta.objects.filter(propietario=request.user, tipo='DEBITO').values_list('nombre', flat=True))
+    ingresos = transacciones_del_mes.filter(tipo='INGRESO', cuenta_origen__in=cuentas_debito).exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    gastos = transacciones_del_mes.filter(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'], cuenta_origen__in=cuentas_debito).exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
     data = {
         'labels': ['Ingresos del Mes', 'Gastos del Mes'],
         'data': [ingresos, gastos],
