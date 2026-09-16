@@ -195,26 +195,31 @@ class InvestmentService:
             for ticker, lista_inv in inversiones_por_ticker.items():
                 cantidad_acumulada_ticker = Decimal('0.0')
                 costo_acumulado_ticker = Decimal('0.0')
+                precio_actual_ticker = None
                 
                 for inv in lista_inv:
                     if inv.fecha_compra <= fecha_iter:
                         cantidad_acumulada_ticker += inv.cantidad_titulos
                         costo_acumulado_ticker += inv.costo_total_adquisicion
+                        precio_actual_ticker = inv.precio_actual_titulo
                 
                 if cantidad_acumulada_ticker > 0:
                     capital_invertido_dia += costo_acumulado_ticker
                     
-                    fecha_str = fecha_iter.strftime("%Y-%m-%d")
-                    precio_cierre = precios_diarios_cache.get(ticker, {}).get(fecha_str)
-                    
-                    if precio_cierre is None:
-                        for i in range(1, 6):
-                            d_back = fecha_iter - relativedelta(days=i)
-                            p_back = precios_diarios_cache.get(ticker, {}).get(d_back.strftime("%Y-%m-%d"))
-                            if p_back:
-                                precio_cierre = p_back
-                                break
-                                
+                    if fecha_iter == hoy and precio_actual_ticker:
+                        precio_cierre = precio_actual_ticker
+                    else:
+                        fecha_str = fecha_iter.strftime("%Y-%m-%d")
+                        precio_cierre = precios_diarios_cache.get(ticker, {}).get(fecha_str)
+                        
+                        if precio_cierre is None:
+                            for i in range(1, 6):
+                                d_back = fecha_iter - relativedelta(days=i)
+                                p_back = precios_diarios_cache.get(ticker, {}).get(d_back.strftime("%Y-%m-%d"))
+                                if p_back:
+                                    precio_cierre = p_back
+                                    break
+                                    
                     if precio_cierre:
                          valor_total_dia += cantidad_acumulada_ticker * precio_cierre
                     else:

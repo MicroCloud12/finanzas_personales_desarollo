@@ -8,7 +8,7 @@ from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
-from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura, HistorialReciboServicio, Presupuesto, PortfolioHistory
+from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura, HistorialReciboServicio, Presupuesto, PortfolioHistory, inversiones
 
 logger = logging.getLogger(__name__)
 
@@ -463,6 +463,28 @@ def update_user_portfolio_history(user_id: int):
     """Calcula y almacena el historial diario del portafolio para un usuario específico."""
     try:
         user = User.objects.get(id=user_id)
+        
+        # 1. Update current prices in the table first so the table matches the graph
+        price_service = StockPriceService()
+        inversiones_usuario = inversiones.objects.filter(propietario=user)
+        tickers_actualizados = set()
+        
+        for inv in inversiones_usuario:
+            if inv.emisora_ticker:
+                if inv.emisora_ticker not in tickers_actualizados:
+                    new_price = price_service.get_current_price(inv.emisora_ticker)
+                    if new_price is not None:
+                        inv.precio_actual_titulo = Decimal(str(new_price))
+                        inv.save()
+                        tickers_actualizados.add(inv.emisora_ticker)
+                        time.sleep(5)  # Respect free tier rate limits
+                else:
+                    new_price = price_service.get_current_price(inv.emisora_ticker)
+                    if new_price is not None:
+                        inv.precio_actual_titulo = Decimal(str(new_price))
+                        inv.save()
+
+        # 2. Calculate the portfolio history
         historial = InvestmentService.calculate_daily_portfolio_history(user)
         
         if not historial:
