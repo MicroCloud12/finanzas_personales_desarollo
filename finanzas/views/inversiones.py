@@ -27,6 +27,7 @@ from ..tasks import (
     process_drive_amortizations,
     process_drive_for_invoices,
     process_drive_utility_bills,
+    update_user_portfolio_history,
 )
 from ..forms import (
     TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, 
@@ -169,6 +170,8 @@ def aprobar_inversion(request, inversion_id):
         pending.estado = 'aprobada'
         pending.save()
         
+        update_user_portfolio_history.delay(request.user.id)
+        
         messages.success(request, f"Inversión en {datos.get('nombre_activo')} aprobada correctamente.")
         return redirect('revisar_inversiones')
 
@@ -197,6 +200,7 @@ def aprobar_todas_inversiones(request):
             inv.save()
             aprobadas += 1
         if aprobadas > 0:
+            update_user_portfolio_history.delay(request.user.id)
             messages.success(request, f"{aprobadas} inversiones han sido aprobadas correctamente.")
         else:
             messages.warning(request, "No se aprobaron inversiones.")
@@ -230,6 +234,7 @@ def editar_inversion(request, inversion_id):
         form = InversionForm(request.POST, instance=inversion)
         if form.is_valid():
             form.save()
+            update_user_portfolio_history.delay(request.user.id)
             return redirect('lista_inversiones')
     else:
         form = InversionForm(instance=inversion)
@@ -240,6 +245,7 @@ def eliminar_inversion(request, inversion_id):
     inversion = get_object_or_404(inversiones, id=inversion_id, propietario=request.user)
     if request.method == 'POST':
         inversion.delete()
+        update_user_portfolio_history.delay(request.user.id)
         next_url = request.POST.get('next', request.GET.get('next', 'lista_inversiones'))
         return redirect(next_url)
     return render(request, 'confirmar_eliminar_inversion.html', {'inversion': inversion})
@@ -276,6 +282,7 @@ def crear_inversion(request):
                 # AQUÍ podríamos disparar una tarea: update_price.delay(nueva_inversion.id)
             
             nueva_inversion.save()
+            update_user_portfolio_history.delay(request.user.id)
             messages.success(request, f"Inversión en {ticker} guardada con éxito.")
             return redirect('lista_inversiones')
     else:

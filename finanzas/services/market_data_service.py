@@ -84,16 +84,11 @@ class ExchangeRateService:
     """Service to fetch USD/MXN historical exchange rates."""
     
     def get_usd_mxn_rate(self, date_obj):
-        token = os.getenv("CURRENCYAPI_API_KEY")
-        if not token:
-            logger.warning("CURRENCYAPI_API_KEY missing.")
-            return None
-            
-        url = f"https://api.currencyapi.com/v3/historical?apikey={token}&currencies=MXN&base_currency=USD&date={date_obj}"
+        url = f"https://api.frankfurter.app/{date_obj}?from=USD&to=MXN"
         try:
-            response = requests.get(url, timeout=5) # Added timeout
+            response = requests.get(url, timeout=5)
             response.raise_for_status()
-            rate = response.json().get('data', {}).get('MXN', {}).get('value')
+            rate = response.json().get('rates', {}).get('MXN')
             return Decimal(str(rate)) if rate is not None else None
         except Exception as e:
             logger.error(f"Exchange Rate error: {e}")

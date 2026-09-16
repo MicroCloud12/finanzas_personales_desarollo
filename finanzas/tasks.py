@@ -8,7 +8,7 @@ from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
-from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura, HistorialReciboServicio, Presupuesto
+from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura, HistorialReciboServicio, Presupuesto, PortfolioHistory
 
 logger = logging.getLogger(__name__)
 
@@ -455,6 +455,36 @@ def process_drive_utility_bills(user_id: int, presupuesto_id: int, categoria_low
         result_group.save()
         
         return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(files_to_process)}
-        
     except Exception as e:
+        return {'status': 'ERROR', 'message': str(e)}
+
+@shared_task
+def update_user_portfolio_history(user_id: int):
+    """Calcula y almacena el historial diario del portafolio para un usuario específico."""
+    try:
+        user = User.objects.get(id=user_id)
+        historial = InvestmentService.calculate_daily_portfolio_history(user)
+        
+        if not historial:
+            # Eliminar historial si el usuario ya no tiene inversiones
+            PortfolioHistory.objects.filter(usuario=user).delete()
+            return {'status': 'NO_DATA', 'message': f'No hay inversiones para el usuario {user.username}.'}
+
+        PortfolioHistory.objects.filter(usuario=user).delete()
+        
+        batch = [
+            PortfolioHistory(
+                usuario=user,
+                fecha=dia['fecha'],
+                valor_total=dia['valor_total'],
+                capital_invertido=dia['capital_invertido'],
+                ganancia_no_realizada=dia['ganancia_no_realizada']
+            )
+            for dia in historial
+        ]
+        
+        PortfolioHistory.objects.bulk_create(batch)
+        return {'status': 'SUCCESS', 'records': len(batch)}
+    except Exception as e:
+        logger.error(f"Error actualizando historial de portafolio para user {user_id}: {e}")
         return {'status': 'ERROR', 'message': str(e)}
