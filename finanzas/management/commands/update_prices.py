@@ -8,20 +8,18 @@ class Command(BaseCommand):
     help = "Actualiza el precio actual de todas las inversiones en la base de datos usando la API de Twelve Data."
 
     def handle(self, *args, **kwargs):
-        #self.stdout.write(self.style.SUCCESS('🚀 Iniciando la actualización de precios de inversiones...'))
         self.stdout.write(
             self.style.SUCCESS(
-                "🚀 Iniciando la actualización de precios de inversiones..."
+                "Iniciando la actualización de precios de inversiones..."
             )
         )
         # Obtenemos todas las inversiones que son de tipo 'Acción'
         investment_list = inversiones.objects.filter()
         
         if not investment_list:
-            #self.stdout.write(self.style.WARNING('No se encontraron inversiones de tipo "Acción" para actualizar.'))
             self.stdout.write(
                     self.style.WARNING(
-                        'No se encontraron inversiones de tipo "Acción" para actualizar.'
+                        'No se encontraron inversiones para actualizar.'
                     )
                 )
             return
@@ -60,7 +58,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"\n✅ Proceso completado. Se actualizaron {updated_count} de {len(investment_list)} inversiones."
+                f"\nProceso completado. Se actualizaron {updated_count} de {len(investment_list)} inversiones."
 
             )
         )

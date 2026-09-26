@@ -8,3 +8,20 @@ dump.rdb
 
 # Ignorar archivos de entorno (ya debería estar, pero por si acaso)
 .env
+
+# Logs y entorno virtual (nunca versionar)
+*.log
+debug.log
+virtual-enviroment/
+venv/
+.venv/
+
+# Archivos generados (collectstatic, npm, celery beat, sqlite local)
+staticfiles/
+node_modules/
+celerybeat-schedule*
+db.sqlite3
+
+# IDEs / asistentes
+.vscode/
+.idea/

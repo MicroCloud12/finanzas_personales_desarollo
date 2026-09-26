@@ -79,7 +79,7 @@ def process_drive_tickets(user_id: int):
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
 
-        job = group(process_single_ticket.s(user.id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
+        job = group(process_single_ticket.s(user.id, item['id'], item['name'], item['mimeType']).set(countdown=i * 15) for i, item in enumerate(files_to_process))
         result_group = job.apply_async()
         result_group.save()
 
@@ -167,7 +167,7 @@ def process_drive_investments(user_id):
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
 
-        job = group(process_single_inversion.s(user.id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
+        job = group(process_single_inversion.s(user.id, item['id'], item['name'], item['mimeType']).set(countdown=i * 15) for i, item in enumerate(files_to_process))
         result_group = job.apply_async()
         result_group.save()
 
@@ -233,7 +233,7 @@ def process_drive_amortizations(user_id: int, deuda_id: int):
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': f"No se encontraron archivos que coincidan con el nombre '{deuda.nombre}'."}
 
-        job = group(process_single_amortization.s(user.id, item['id'], item['name'], item['mimeType'], deuda_id) for item in files_to_process)
+        job = group(process_single_amortization.s(user.id, item['id'], item['name'], item['mimeType'], deuda_id).set(countdown=i * 15) for i, item in enumerate(files_to_process))
         result_group = job.apply_async()
         result_group.save()
 
@@ -336,7 +336,7 @@ def process_drive_for_invoices(user_id: int):
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No se encontraron nuevos tickets.'}
 
-        job = group(process_single_invoice.s(user.id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
+        job = group(process_single_invoice.s(user.id, item['id'], item['name'], item['mimeType']).set(countdown=i * 15) for i, item in enumerate(files_to_process))
         result_group = job.apply_async()
         result_group.save()
 
@@ -450,7 +450,7 @@ def process_drive_utility_bills(user_id: int, presupuesto_id: int, categoria_low
         if not files_to_process:
             return {'status': 'NO_FILES', 'message': 'No hay recibos nuevos por procesar.'}
             
-        job = group(process_single_utility_bill.s(user.id, presupuesto_id, item['id'], item['name'], item['mimeType']) for item in files_to_process)
+        job = group(process_single_utility_bill.s(user.id, presupuesto_id, item['id'], item['name'], item['mimeType']).set(countdown=i * 15) for i, item in enumerate(files_to_process))
         result_group = job.apply_async()
         result_group.save()
         
