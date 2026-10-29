@@ -1,10 +1,8 @@
-import os
 import json
 import time
 import jwt
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from django.conf import settings
 
 # --- ¡IMPORTANTE! ---
 # Coloca la ruta a tu archivo de credenciales JSON aquí.

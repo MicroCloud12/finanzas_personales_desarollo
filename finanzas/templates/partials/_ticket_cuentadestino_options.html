@@ -1,9 +1,7 @@
-<option value="N/A" {% if ticket.datos_json.cuenta_destino_sugerida == 'N/A' or not ticket.datos_json.cuenta_destino_sugerida %}selected{% endif %}>N/A</option>
+<option value="N/A" {% if not ticket.sug.destino %}selected{% endif %}>N/A</option>
 {% for cuenta in cuentas_usuario %}
-    <option value="{{ cuenta.nombre }}" {% if ticket.datos_json.cuenta_destino_sugerida == cuenta.nombre %}selected{% endif %}>{{ cuenta.nombre }}</option>
+    <option value="{{ cuenta.nombre }}" {% if cuenta.nombre == ticket.sug.destino %}selected{% endif %}>{{ cuenta.nombre }} ({{ cuenta.get_tipo_display }})</option>
 {% endfor %}
-{% for deuda in deudas_usuario %}
-    {% if deuda.tipo_deuda == 'PRESTAMO' %}
-        <option value="{{ deuda.nombre }}" {% if ticket.datos_json.cuenta_destino_sugerida == deuda.nombre %}selected{% endif %}>{{ deuda.nombre }}</option>
-    {% endif %}
-{% endfor %}
+{% if not tiene_cuenta_ahorro %}
+    <option value="__NUEVA_AHORRO__" {% if ticket.sug.destino == '__NUEVA_AHORRO__' %}selected{% endif %}>Cuenta Ahorro (se creará)</option>
+{% endif %}

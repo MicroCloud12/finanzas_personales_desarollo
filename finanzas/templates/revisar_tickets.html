@@ -23,7 +23,7 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900 font-display">Revisar Tickets Pendientes</h1>
                 <p class="mt-1 text-sm text-gray-500">
-                    Clasifica y confirma tus gastos recientes.
+                    Cada ticket ya viene pre-llenado (lo que leyó la IA, tu historial o tu cuenta principal). Revisa y aprueba.
                 </p>
             </div>
 
@@ -50,8 +50,21 @@
 
         {# --- Tickets Table Card --- #}
         <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
-            <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <h3 class="font-bold text-lg text-gray-800">Detalle de Movimientos</h3>
+                {% if tickets %}
+                <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <span>Aplicar a todos:</span>
+                    <select id="aplicar_cuenta" class="pl-2 pr-8 py-1.5 text-sm border-gray-300 rounded-lg shadow-sm bg-white">
+                        <option value="">Cuenta…</option>
+                        {% for cuenta in cuentas_usuario %}<option value="{{ cuenta.nombre }}">{{ cuenta.nombre }}</option>{% endfor %}
+                    </select>
+                    <select id="aplicar_categoria" class="pl-2 pr-8 py-1.5 text-sm border-gray-300 rounded-lg shadow-sm bg-white">
+                        <option value="">Categoría…</option>
+                        {% for c in categorias %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                    </select>
+                </div>
+                {% endif %}
             </div>
 
             <div class="overflow-x-auto">
@@ -62,16 +75,16 @@
                             <th class="px-4 py-4">Fecha</th>
                             <th class="px-4 py-4">Descripción</th>
                             <th class="px-4 py-4">Total</th>
-                            <th class="px-4 py-4">Cuenta Origen</th>
+                            <th class="px-4 py-4">Cuenta</th>
                             <th class="px-4 py-4">Categoría</th>
                             <th class="px-4 py-4">Tipo</th>
-                            <th class="px-4 py-4">Cuenta Destino</th>
+                            <th class="px-4 py-4">Destino</th>
                             <th class="px-4 py-4 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         {% for ticket in tickets %}
-                        <tr class="hover:bg-gray-50/80 transition-colors">
+                        <tr class="hover:bg-gray-50/80 transition-colors" data-ticket="{{ ticket.id }}">
                             <td class="px-4 py-4 bg-white text-sm text-gray-700 font-medium whitespace-nowrap">
                                 {{ ticket.fecha_formateada }}
                             </td>
@@ -83,31 +96,38 @@
                                 {% else %}
                                 {{ ticket.datos_json.establecimiento|default:ticket.datos_json.descripcion_corta|lower|capfirst }}
                                 {% endif %}
+                                {% if ticket.sug.aviso %}<p class="text-[11px] text-amber-700 mt-1">{{ ticket.sug.aviso }}</p>{% endif %}
                             </td>
                             <td class="px-4 py-4 bg-white text-sm font-bold text-gray-900">
-                                ${{ ticket.datos_json.total }}
+                                {% if ticket.clase == 'MOVIMIENTO' %}
+                                ${{ ticket.monto|floatformat:2 }}
+                                {% else %}
+                                <input type="text" inputmode="decimal" name="monto_{{ ticket.id }}" placeholder="monto"
+                                       style="width:7rem;background:#fefce8" class="text-right px-2 py-1.5 border-gray-300 rounded-lg shadow-sm" title="La IA no leyó el monto: escríbelo">
+                                <p class="text-[10px] text-amber-700 mt-1 font-normal">no se leyó el monto</p>
+                                {% endif %}
                             </td>
 
                             <td class="px-4 py-4 bg-white">
-                                <select name="cuenta_origen_{{ ticket.id }}"
+                                <select name="cuenta_origen_{{ ticket.id }}" data-rol="cuenta"
                                     class="block w-full min-w-[160px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_select_options.html' %}
                                 </select>
                             </td>
                             <td class="px-4 py-4 bg-white">
-                                <select name="categoria_{{ ticket.id }}"
+                                <select name="categoria_{{ ticket.id }}" data-rol="categoria"
                                     class="block w-full min-w-[130px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_category_options.html' %}
                                 </select>
                             </td>
                             <td class="px-4 py-4 bg-white">
-                                <select name="tipo_{{ ticket.id }}"
+                                <select name="tipo_{{ ticket.id }}" data-rol="tipo"
                                     class="block w-full min-w-[100px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_tipo_options.html' %}
                                 </select>
                             </td>
                             <td class="px-4 py-4 bg-white">
-                                <select name="cuenta_destino_{{ ticket.id }}"
+                                <select name="cuenta_destino_{{ ticket.id }}" data-rol="destino"
                                     class="block w-full min-w-[160px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
                                     {% include 'partials/_ticket_cuentadestino_options.html' %}
                                 </select>
@@ -155,3 +175,8 @@
     </form>
 </div>
 {% endblock %}
+
+{% load static %}
+{% block javascript %}
+<script defer src="{% static 'js/revisar_tickets.js' %}"></script>
+{% endblock javascript %}

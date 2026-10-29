@@ -1,20 +1,9 @@
 import json
 import logging
-from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from django.utils import timezone
-from django.urls import reverse
 from django.contrib import messages
-from django.contrib.auth import login
-from django.http import HttpResponse, JsonResponse
-from django.core.mail import send_mail
-from django.conf import settings
-from django.db.models import Sum, Q, Count
-from django.contrib.auth.models import User
-from django.utils.dateformat import DateFormat
-from django.db.models.functions import TruncMonth
-from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
@@ -23,27 +12,19 @@ from celery.result import AsyncResult, GroupResult
 from config.celery import app as celery_app
 
 from ..utils import parse_date_safely
+from ..categorias import Sugeridor, categorias_para, clasificar_ticket, monto_de_ticket
 from ..tasks import (
     process_drive_tickets,
-    process_drive_investments,
-    process_drive_amortizations,
-    process_drive_for_invoices,
-    process_drive_utility_bills,
 )
 from ..forms import (
-    TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, 
-    DeudaForm, PagoAmortizacionForm, CuentaForm
+    TransaccionesForm
 )
 from ..services import (
-    TransactionService, MercadoPagoService, StockPriceService, 
-    InvestmentService, RISCService, BillingService
+    TransactionService
 )
 from ..models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
-    inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory,
-    GoogleCredentials, TiendaFacturacion, Cuenta, Presupuesto, 
-    HistorialReciboServicio
+    PendingInvestment, AmortizacionPendiente, Factura
 )
 
 logger = logging.getLogger(__name__)
@@ -58,9 +39,14 @@ def aprobar_todos_tickets(request):
         # Primero, obtenemos una lista de todos los IDs de tickets pendientes del usuario.
         tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
         tickets_aprobados_count = 0
+        omitidos = 0
 
         # Iteramos sobre cada ticket pendiente
         for ticket in tickets_pendientes:
+            monto = request.POST.get(f'monto_{ticket.id}', '').strip()
+            if clasificar_ticket(ticket.datos_json) != 'MOVIMIENTO' and not monto:
+                omitidos += 1   # sin monto no hay nada que registrar
+                continue
             # Para cada ticket, construimos los nombres de sus campos de formulario
             cuenta_key = f'cuenta_origen_{ticket.id}'
             categoria_key = f'categoria_{ticket.id}'
@@ -73,22 +59,27 @@ def aprobar_todos_tickets(request):
             tipo = request.POST.get(tipo_key, 'GASTO')
             cuenta_destino = request.POST.get(cuenta_destino_key)
 
-            # Si se proporcionaron los datos necesarios, procesamos el ticket
-            if cuenta and categoria and tipo and cuenta_destino:
-                TransactionService.approve_pending_transaction(
+            # Cuenta y categoría tienen valores por defecto (principal / 'Otro'); basta con el tipo.
+            if tipo:
+                if TransactionService.approve_pending_transaction(
                     ticket_id=ticket.id,
                     user=request.user,
                     cuenta=cuenta,
                     categoria=categoria,
                     tipo_transaccion=tipo,
-                    cuenta_destino=cuenta_destino
-                )
-                tickets_aprobados_count += 1
+                    cuenta_destino=cuenta_destino,
+                    monto=monto,
+                ) is not None:
+                    tickets_aprobados_count += 1
+                else:
+                    omitidos += 1
         
         if tickets_aprobados_count > 0:
             messages.success(request, f"{tickets_aprobados_count} tickets han sido aprobados correctamente.")
-        else:
+        elif not omitidos:
             messages.warning(request, "No se seleccionaron tickets para aprobar o faltaron datos.")
+        if omitidos:
+            messages.info(request, f"{omitidos} ticket(s) sin monto se dejaron pendientes: escribe el monto en la fila o recházalos.")
 
     return redirect('revisar_tickets')
 
@@ -116,17 +107,22 @@ def aprobar_ticket(request, ticket_id):
         categoria_seleccionada = request.POST.get(categoria_key)
         tipo_seleccionado = request.POST.get(tipo_key, 'GASTO') # 'GASTO' como valor por defecto
         cuenta_destino_seleccionada = request.POST.get(cuenta_destino_key)
+        monto = request.POST.get(f'monto_{ticket_id}', '').strip()
 
         # Usamos el servicio para manejar la aprobación del ticket individual
-        TransactionService.approve_pending_transaction(
+        resultado = TransactionService.approve_pending_transaction(
             ticket_id=ticket_id,
             user=request.user,
             cuenta=cuenta_seleccionada,
             categoria=categoria_seleccionada,
             tipo_transaccion=tipo_seleccionado,
-            cuenta_destino=cuenta_destino_seleccionada
+            cuenta_destino=cuenta_destino_seleccionada,
+            monto=monto,
         )
-        messages.success(request, "Ticket aprobado correctamente.")
+        if resultado is None:
+            messages.warning(request, "Ese ticket no tiene monto: escríbelo en la fila para poder registrarlo.")
+        else:
+            messages.success(request, "Ticket aprobado correctamente.")
         
     return redirect('revisar_tickets')
 
@@ -141,9 +137,9 @@ def crear_transacciones(request):
             return redirect('lista_transacciones')
         else:
             logger.error(f"Error de validación en TransaccionesForm: {form.errors.as_json()}")
-    else: 
+    else:
         form = TransaccionesForm(user=request.user)
-    context = {'form': form}
+    context = {'form': form, 'categorias': categorias_para(request.user)}
     return render(request, 'transacciones.html', context)
 
 @login_required
@@ -158,7 +154,7 @@ def lista_transacciones(request):
         propietario=request.user,
         fecha__year=year,
         fecha__month=month
-    ).order_by('-fecha')
+    ).select_related('origen', 'destino').order_by('-fecha', '-id')
     
     context = {
         'transacciones': transacciones_del_mes,
@@ -184,7 +180,7 @@ def editar_transaccion(request, transaccion_id):
         # --- CAMBIO 2: Y también lo pasamos aquí ---
         form = TransaccionesForm(instance=transaccion, user=request.user)
     
-    return render(request, 'editar_transaccion.html', {'form': form})
+    return render(request, 'editar_transaccion.html', {'form': form, 'categorias': categorias_para(request.user)})
 
 @login_required
 def eliminar_transaccion(request, transaccion_id):
@@ -196,21 +192,27 @@ def eliminar_transaccion(request, transaccion_id):
 
 @login_required
 def revisar_tickets(request):
+    """
+    Revisión de tickets "en un clic": cada fila llega pre-llenada con la mejor
+    sugerencia (IA -> historial del usuario -> cuenta principal).
+    """
     tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-    # --- NUEVO: Obtenemos las cuentas y deudas del usuario ---
-    cuentas_usuario = Cuenta.objects.filter(propietario=request.user)
-    deudas_usuario = Deuda.objects.filter(propietario=request.user)
-    
-    # Formateamos la fecha de manera segura para mostrarla en el template
+    sugeridor = Sugeridor(request.user)
+
     for ticket in tickets_pendientes:
         fecha_cruda = ticket.datos_json.get("fecha") or ticket.datos_json.get("fecha_emision")
         fecha_obj = parse_date_safely(fecha_cruda)
         ticket.fecha_formateada = fecha_obj.strftime("%d/%m/%Y")
-    
+        ticket.sug = sugeridor.sugerir(ticket.datos_json)
+        ticket.clase = clasificar_ticket(ticket.datos_json)   # MOVIMIENTO o SIN_MONTO (monto editable)
+        ticket.monto = monto_de_ticket(ticket.datos_json)
+
     return render(request, 'revisar_tickets.html', {
         'tickets': tickets_pendientes,
-        'cuentas_usuario': cuentas_usuario,
-        'deudas_usuario': deudas_usuario
+        'cuentas_usuario': sugeridor.cuentas,
+        'categorias': categorias_para(request.user),
+        'cuenta_principal': sugeridor.principal,
+        'tiene_cuenta_ahorro': any(c.tipo == 'AHORRO' for c in sugeridor.cuentas),
     })
 
 @login_required

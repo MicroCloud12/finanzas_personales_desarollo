@@ -9,7 +9,12 @@ def parse_date_safely(date_str: str | None) -> date:
     if not date_str or not isinstance(date_str, str):
         return datetime.now().date()
     try:
-        parsed_date = dateutil_parse(date_str, dayfirst=True).date()
+        # La IA devuelve fechas ISO (YYYY-MM-DD); con dayfirst=True dateutil las
+        # leía como YYYY-DD-MM y cambiaba mes por día. ISO primero, luego dd/mm/yyyy.
+        try:
+            parsed_date = date.fromisoformat(date_str.strip()[:10])
+        except ValueError:
+            parsed_date = dateutil_parse(date_str, dayfirst=True).date()
     except (ParserError, ValueError, OverflowError):
         logger.warning(f"La cadena de fecha '{date_str}' no pudo ser procesada. Se usará la fecha actual.")
         return datetime.now().date()

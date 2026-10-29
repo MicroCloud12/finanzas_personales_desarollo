@@ -113,7 +113,14 @@
                   </svg>
                   {% endif %}
                 </div>
-                <span class="font-medium text-gray-900">{{ transaccion.descripcion }}</span>
+                <div>
+                  <span class="font-medium text-gray-900">{{ transaccion.descripcion }}</span>
+                  <p class="text-[11px] text-gray-400">
+                    {% if transaccion.tipo == 'INGRESO' %}→ {{ transaccion.destino|default:"sin cuenta" }}
+                    {% elif transaccion.tipo == 'GASTO' %}{{ transaccion.origen|default:"sin cuenta" }}
+                    {% else %}{{ transaccion.origen|default:"?" }} → {{ transaccion.destino|default:"?" }}{% endif %}
+                  </p>
+                </div>
               </div>
             </td>
             <td class="px-6 py-4 bg-white text-sm font-bold 
@@ -206,7 +213,11 @@
           </div>
           <div>
             <p class="font-bold text-gray-900">{{ transaccion.descripcion }}</p>
-            <p class="text-xs text-gray-500">{{ transaccion.categoria }}</p>
+            <p class="text-xs text-gray-500">{{ transaccion.categoria }}
+              · {% if transaccion.tipo == 'INGRESO' %}→ {{ transaccion.destino|default:"sin cuenta" }}
+                {% elif transaccion.tipo == 'GASTO' %}{{ transaccion.origen|default:"sin cuenta" }}
+                {% else %}{{ transaccion.origen|default:"?" }} → {{ transaccion.destino|default:"?" }}{% endif %}
+            </p>
           </div>
         </div>
         <div class="text-right">

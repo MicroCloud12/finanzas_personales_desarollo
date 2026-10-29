@@ -1,48 +1,27 @@
 import logging
 from decimal import Decimal
-from datetime import datetime, timedelta
 
-from django.utils import timezone
-from django.urls import reverse
 from django.contrib import messages
-from django.contrib.auth import login
-from django.http import HttpResponse, JsonResponse
-from django.core.mail import send_mail
-from django.conf import settings
-from django.db.models import Sum, Q, Count
-from django.contrib.auth.models import User
-from django.utils.dateformat import DateFormat
-from django.db.models.functions import TruncMonth
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from django.db.models import Sum
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 
-from celery.result import AsyncResult, GroupResult
 
 from ..utils import parse_date_safely
 from ..tasks import (
-    process_drive_tickets,
     process_drive_investments,
-    process_drive_amortizations,
-    process_drive_for_invoices,
-    process_drive_utility_bills,
     update_user_portfolio_history,
 )
 from ..forms import (
-    TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, 
-    DeudaForm, PagoAmortizacionForm, CuentaForm
+    InversionForm
 )
 from ..services import (
-    TransactionService, MercadoPagoService, StockPriceService, 
-    InvestmentService, RISCService, BillingService
+    InvestmentService, StockPriceService
 )
 from ..models import (
-    registro_transacciones, Suscripcion, TransaccionPendiente, 
-    inversiones, PendingInvestment, Deuda,
-    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory,
-    GoogleCredentials, TiendaFacturacion, Cuenta, Presupuesto,
-    HistorialReciboServicio
+    Suscripcion, TransaccionPendiente, inversiones, 
+    PendingInvestment, PortfolioHistory
 )
 
 logger = logging.getLogger(__name__)
@@ -268,6 +247,7 @@ def crear_inversion(request):
             ticker = form.cleaned_data.get('emisora_ticker').upper()
             try:
                 # Modificamos get_current_price para que tenga un timeout corto internamente o confiamos en el cache
+                price_service = StockPriceService()
                 precio_actual_float = price_service.get_current_price(ticker)
             except Exception as e:
                 logger.warning(f"Timeout o error al obtener precio síncrono para {ticker}: {e}")

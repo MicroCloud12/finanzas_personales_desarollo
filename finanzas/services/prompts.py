@@ -8,6 +8,18 @@ Role: Eres un experto analista contable especializado en extracción de datos fi
 Task: Extrae la información del recibo o ticket y mapea los valores exactamente a la estructura JSON requerida.
 
 Approach step-by-step:
+0. PRIMERO determina el tipo de documento:
+   - TICKET_COMPRA: ticket o recibo de una compra o pago.
+   - TRANSFERENCIA: comprobante de transferencia, SPEI, pago de servicio o retiro de cajero.
+   - CAPTURA_BANCO: captura de pantalla de la app del banco que muestra un depósito recibido o el saldo
+     de una cuenta (ej. "Cuentas en pesos", "Saldo disponible", pantalla de inicio del banco). Trátala como
+     un INGRESO: tipo_movimiento = "INGRESO", total = el monto del depósito si aparece y, si no, el saldo
+     que muestra la pantalla (NUNCA 0 si hay una cifra visible). Si es un abono de nómina (texto como NOMINA,
+     SUELDO, PAGO DE NOMINA, o el depósito viene de una empresa) descripcion_corta = "Nómina" y
+     categoria_sugerida = "Nomina"; si no, descripcion_corta = el concepto visible o "Depósito".
+     cuenta_origen_sugerida = la cuenta del CONTEXTO
+     que corresponda al banco o a los últimos 4 dígitos visibles (es la cuenta a la que ENTRA el dinero).
+   - NO_FINANCIERO: la imagen no contiene información financiera. Devuelve total = 0 y tipo_movimiento = "NINGUNO".
 1. Analiza el nombre del establecimiento comercial principal. ESTANDARIZA el nombre eliminando razones sociales (ej. "S.A. de C.V."). Ignora bancos de terminales como BBVA/CLIP. Si el ticket es de un cajero automático y dice "RETIRO DE EFECTIVO" o "DISPOSICION", el establecimiento debe ser "Cajero [Nombre del Banco]" (ej. "Cajero Banorte"). Si es una captura de transferencia bancaria, IGNORA el título de la app (ej. "Santander Universidades"); el establecimiento debe ser el nombre del destinatario, o en su defecto, dejarlo vacío.
 2. Identifica el monto total final pagado (o retirado). Si el monto aparece con signo negativo, extrae el valor absoluto positivo.
 3. Clasifica el movimiento como GASTO, INGRESO o TRANSFERENCIA. Un retiro en cajero suele ser una TRANSFERENCIA a cuenta de efectivo, o GASTO.
@@ -21,10 +33,11 @@ Contexto del usuario:
 Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 {{
     "_razonamiento": "string - Explica paso a paso cómo identificaste el total, la cuenta origen y por qué elegiste el establecimiento y concepto.",
+    "tipo_documento": "TICKET_COMPRA|TRANSFERENCIA|CAPTURA_BANCO|NO_FINANCIERO",
     "fecha": "YYYY-MM-DD",
     "establecimiento": "string - Comercio o destinatario. Si es una app bancaria, déjalo vacío. PROHIBIDO usar 'Universidades' o el nombre del banco.",
     "total": float,
-    "tipo_movimiento": "GASTO|INGRESO|TRANSFERENCIA",
+    "tipo_movimiento": "GASTO|INGRESO|TRANSFERENCIA|NINGUNO",
     "categoria_sugerida": "string",
     "cuenta_origen_sugerida": "string",
     "cuenta_destino_sugerida": "string o N/A",

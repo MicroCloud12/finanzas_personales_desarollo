@@ -1,49 +1,22 @@
 import json
 import logging
 from decimal import Decimal
-from datetime import datetime, timedelta
+import calendar
+from datetime import datetime, date
 
-from django.utils import timezone
-from django.urls import reverse
 from django.contrib import messages
-from django.contrib.auth import login
-from django.http import HttpResponse, JsonResponse
-from django.core.mail import send_mail
-from django.conf import settings
+from django.http import JsonResponse
 from django.db.models import Sum, Q, Count
-from django.contrib.auth.models import User
 from django.utils.dateformat import DateFormat
 from django.db.models.functions import TruncMonth
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 
-from celery.result import AsyncResult, GroupResult
 
-from ..utils import parse_date_safely
-from ..services.finance_service import InvestmentService
-from ..tasks import (
-    process_drive_tickets,
-    process_drive_investments,
-    process_drive_amortizations,
-    process_drive_for_invoices,
-    process_drive_utility_bills,
-)
-from ..forms import (
-    TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, 
-    DeudaForm, PagoAmortizacionForm, CuentaForm
-)
-from ..services import (
-    TransactionService, MercadoPagoService, StockPriceService, 
-    InvestmentService, RISCService, BillingService
-)
 from ..models import (
-    registro_transacciones, Suscripcion, TransaccionPendiente, 
-    inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory,
-    GoogleCredentials, TiendaFacturacion, Cuenta, Presupuesto, 
-    HistorialReciboServicio
+    registro_transacciones, Suscripcion, inversiones, 
+    GananciaMensual, Cuenta, Presupuesto
 )
 
 logger = logging.getLogger(__name__)
@@ -57,158 +30,86 @@ def vista_dashboard(request):
         return redirect('gestionar_cuentas')
     # ------------------------------
 
-    # Definimos fechas al inicio para usarlas en todo el dashboard
     current_year = datetime.now().year
     current_month = datetime.now().month
     year = int(request.GET.get('year', current_year))
     month = int(request.GET.get('month', current_month))
+    fin_de_mes = date(year, month, calendar.monthrange(year, month)[1])
 
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    
-    # --- LÓGICA PARA LA GRÁFICA DE AHORRO (SAVINGS GROWTH) ---
-    # Calculamos el ahorro acumulado mes a mes para el año seleccionado
-    savings_qs = registro_transacciones.objects.filter(
-        propietario=request.user,
-        fecha__year=year
-    ).filter(
-        # 1. Todo lo que esté categorizado explícitamente como Ahorro (menos Gastos)
-        (Q(categoria__iexact='Ahorro') & ~Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'])) |
-        # 2. Transferencias directas a la Cuenta Ahorro
-        Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
-        # 3. Ingresos que entraron directo a Cuenta Ahorro 
-        Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
-    ).annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-
-    savings_labels = []
-    savings_data = []
-    ahorro_acumulado = Decimal('0.0')
-    
-    # Mapa de ahorro por mes
-    ahorro_por_mes = {s['mes'].strftime('%Y-%m'): s['total'] for s in savings_qs}
-    
-    # Generamos los meses para todo el año
-    meses_es = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-    for m in range(1, 13):
-        try:
-            mes_fecha = datetime(year, m, 1)
-        except ValueError:
-             # Caso borde
-            continue
-            
-        mes_key = mes_fecha.strftime('%Y-%m')
-        
-        monto_mes = ahorro_por_mes.get(mes_key, Decimal('0.0'))
-        ahorro_acumulado += monto_mes
-        
-        savings_labels.append(meses_es[mes_fecha.month]) # Nombre del mes
-        savings_data.append(str(ahorro_acumulado))
-        
-    chart_labels = savings_labels
-    chart_data = savings_data
-    # ----------------------------------------------
-    
-    # Verificamos si la suscripción está activa con nuestro método del modelo.
     es_usuario_premium = suscripcion.is_active()
 
-    # --- LA MAGIA DE LA OPTIMIZACIÓN (VIA MANAGER) ---
+    # ===== 1. ESTADO DE RESULTADOS DEL MES (flujos) =====
+    # ingresos = lo que entró a cuentas de activo
+    # gastos   = gastos de consumo (con débito, efectivo O tarjeta) + intereses de deuda
     bal = registro_transacciones.objects.balance_dashboard(request.user, year, month)
-    
-    # Hacemos UNA SOLA CONSULTA para las inversiones
-    agregados_inversion = inversiones.objects.filter(propietario=request.user).aggregate(
-        total_inicial=Sum('costo_total_adquisicion'),
-        total_actual=Sum('valor_actual_mercado')
-    )
-    # --- FIN DE LA OPTIMIZACIÓN ---
+    ingresos = bal['ingresos']
+    gastos = bal['gastos']
+    balance = bal['resultado']                 # resultado neto del mes
+    transferencias = bal['transferencias']
+    total_pagado_deudas = bal['pagos_deuda']   # pagos a tarjetas + préstamos del mes
 
-    # Asignamos valores desde el diccionario 'bal'
-    ingresos = bal['ingresos_efectivo']
-    gastos = bal['gastos_efectivo']
-    ahorro_total = bal['ahorro_total']
-    transferencias = bal['transferencias_efectivo']
-    gastos_ahorro = bal['gastos_ahorro']
+    # ===== 2. BALANCE GENERAL (saldos derivados del libro al cierre del mes) =====
+    resumen = Cuenta.objects.resumen_balance(request.user, hasta=fin_de_mes)
+    disponible_banco = resumen['liquido']      # efectivo + débito
+    ahorro = resumen['ahorro']                 # saldo de cuentas de ahorro
+    deuda_total = resumen['pasivos']           # tarjetas + préstamos
+    patrimonio = resumen['patrimonio']
 
-    inversion_inicial_usd = agregados_inversion.get('total_inicial') or Decimal('0.00')
-    inversion_actual = agregados_inversion.get('total_actual') or Decimal('0.00')
+    cuentas_pasivo = [c for c in resumen['cuentas'] if c.es_pasivo]
+    num_tarjetas = sum(1 for c in cuentas_pasivo if c.tipo == 'CREDITO')
+    num_prestamos = sum(1 for c in cuentas_pasivo if c.tipo == 'PRESTAMO')
 
-    balance = ingresos - gastos - gastos_ahorro
-    disponible_banco = ingresos - gastos - transferencias - ahorro_total
-    
-    ahorro = ahorro_acumulado
-    
-    # --- Cálculo de Transacciones de Ahorro del Mes ---
-    ahorros_tx_count = registro_transacciones.objects.filter(
-        propietario=request.user,
-        fecha__year=year,
-        fecha__month=month
-    ).filter(
-        (Q(categoria__iexact='Ahorro') & ~Q(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'])) |
-        Q(tipo__iexact='TRANSFERENCIA', cuenta_destino__iexact='Cuenta Ahorro') | 
-        Q(tipo__iexact='INGRESO', cuenta_origen__iexact='Cuenta Ahorro')
-    ).count()
+    # ===== 3. GRÁFICA DE AHORRO ACUMULADO (año seleccionado) =====
+    # Base: saldo de las cuentas de ahorro al cierre del año anterior; luego
+    # se acumula el flujo neto mensual hacia esas cuentas.
+    base_ahorro = Cuenta.objects.resumen_balance(request.user, hasta=date(year - 1, 12, 31))['ahorro']
+    ahorro_por_mes = registro_transacciones.objects.ahorro_por_mes(request.user, year)
+    meses_es = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    savings_labels, savings_data = [], []
+    ahorro_acumulado = base_ahorro
+    for m in range(1, 13):
+        ahorro_acumulado += ahorro_por_mes.get(f"{year}-{m:02d}", Decimal('0.0'))
+        savings_labels.append(meses_es[m])
+        savings_data.append(str(ahorro_acumulado))
 
-    # --- Cálculo de Deuda Total ---
-    todas_deudas = Deuda.objects.filter(propietario=request.user)
-    deuda_total = Decimal('0.00')
-    
-    num_tarjetas = todas_deudas.filter(tipo_deuda='TARJETA_CREDITO').count()
-    num_prestamos = todas_deudas.filter(tipo_deuda='PRESTAMO').count()
-    
-    for d in todas_deudas:
-        if d.tipo_deuda == 'TARJETA_CREDITO':
-            # Para TC: Deuda Real = Límite (monto_total) - Disponible (saldo_pendiente)
-            deuda_real = d.monto_total - d.saldo_pendiente
-            if deuda_real > 0:
-                deuda_total += deuda_real
-        else:
-            # Para Préstamos: Deuda Real = Saldo Pendiente
-            deuda_total += d.saldo_pendiente
-            
-    # --- Pago total a deudas este mes ---
-    pagos_prestamos = registro_transacciones.objects.filter(
-        propietario=request.user,
-        fecha__year=year,
-        fecha__month=month,
-        tipo__in=['PAGO_MENSUALIDAD', 'PAGO_CAPITAL']
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-    
-    nombres_tarjetas = todas_deudas.filter(tipo_deuda='TARJETA_CREDITO').values_list('nombre', flat=True)
-    pagos_tc = registro_transacciones.objects.filter(
-        propietario=request.user,
-        fecha__year=year,
-        fecha__month=month,
-        tipo='TRANSFERENCIA',
-        cuenta_destino__in=nombres_tarjetas
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-    
-    total_pagado_deudas = pagos_prestamos + pagos_tc
-    # --- Listado de Tarjetas para el Widget ---
-    las_cuentas = Cuenta.objects.filter(propietario=request.user, tipo='DEBITO').order_by('-es_principal', 'id')
+    ahorros_tx_count = registro_transacciones.objects.del_mes(request.user, year, month).filter(
+        Q(destino__tipo='AHORRO') | Q(origen__tipo='AHORRO')).count()
+
+    # ===== 4. WIDGET DE TARJETAS (cuentas líquidas con su saldo) =====
     tarjetas_list = []
-    for c in las_cuentas:
+    for c in resumen['cuentas']:
+        if c.tipo not in Cuenta.TIPOS_LIQUIDOS:
+            continue
         term = c.terminacion.strip() if c.terminacion else ""
         if len(term) > 4:
             term = term[-4:]
-        elif len(term) < 4 and len(term) > 0:
+        elif 0 < len(term) < 4:
             term = term.zfill(4)
         else:
             term = term or "****"
-            
         tarjetas_list.append({
             'id': c.id,
             'nombre': c.nombre,
             'terminacion': term,
-            'tipo': c.tipo
+            'tipo': c.tipo,
+            'saldo': f"{c.saldo_calculado:,.2f}",
         })
-        
     tarjetas_data_json = json.dumps(tarjetas_list)
 
     context = {
         'ingresos': ingresos,
         'gastos': gastos,
+        'gastos_consumo': bal['gastos_consumo'],
+        'gastos_tarjeta': bal['gastos_tarjeta'],
+        'intereses': bal['intereses'],
         'balance': balance,
         'transferencias': transferencias,
         'disponible_banco': disponible_banco,
+        'patrimonio': patrimonio,
+        'activos_total': resumen['activos'],
         'ahorro': ahorro,
+        'ahorro_mes': bal['ahorro_neto'],
         'ahorros_tx_count': ahorros_tx_count,
         'selected_year': year,
         'selected_month': month,
@@ -219,10 +120,11 @@ def vista_dashboard(request):
         'num_tarjetas': num_tarjetas,
         'num_prestamos': num_prestamos,
         'total_pagado_deudas': total_pagado_deudas,
+        'abonos_capital': bal['abonos_capital'],
         'tarjetas_data_json': tarjetas_data_json,
         'tarjetas_list': tarjetas_list,
-        'investment_chart_labels': chart_labels,
-        'investment_chart_data': chart_data,
+        'investment_chart_labels': savings_labels,
+        'investment_chart_data': savings_data,
     }
     return render(request, 'dashboard.html', context)
 
@@ -235,16 +137,22 @@ def datos_gastos_categoria(request):
     except ValueError:
         return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
 
-    # Filtros del frontend: tipo (gasto/ingreso) y agrupación (categoria/descripcion)
-    tipos = ['INGRESO'] if request.GET.get('tipo') == 'INGRESO' else ['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL']
+    es_ingreso = request.GET.get('tipo') == 'INGRESO'
     agrupar = 'descripcion' if request.GET.get('agrupar') == 'descripcion' else 'categoria'
 
-    resumen = list(registro_transacciones.objects.filter(
-        propietario=request.user,
-        tipo__in=tipos,
-        fecha__year=year,
-        fecha__month=month
-    ).values(agrupar).annotate(total=Sum('monto')).order_by('-total'))
+    if agrupar == 'categoria':
+        # Mismas cifras que la tarjeta "Gastos"/"Ingresos" del dashboard
+        if es_ingreso:
+            resumen = registro_transacciones.objects.ingresos_por_categoria(request.user, year, month)
+        else:
+            resumen = registro_transacciones.objects.gastos_por_categoria(request.user, year, month)
+    else:
+        qs = registro_transacciones.objects.del_mes(request.user, year, month)
+        if es_ingreso:
+            qs = qs.filter(tipo='INGRESO').exclude(destino__tipo__in=Cuenta.TIPOS_PASIVO)
+        else:
+            qs = qs.filter(tipo='GASTO')
+        resumen = list(qs.values(agrupar).annotate(total=Sum('monto')).order_by('-total'))
 
     # Mostramos solo las 9 mayores; el resto se agrupa en "Otros" para que la dona sea legible
     LIMITE = 9
@@ -259,18 +167,28 @@ def datos_gastos_categoria(request):
 @login_required
 @require_GET
 def datos_presupuesto(request):
-    print(f"DEBUG: api_datos_presupuesto hit by {request.user}")
-    presupuestos = Presupuesto.objects.filter(propietario=request.user).order_by('-monto_presupuestado')
-    
-    labels = []
-    data_presupuestado = []
-    data_real = []
-    
+    """Presupuesto vs. gasto real del mes, con el real tomado del libro (no capturado a mano)."""
+    try:
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+    except ValueError:
+        return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
+
+    presupuestos = Presupuesto.objects.filter(propietario=request.user).filter(
+        Q(es_recurrente=True) | Q(mes=month, anio=year)
+    ).order_by('-monto_presupuestado')
+
+    gastado = {f['categoria'].strip().lower(): f['total']
+               for f in registro_transacciones.objects.gastos_por_categoria(request.user, year, month)}
+
+    labels, data_presupuestado, data_real = [], [], []
     for p in presupuestos:
         labels.append(p.categoria)
         data_presupuestado.append(float(p.monto_presupuestado))
-        data_real.append(float(p.monto_real))
-        
+        real = gastado.get(p.categoria.strip().lower())
+        # Si no hay movimientos en esa categoría usamos el monto capturado (recibos estimados por IA)
+        data_real.append(float(real if real is not None else p.monto_real))
+
     return JsonResponse({
         'labels': labels,
         'presupuestado': data_presupuestado,
@@ -285,17 +203,10 @@ def datos_flujo_dinero(request):
         month = int(request.GET.get('month', datetime.now().month))
     except ValueError:
         return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
-    transacciones_del_mes = registro_transacciones.objects.filter(
-        propietario=request.user,
-        fecha__year=year,
-        fecha__month=month
-    )
-    cuentas_debito = list(Cuenta.objects.filter(propietario=request.user, tipo='DEBITO').values_list('nombre', flat=True))
-    ingresos = transacciones_del_mes.filter(tipo='INGRESO', cuenta_origen__in=cuentas_debito).exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-    gastos = transacciones_del_mes.filter(tipo__in=['GASTO', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL'], cuenta_origen__in=cuentas_debito).exclude(categoria='Ahorro').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    bal = registro_transacciones.objects.balance_dashboard(request.user, year, month)
     data = {
         'labels': ['Ingresos del Mes', 'Gastos del Mes'],
-        'data': [ingresos, gastos],
+        'data': [bal['ingresos'], bal['gastos']],
     }
     return JsonResponse(data)
 
@@ -341,69 +252,59 @@ def api_ingresos_tarjeta(request):
         cuenta_nombre = request.GET.get('cuenta_nombre', '')
         year = request.GET.get('year', '')
         month = request.GET.get('month', '')
-        
+
         if not cuenta_nombre or not year or not month:
             return JsonResponse({'status': 'error', 'message': 'Parámetros incompletos'}, status=400)
-            
+
         try:
             year = int(year)
             month = int(month)
         except ValueError:
             return JsonResponse({'status': 'error', 'message': 'El formato de fecha es inválido'}, status=400)
-        
+
+        cuenta = Cuenta.objects.filter(propietario=request.user, nombre=cuenta_nombre).first()
+        if cuenta is None:
+            return JsonResponse({'status': 'error', 'message': 'Cuenta no encontrada'}, status=404)
+
         # Calcular el mes anterior para la comparación
         if month == 1:
-            prev_month = 12
-            prev_year = year - 1
+            prev_month, prev_year = 12, year - 1
         else:
-            prev_month = month - 1
-            prev_year = year
-            
-        # --- NUEVA LÓGICA: Procesador de flujos con Transferencias ---
+            prev_month, prev_year = month - 1, year
+
+        # --- Flujos de ESTA cuenta según el libro mayor ---
         def procesar_flujo(es_entrada, y, m):
+            qs = registro_transacciones.objects.del_mes(request.user, y, m)
             if es_entrada:
-                # Entradas: Ingresos normales OR Transferencias que llegaron a esta tarjeta
-                qs = registro_transacciones.objects.filter(
-                    propietario=request.user, fecha__year=y, fecha__month=m
-                ).filter(
-                    Q(tipo='INGRESO', cuenta_origen=cuenta_nombre) | 
-                    Q(tipo='TRANSFERENCIA', cuenta_destino=cuenta_nombre)
-                )
+                # Entradas: ingresos y transferencias que LLEGARON a esta cuenta
+                qs = qs.filter(destino=cuenta)
             else:
-                # Salidas: Gastos normales OR Transferencias que salieron de esta tarjeta
-                qs = registro_transacciones.objects.filter(
-                    propietario=request.user, fecha__year=y, fecha__month=m
-                ).filter(
-                    Q(tipo='GASTO', cuenta_origen=cuenta_nombre) | 
-                    Q(tipo='TRANSFERENCIA', cuenta_origen=cuenta_nombre)
-                )
-            
+                # Salidas: gastos, transferencias y pagos de deuda que SALIERON de esta cuenta
+                qs = qs.filter(origen=cuenta)
+
             agregados = qs.aggregate(
                 total=Sum('monto'),
                 num_categorias=Count('categoria', distinct=True)
             )
-            
+
             return {
                 'total': agregados['total'] or Decimal('0.00'),
                 'transactions': qs.count(),
                 'categories': agregados['num_categorias'] or 0
             }
 
-        # 1. Obtenemos datos del mes actual y anterior
         entradas_act = procesar_flujo(es_entrada=True, y=year, m=month)
         salidas_act = procesar_flujo(es_entrada=False, y=year, m=month)
-        
         entradas_prev = procesar_flujo(es_entrada=True, y=prev_year, m=prev_month)
         salidas_prev = procesar_flujo(es_entrada=False, y=prev_year, m=prev_month)
 
-        # 2. Función auxiliar para calcular métricas de la tarjeta
         def calcular_metricas(act, prev):
             dif = act['total'] - prev['total']
             if prev['total'] > 0:
                 pct = (dif / prev['total']) * Decimal('100.0')
             else:
                 pct = Decimal('100.0') if act['total'] > 0 else Decimal('0.0')
-                
+
             return {
                 'total': f"{act['total']:,.2f}",
                 'transactions': act['transactions'],
@@ -415,16 +316,18 @@ def api_ingresos_tarjeta(request):
 
         ingresos_data = calcular_metricas(entradas_act, entradas_prev)
         gastos_data = calcular_metricas(salidas_act, salidas_prev)
-        
-        # 3. Calcular Balance Total de esta Tarjeta específica
-        balance_act = float(entradas_act['total']) - float(salidas_act['total'])
-        balance_prev = float(entradas_prev['total']) - float(salidas_prev['total'])
-        
+
+        # Balance de la tarjeta = SALDO real al cierre del mes (no solo el flujo del mes)
+        fin_de_mes = date(year, month, calendar.monthrange(year, month)[1])
+        fin_mes_prev = date(prev_year, prev_month, calendar.monthrange(prev_year, prev_month)[1])
+        balance_act = cuenta.saldo(hasta=fin_de_mes)
+        balance_prev = cuenta.saldo(hasta=fin_mes_prev)
+
         dif_balance = balance_act - balance_prev
         if balance_prev > 0:
-            pct_balance = (dif_balance / balance_prev) * 100.0
+            pct_balance = (dif_balance / balance_prev) * Decimal('100.0')
         else:
-            pct_balance = 100.0 if balance_act > 0 else 0.0
+            pct_balance = Decimal('100.0') if balance_act > 0 else Decimal('0.0')
 
         balance_data = {
             'total': f"{balance_act:,.2f}",
@@ -441,8 +344,7 @@ def api_ingresos_tarjeta(request):
             'gastos': gastos_data,
             'balance': balance_data
         })
-        
+
     except Exception as e:
         logger.error(f"Error en api_ingresos_tarjeta: {e}")
         return JsonResponse({'status': 'error', 'message': 'Ha ocurrido un error inesperado al procesar los ingresos.'}, status=500)
-

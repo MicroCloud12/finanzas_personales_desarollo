@@ -78,7 +78,7 @@
                         <td class="px-6 py-4 bg-white text-sm">
                             <div class="flex items-center">
                                 <div
-                                    class="h-10 w-10 rounded-full flex items-center justify-center mr-3 {% if deuda.tipo_deuda == 'TARJETA' %}bg-purple-100 text-purple-600{% else %}bg-orange-100 text-orange-600{% endif %}">
+                                    class="h-10 w-10 rounded-full flex items-center justify-center mr-3 {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}bg-purple-100 text-purple-600{% else %}bg-orange-100 text-orange-600{% endif %}">
                                     {% if deuda.tipo_deuda == 'TARJETA' %}
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -108,13 +108,16 @@
                         </td>
                         <td class="px-6 py-4 bg-white text-sm">
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if deuda.tipo_deuda == 'TARJETA' %}bg-purple-100 text-purple-800{% else %}bg-orange-100 text-orange-800{% endif %}">
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}bg-purple-100 text-purple-800{% else %}bg-orange-100 text-orange-800{% endif %}">
                                 {{ deuda.get_tipo_deuda_display }}
                             </span>
                         </td>
                         <td class="px-6 py-4 bg-white text-sm text-gray-600 font-medium">${{ deuda.monto_total|floatformat:2|intcomma }}</td>
                         <td class="px-6 py-4 bg-white text-sm">
                             <span class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</span>
+                            {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}
+                            <div class="text-[10px] text-gray-500 mt-1">Disponible: ${{ deuda.disponible|floatformat:2|intcomma }}</div>
+                            {% endif %}
                             {% if deuda.proxima_fecha_corte %}
                             <div class="text-[10px] text-gray-500 mt-1">Corte: {{ deuda.proxima_fecha_corte|date:"d M" }}</div>
                             {% endif %}
@@ -133,9 +136,9 @@
                             <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-200 mt-1">
                                 <div class="h-1.5 rounded-full debt-progress-bar transition-colors duration-500 bg-gray-300"
                                      data-tipo="{{ deuda.tipo_deuda }}"
-                                     data-saldo="{{ deuda.saldo_pendiente|stringformat:'f' }}"
+                                     data-saldo="{{ deuda.valor_barra|stringformat:'f' }}"
                                      data-monto="{{ deuda.monto_total|stringformat:'f' }}"
-                                     style="width: {% widthratio deuda.saldo_pendiente deuda.monto_total 100 %}%"></div>
+                                     style="width: {{ deuda.porcentaje_barra }}%"></div>
                             </div>
                             <p class="text-[10px] text-gray-400 mt-1">
                                 {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Crédito disponible{% else %}Deuda restante{% endif %}
@@ -215,7 +218,7 @@
             <div class="flex justify-between items-start mb-2">
                 <div class="flex items-center gap-3">
                     <div
-                        class="h-10 w-10 rounded-full flex items-center justify-center {% if deuda.tipo_deuda == 'TARJETA' %}bg-purple-100 text-purple-600{% else %}bg-orange-100 text-orange-600{% endif %}">
+                        class="h-10 w-10 rounded-full flex items-center justify-center {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}bg-purple-100 text-purple-600{% else %}bg-orange-100 text-orange-600{% endif %}">
                         {% if deuda.tipo_deuda == 'TARJETA' %}
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -244,8 +247,9 @@
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs text-gray-500">Saldo</p>
+                    <p class="text-xs text-gray-500">{% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Debes{% else %}Saldo{% endif %}</p>
                     <p class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</p>
+                    {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}<p class="text-[10px] text-gray-500">Disponible: ${{ deuda.disponible|floatformat:2|intcomma }}</p>{% endif %}
                     <p class="text-xs text-gray-500 mt-1">{% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Gastado{% else %}Pagado{% endif %}</p>
                     <p class="font-bold text-gray-800">${{ deuda.total_gastado|floatformat:2|intcomma }}</p>
                     {% if deuda.proxima_fecha_corte %}

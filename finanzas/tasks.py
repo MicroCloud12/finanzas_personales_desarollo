@@ -1,5 +1,4 @@
 import time
-import json
 import logging
 from PIL import Image
 from io import BytesIO
@@ -8,7 +7,7 @@ from .utils import parse_date_safely
 from celery import shared_task, group
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
-from .models import Deuda, AmortizacionPendiente, PagoAmortizacion, TiendaFacturacion, Factura, HistorialReciboServicio, Presupuesto, PortfolioHistory, inversiones
+from .models import Deuda, AmortizacionPendiente, Factura, HistorialReciboServicio, Presupuesto, PortfolioHistory, inversiones
 
 logger = logging.getLogger(__name__)
 

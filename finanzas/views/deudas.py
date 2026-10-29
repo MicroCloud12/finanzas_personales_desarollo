@@ -1,49 +1,23 @@
-import json
 import logging
 from decimal import Decimal
-from datetime import datetime, timedelta
 
-from django.utils import timezone
-from django.urls import reverse
 from django.contrib import messages
-from django.contrib.auth import login
-from django.http import HttpResponse, JsonResponse
-from django.core.mail import send_mail
-from django.conf import settings
-from django.db.models import Sum, Q, Count
-from django.contrib.auth.models import User
-from django.utils.dateformat import DateFormat
-from django.db.models.functions import TruncMonth
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 
-from celery.result import AsyncResult, GroupResult
 
 from ..utils import parse_date_safely
 from ..services.finance_service import DebtService
 from ..tasks import (
-    process_drive_tickets,
-    process_drive_investments,
     process_drive_amortizations,
-    process_drive_for_invoices,
-    process_drive_utility_bills,
 )
 from ..forms import (
-    TransaccionesForm, FormularioRegistroPersonalizado, InversionForm, 
-    DeudaForm, PagoAmortizacionForm, CuentaForm
-)
-from ..services import (
-    TransactionService, MercadoPagoService, StockPriceService, 
-    InvestmentService, RISCService, BillingService
+    DeudaForm, PagoAmortizacionForm
 )
 from ..models import (
-    registro_transacciones, Suscripcion, TransaccionPendiente, 
-    inversiones, GananciaMensual, PendingInvestment, Deuda, 
-    PagoAmortizacion, AmortizacionPendiente, Factura, PortfolioHistory,
-    GoogleCredentials, TiendaFacturacion, Cuenta, Presupuesto, 
-    HistorialReciboServicio
+    Suscripcion, Deuda, PagoAmortizacion, 
+    AmortizacionPendiente, Cuenta
 )
 
 logger = logging.getLogger(__name__)
@@ -55,7 +29,12 @@ def lista_deudas(request):
     """
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     es_usuario_premium = suscripcion.is_active()
-    deudas = Deuda.objects.filter(propietario=request.user).order_by('fecha_adquisicion')
+    deudas = list(Deuda.objects.filter(propietario=request.user).select_related('cuenta').order_by('fecha_adquisicion'))
+    # Un solo cálculo de saldos del libro mayor para todas las deudas
+    saldos = Cuenta.objects.saldos(request.user)
+    for d in deudas:
+        if d.cuenta_id:
+            d.cuenta.saldo_calculado = saldos.get(d.cuenta_id, Decimal('0.00'))
     context = {'deudas': deudas,
                'es_usuario_premium': es_usuario_premium
               }
@@ -64,25 +43,24 @@ def lista_deudas(request):
 @login_required
 def crear_deuda(request):
     """
-    Maneja la creación de una nueva deuda.
+    Maneja la creación de una nueva deuda. Al guardarse se crea su cuenta de
+    pasivo en el libro mayor (el saldo se deriva de los movimientos).
     """
     if request.method == 'POST':
         form = DeudaForm(request.POST)
         if form.is_valid():
-            deuda = form.save(commit=False)
-            deuda.propietario = request.user
-            deuda.save() # Se guarda la deuda primero
-            
-            # --- 2. ¡AQUÍ OCURRE LA MAGIA! ---
-            # Si la deuda es un préstamo, generamos su tabla de amortización
-            #if deuda.tipo_deuda == 'PRESTAMO':
-            #    DebtService.generar_tabla_amortizacion(deuda)
-            
+            form.instance.propietario = request.user
+            deuda = form.save()
+
+            # Si es un préstamo con tasa y plazo, generamos su tabla de amortización
+            if deuda.tipo_deuda == 'PRESTAMO' and deuda.plazo_meses > 1 and not deuda.amortizacion.exists():
+                DebtService.generar_tabla_amortizacion(deuda)
+
             messages.success(request, f"Deuda '{deuda.nombre}' creada con éxito.")
             return redirect('lista_deudas')
     else:
         form = DeudaForm()
-    
+
     context = {'form': form}
     return render(request, 'crear_deuda.html', context)
 
@@ -128,30 +106,19 @@ def detalle_deuda(request, deuda_id):
 @login_required
 def editar_deuda(request, deuda_id):
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    
+
     if request.method == 'POST':
-        monto_total_anterior = deuda.monto_total
-        estaba_pendiente_configuracion = deuda.requiere_configuracion_adicional
-        
         form = DeudaForm(request.POST, instance=deuda)
         if form.is_valid():
-            deuda = form.save(commit=False)
-            
-            # --- CORRECCIÓN SALDO PENDIENTE ---
-            # Ya sea la configuración inicial o un cambio de límite posterior,
-            # sumamos la diferencia del límite al saldo pendiente actual.
-            # Esto evita borrar gastos que se hayan hecho antes de configurar el límite.
-            diferencia_monto = (deuda.monto_total or 0) - (monto_total_anterior or 0)
-            if diferencia_monto != 0:
-                deuda.saldo_pendiente = (deuda.saldo_pendiente or 0) + diferencia_monto
-
-            deuda.requiere_configuracion_adicional = False # Ya se actualizó la configuración
-            deuda.save()
+            form.instance.requiere_configuracion_adicional = False
+            # form.save() liga la cuenta de pasivo y, si se capturó "¿cuánto debes hoy?",
+            # concilia el saldo inicial para que el libro coincida con ese valor.
+            deuda = form.save()
             messages.success(request, f"La deuda '{deuda.nombre}' ha sido actualizada.")
             return redirect('lista_deudas')
     else:
         form = DeudaForm(instance=deuda)
-        
+
     return render(request, 'editar_deuda.html', {'form': form, 'deuda': deuda})
 
 @login_required

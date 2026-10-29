@@ -2,7 +2,6 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from finanzas.models import PortfolioHistory
 from finanzas.services.finance_service import InvestmentService
-import time
 
 class Command(BaseCommand):
     help = 'Calcula y almacena el historial diario del portafolio para todos los usuarios.'

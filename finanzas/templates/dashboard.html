@@ -38,7 +38,7 @@
         <div
             class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-gray-900 font-bold text-lg">Balance Total</h3>
+                <h3 class="text-gray-900 font-bold text-lg">Balance del Mes</h3>
                 <!-- Por ahora usamos solo MXN
                 <select
                     class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
@@ -52,6 +52,10 @@
                 <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
                     $<span id="balanceTotalAmount">{{ balance|floatformat:0|intcomma }}</span><span class="text-gray-300 text-3xl font-bold">.<span id="balanceDecimalAmount">00</span></span>
                 </h2>
+                <p class="text-[11px] text-gray-400 font-medium mt-2 leading-snug">
+                    Ingresos − gastos del mes. Disponible en cuentas: <span class="font-bold text-gray-700">${{ disponible_banco|floatformat:2|intcomma }}</span>
+                    · Patrimonio neto: <span class="font-bold text-gray-700">${{ patrimonio|floatformat:2|intcomma }}</span>
+                </p>
             </div>
 
             <div class="grid grid-cols-2 gap-4 mt-2 h-full">
@@ -180,6 +184,11 @@
                 <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
                     $<span id="expenseTotalAmount">{{ gastos|floatformat:0|intcomma }}</span><span class="text-gray-300 text-3xl font-bold">.<span id="expenseDecimalAmount">00</span></span>
                 </h2>
+                <p class="text-[11px] text-gray-400 font-medium mt-2 leading-snug">
+                    Incluye <span class="font-bold text-gray-700">${{ gastos_tarjeta|floatformat:2|intcomma }}</span> pagados con tarjeta de crédito
+                    {% if intereses %}y <span class="font-bold text-gray-700">${{ intereses|floatformat:2|intcomma }}</span> de intereses de deuda{% endif %}.
+                    Los pagos a tarjetas y abonos a capital no son gasto: reducen tu deuda.
+                </p>
             </div>
 
             <div class="grid grid-cols-2 gap-4 mt-2 h-full">

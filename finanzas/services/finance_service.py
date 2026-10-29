@@ -1,13 +1,13 @@
 # finanzas/services/finance_service.py
-import re
 from decimal import Decimal
 import logging
 from datetime import datetime, date
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from .market_data_service import StockPriceService
-from ..models import TransaccionPendiente, registro_transacciones, User, inversiones, PendingInvestment, Deuda, PagoAmortizacion
+from ..models import TransaccionPendiente, registro_transacciones, User, inversiones, PendingInvestment, Deuda, PagoAmortizacion, Cuenta
 from ..utils import parse_date_safely
+from ..categorias import descripcion_final, cuenta_ahorro_para, monto_de_ticket, _a_decimal, CATEGORIA_POR_DEFECTO, SENTINELA_NUEVA_AHORRO
 import time
 
 logger = logging.getLogger(__name__)
@@ -23,35 +23,69 @@ class TransactionService:
         return TransaccionPendiente.objects.create(propietario=user, datos_json=data, estado='pendiente')
 
     @staticmethod
-    def approve_pending_transaction(ticket_id: int, user: User, cuenta: str, categoria: str, tipo_transaccion: str, cuenta_destino: str):
+    def resolver_cuenta(user: User, nombre):
+        """Convierte el nombre elegido en el formulario de tickets en una Cuenta (o None)."""
+        nombre = (nombre or '').strip()
+        if nombre.upper() in {'', 'N/A', 'OTRA CUENTA', 'SIN CUENTA'}:
+            return None
+        return Cuenta.objects.filter(propietario=user, nombre__iexact=nombre).first()
+
+    @staticmethod
+    def approve_pending_transaction(ticket_id: int, user: User, cuenta: str, categoria: str, tipo_transaccion: str, cuenta_destino: str, monto=None):
+        """
+        Convierte un ticket pendiente en un movimiento del libro mayor.
+        Si no se eligió cuenta, se usa la cuenta principal del usuario para que la
+        aprobación sea de un clic. Si no se eligió categoría, se usa 'Otro'.
+        """
         try:
             ticket = TransaccionPendiente.objects.get(id=ticket_id, propietario=user)
             datos = ticket.datos_json
-            tipo_documento = datos.get("tipo_documento")
-            tipo_movimiento = datos.get("tipo_movimiento")
-            
-            descripcion_final = datos.get("descripcion_corta", "Sin descripción")
-            
-            if tipo_documento == 'TRANSFERENCIA' or tipo_movimiento == 'TRANSFERENCIA':
-                descripcion_final = re.sub(r'(?i)^transferencias?\s*(de|por)?\s*', '', descripcion_final).strip()
-            elif tipo_documento == 'TICKET_COMPRA' or tipo_movimiento == 'GASTO':
-                descripcion_final = datos.get("establecimiento", descripcion_final)
-            
             fecha_segura = parse_date_safely(datos.get("fecha") or datos.get("fecha_emision"))
-            monto_str = str(datos.get("total") or datos.get("total_pagado") or 0.0)
+            # El monto lo puede corregir/escribir el usuario en la fila; si no, el que leyó la IA.
+            monto_final = _a_decimal(monto) if monto not in (None, '') else None
+            if monto_final is None:
+                monto_final = monto_de_ticket(datos)
+            if monto_final <= 0:
+                return None   # sin monto no hay movimiento que registrar
+            tipo_transaccion = (tipo_transaccion or 'GASTO').upper()
+            categoria = (categoria or '').strip() or CATEGORIA_POR_DEFECTO
+            descripcion_mov = descripcion_final(datos, tipo_transaccion, categoria)
+
+            # En el formulario de tickets "cuenta" es la cuenta protagonista del
+            # movimiento: para un INGRESO es a la que ENTRA, para lo demás de la que SALE.
+            cuenta_obj = TransactionService.resolver_cuenta(user, cuenta)
+            if (cuenta_destino or '').strip() == SENTINELA_NUEVA_AHORRO:
+                destino_obj = cuenta_ahorro_para(user, crear=True)
+            else:
+                destino_obj = TransactionService.resolver_cuenta(user, cuenta_destino)
+            principal = (Cuenta.objects.filter(propietario=user).order_by('-es_principal', 'id').first())
+
+            # Un ahorro nunca es gasto: es una transferencia a la cuenta de ahorro
+            # (se crea "Cuenta Ahorro" si el usuario aún no tiene una).
+            if tipo_transaccion in ('GASTO', 'TRANSFERENCIA') and categoria.lower() == 'ahorro':
+                tipo_transaccion = 'TRANSFERENCIA'
+                if destino_obj is None or destino_obj.tipo != 'AHORRO':
+                    destino_obj = cuenta_ahorro_para(user, crear=True)
+
+            if tipo_transaccion == 'INGRESO':
+                origen, destino = None, (destino_obj or cuenta_obj or principal)
+            elif tipo_transaccion == 'GASTO':
+                origen, destino = (cuenta_obj or principal), None
+            else:
+                origen, destino = (cuenta_obj or principal), destino_obj
 
             registro_transacciones.objects.create(
                 propietario=user,
                 fecha=fecha_segura,
-                descripcion=descripcion_final.upper(), 
+                descripcion=descripcion_mov,
                 categoria=categoria,
-                monto=Decimal(monto_str),
+                monto=monto_final,
                 tipo=tipo_transaccion,
-                cuenta_origen=cuenta,
-                cuenta_destino=cuenta_destino,
-                datos_extra=datos 
+                origen=origen,
+                destino=destino,
+                datos_extra=datos
             )
-            
+
             ticket.estado = 'aprobada'
             ticket.save()
             return ticket
