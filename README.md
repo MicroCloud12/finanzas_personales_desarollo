@@ -149,5 +149,4 @@ SQLite con tablas generadas desde los modelos:
 
 ```bash
 python manage.py test finanzas --settings=test_settings
-python probar_migracion_0024.py   # prueba la migración 0024 de punta a punta sobre SQLite
 ```

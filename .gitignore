@@ -21,7 +21,6 @@ staticfiles/
 node_modules/
 celerybeat-schedule*
 db.sqlite3
-pip_freeze_*.txt
 
 # IDEs / asistentes
 .vscode/
