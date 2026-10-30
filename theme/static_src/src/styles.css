@@ -1,36 +1,13 @@
 @import "tailwindcss";
 
-/**
-  * A catch-all path to Django template files, JavaScript, and Python files
-  * that contain Tailwind CSS classes and will be scanned by Tailwind to generate the final CSS file.
-  *
-  * If your final CSS file is not being updated after code changes, you may want to broaden or narrow
-  * the scope of this path.
-  */
-@source "../../../**/*.{html,py,js}";
+/* Solo la app: plantillas, Python y JS de finanzas (no el venv ni staticfiles). */
+@source "../../../finanzas/**/*.{html,py,js}";
 
-/* --- Tipografía base de la app (antes inline en base.html) --- */
 @theme {
-    --font-sans: "Outfit", "Inter", sans-serif;
+    --font-sans: "Outfit", sans-serif;
 }
 
-/* ... al final de tu archivo ... */
-
-/* --- Animación para el fondo de gradiente --- */
-@layer base {
-    .animated-gradient {
-        background-size: 200% 200%;
-        animation: gradient-animation 10s ease infinite;
-    }
-}
-
-@keyframes gradient-animation {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-/* --- Clases para animaciones de scroll con JS --- */
+/* --- Animaciones de scroll con JS --- */
 @layer utilities {
     .fade-in-up {
         opacity: 0;
@@ -43,21 +20,7 @@
     }
 }
 
-/* ... al final de tu archivo ... */
-
-/* --- Estilos para el Blob Interactivo --- */
-@layer utilities {
-    .hero-blob {
-        transition: transform 0.2s ease-out;
-    }
-}
-
-/* --- Estilos para el efecto Glassmorphism --- */
 @layer components {
-    .glass-card {
-        @apply bg-white/50 dark:bg-gray-900/50 backdrop-blur-lg border border-white/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2;
-    }
-
     .card-premium {
         background-color: white;
         border-radius: 1.5rem;
@@ -69,9 +32,5 @@
 
     .card-premium:hover {
         transform: scale(1.01);
-    }
-
-    .gradient-blue {
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
     }
 }

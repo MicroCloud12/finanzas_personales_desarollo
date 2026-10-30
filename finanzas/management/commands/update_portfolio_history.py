@@ -1,39 +1,17 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from finanzas.models import PortfolioHistory
-from finanzas.services.finance_service import InvestmentService
+from finanzas.tasks import guardar_historial_portafolio
 
 class Command(BaseCommand):
     help = 'Calcula y almacena el historial diario del portafolio para todos los usuarios.'
 
     def handle(self, *args, **kwargs):
-        usuarios = User.objects.all()
-        for usuario in usuarios:
+        for usuario in User.objects.all():
             self.stdout.write(self.style.SUCCESS(f'Procesando historial diario para: {usuario.username}'))
-            
-            # 1. Calculamos la historia diaria
-            # Esto puede tardar varios minutos la primera vez debido a las pausas de la API
-            historial = InvestmentService.calculate_daily_portfolio_history(usuario)
-            
-            if not historial:
+            # Puede tardar varios minutos la primera vez por las pausas de la API
+            registros = guardar_historial_portafolio(usuario)
+            if registros:
+                self.stdout.write(f'Se guardaron {registros} registros diarios para {usuario.username}.')
+            else:
                 self.stdout.write(self.style.WARNING(f'No hay inversiones para {usuario.username}.'))
-                continue
-
-            # 2. Borramos historial antiguo (o podríamos hacer upsert, pero esto es más limpio para re-calcular)
-            PortfolioHistory.objects.filter(usuario=usuario).delete()
-            
-            # 3. Guardamos los nuevos datos en batch
-            batch = []
-            for dia in historial:
-                batch.append(PortfolioHistory(
-                    usuario=usuario,
-                    fecha=dia['fecha'],
-                    valor_total=dia['valor_total'],
-                    capital_invertido=dia['capital_invertido'],
-                    ganancia_no_realizada=dia['ganancia_no_realizada']
-                ))
-            
-            PortfolioHistory.objects.bulk_create(batch)
-            self.stdout.write(f'Se guardaron {len(batch)} registros diarios para {usuario.username}.')
-        
         self.stdout.write(self.style.SUCCESS('Proceso de historial completado.'))

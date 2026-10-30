@@ -59,10 +59,47 @@ def _por_categoria(filas):
     return {f['categoria']: f['total'] for f in filas}
 
 
+GRUPOS_BALANCE = [
+    # (título, tipos de cuenta que incluye)
+    ('Efectivo y cuentas de débito', ('EFECTIVO', 'DEBITO')),
+    ('Ahorro', ('AHORRO',)),
+    ('Inversiones', ('INVERSION',)),
+    ('Tarjetas de crédito', ('CREDITO',)),
+    ('Préstamos', ('PRESTAMO',)),
+]
+
+
+def _balance_general(balance, balance_prev):
+    """
+    Balance general al cierre del mes, comparado con el cierre anterior:
+    ACTIVOS (lo que tienes) = PASIVOS (lo que debes) + CAPITAL (lo que es tuyo).
+    """
+    prev = {c.id: c.saldo_calculado for c in balance_prev['cuentas']}
+    grupos = []
+    for titulo, tipos in GRUPOS_BALANCE:
+        filas = [{'cuenta': c, 'actual': c.saldo_calculado, 'anterior': prev.get(c.id, CERO),
+                  'dif': c.saldo_calculado - prev.get(c.id, CERO)}
+                 for c in balance['cuentas'] if c.tipo in tipos]
+        if filas:
+            grupos.append({'titulo': titulo, 'es_pasivo': tipos[0] in Cuenta.TIPOS_PASIVO, 'filas': filas,
+                           'total': sum((f['actual'] for f in filas), CERO),
+                           'total_anterior': sum((f['anterior'] for f in filas), CERO),
+                           'variacion': sum((f['dif'] for f in filas), CERO)})
+    return {
+        'activos': [g for g in grupos if not g['es_pasivo']],
+        'pasivos': [g for g in grupos if g['es_pasivo']],
+        'total_activos': balance['activos'], 'total_activos_prev': balance_prev['activos'],
+        'total_pasivos': balance['pasivos'], 'total_pasivos_prev': balance_prev['pasivos'],
+        'variacion_activos': balance['activos'] - balance_prev['activos'],
+        'capital': balance['patrimonio'], 'capital_prev': balance_prev['patrimonio'],
+        'variacion_capital': balance['patrimonio'] - balance_prev['patrimonio'],
+    }
+
+
 def _notas(ctx):
     """Notas automáticas (específicas y con cifras), al estilo de la hoja Resumen."""
     notas = []
-    act = ctx['bal']
+    act, ant = ctx['bal'], ctx['bal_prev']
     mes, mes_ant = ctx['nombre_mes'], ctx['nombre_mes_prev']
 
     if act['ingresos'] > 0:
@@ -252,6 +289,7 @@ def vista_resumen(request):
 
     balance = Cuenta.objects.resumen_balance(user, hasta=fin_mes)
     balance_prev = Cuenta.objects.resumen_balance(user, hasta=fin_mes_prev)
+    balance_general = _balance_general(balance, balance_prev)
 
     ctx = {
         'selected_year': year, 'selected_month': month,
@@ -264,7 +302,7 @@ def vista_resumen(request):
         'entre_cuentas': entre_cuentas,
         'cuadre': cuadre,
         'conciliacion': conciliacion,
-        'balance': balance, 'balance_prev': balance_prev,
+        'balance': balance, 'balance_prev': balance_prev, 'balance_general': balance_general,
         'fin_mes': fin_mes,
     }
     ctx['notas'] = _notas(ctx)

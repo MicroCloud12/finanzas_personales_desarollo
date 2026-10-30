@@ -10,7 +10,6 @@ STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
 }
-COMPRESS_ENABLED = False
 USE_I18N = False
 CSRF_TRUSTED_ORIGINS = ['http://localhost']
 ALLOWED_HOSTS = ['*']

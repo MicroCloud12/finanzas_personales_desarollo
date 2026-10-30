@@ -26,11 +26,13 @@ Convenciones por tipo de movimiento::
                         al préstamo `destino`; `monto_interes` es gasto
     PAGO_CAPITAL     -> igual que mensualidad, pero todo es capital
 """
+import calendar
+from datetime import date
 from decimal import Decimal
 
 from django.db import models
 from django.db.models import F, Q, Sum
-from django.conf import settings
+from django.db.models.functions import TruncMonth
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -39,63 +41,42 @@ from django.utils import timezone
 CERO = Decimal('0.00')
 
 TIPOS_PAGO_DEUDA = ('PAGO_MENSUALIDAD', 'PAGO_CAPITAL')
-TIPOS_CON_ORIGEN = ('GASTO', 'TRANSFERENCIA', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL')
-TIPOS_CON_DESTINO = ('INGRESO', 'TRANSFERENCIA', 'PAGO_MENSUALIDAD', 'PAGO_CAPITAL')
 
 
-class CuentaQuerySet(models.QuerySet):
-    def activos(self):
-        return self.filter(tipo__in=Cuenta.TIPOS_ACTIVO)
+def _entradas_salidas(tx):
+    """
+    {cuenta_id: [entradas, salidas]} de un queryset de movimientos.
+    entradas = sum(monto - monto_interes) con destino=cuenta; salidas = sum(monto) con origen=cuenta.
+    """
+    res = {}
+    for cuenta_id, total in tx.filter(destino__isnull=False).values('destino').annotate(
+            t=Sum(F('monto') - F('monto_interes'))).values_list('destino', 't'):
+        res.setdefault(cuenta_id, [CERO, CERO])[0] += total or CERO
+    for cuenta_id, total in tx.filter(origen__isnull=False).values('origen').annotate(
+            t=Sum('monto')).values_list('origen', 't'):
+        res.setdefault(cuenta_id, [CERO, CERO])[1] += total or CERO
+    return res
 
-    def pasivos(self):
-        return self.filter(tipo__in=Cuenta.TIPOS_PASIVO)
 
-    def liquidas(self):
-        """Dinero disponible para gastar: efectivo y débito."""
-        return self.filter(tipo__in=Cuenta.TIPOS_LIQUIDOS)
+def _rango(usuario, desde=None, hasta=None):
+    tx = registro_transacciones.objects.filter(propietario=usuario)
+    if desde is not None:
+        tx = tx.filter(fecha__gte=desde)
+    if hasta is not None:
+        tx = tx.filter(fecha__lte=hasta)
+    return tx
 
 
-class CuentaManager(models.Manager.from_queryset(CuentaQuerySet)):
+class CuentaManager(models.Manager):
 
     def flujos_netos(self, usuario, hasta=None, desde=None):
-        """
-        Devuelve {cuenta_id: neto} donde neto = entradas - salidas del libro.
-        entradas = sum(monto - monto_interes) de movimientos con destino=cuenta
-        salidas  = sum(monto) de movimientos con origen=cuenta
-        """
-        tx = registro_transacciones.objects.filter(propietario=usuario)
-        if hasta is not None:
-            tx = tx.filter(fecha__lte=hasta)
-        if desde is not None:
-            tx = tx.filter(fecha__gte=desde)
-
-        salidas = tx.filter(origen__isnull=False).values('origen').annotate(
-            total=Sum('monto')).values_list('origen', 'total')
-        entradas = tx.filter(destino__isnull=False).values('destino').annotate(
-            total=Sum(F('monto') - F('monto_interes'))).values_list('destino', 'total')
-
-        netos = {}
-        for cuenta_id, total in entradas:
-            netos[cuenta_id] = netos.get(cuenta_id, CERO) + (total or CERO)
-        for cuenta_id, total in salidas:
-            netos[cuenta_id] = netos.get(cuenta_id, CERO) - (total or CERO)
-        return netos
+        """{cuenta_id: neto} donde neto = entradas - salidas del libro."""
+        return {c: e - s for c, (e, s) in _entradas_salidas(_rango(usuario, desde, hasta)).items()}
 
     def entradas_salidas(self, usuario, desde=None, hasta=None):
         """{cuenta_id: {'entradas': x, 'salidas': y}} en el rango de fechas (inclusive)."""
-        tx = registro_transacciones.objects.filter(propietario=usuario)
-        if desde is not None:
-            tx = tx.filter(fecha__gte=desde)
-        if hasta is not None:
-            tx = tx.filter(fecha__lte=hasta)
-        resultado = {}
-        for cuenta_id, total in tx.filter(destino__isnull=False).values('destino').annotate(
-                total=Sum(F('monto') - F('monto_interes'))).values_list('destino', 'total'):
-            resultado.setdefault(cuenta_id, {'entradas': CERO, 'salidas': CERO})['entradas'] += (total or CERO)
-        for cuenta_id, total in tx.filter(origen__isnull=False).values('origen').annotate(
-                total=Sum('monto')).values_list('origen', 'total'):
-            resultado.setdefault(cuenta_id, {'entradas': CERO, 'salidas': CERO})['salidas'] += (total or CERO)
-        return resultado
+        return {c: {'entradas': e, 'salidas': s}
+                for c, (e, s) in _entradas_salidas(_rango(usuario, desde, hasta)).items()}
 
     def saldos(self, usuario, hasta=None):
         """
@@ -177,10 +158,6 @@ class Cuenta(models.Model):
     @property
     def es_activo(self):
         return not self.es_pasivo
-
-    @property
-    def naturaleza(self):
-        return 'PASIVO' if self.es_pasivo else 'ACTIVO'
 
     # ----- saldos derivados del libro -----
     def saldo_desde_neto(self, neto):
@@ -303,7 +280,6 @@ class TransaccionManager(models.Manager):
 
     def ahorro_por_mes(self, usuario, year):
         """Flujo neto mensual hacia cuentas de AHORRO en el año: {'YYYY-MM': neto}."""
-        from django.db.models.functions import TruncMonth
         base = self.filter(propietario=usuario, fecha__year=year)
         entradas = (base.filter(destino__tipo='AHORRO').exclude(origen__tipo='AHORRO')
                     .annotate(mes=TruncMonth('fecha')).values('mes')
@@ -326,20 +302,7 @@ class TransaccionManager(models.Manager):
         y pagos de deuda. Para pasivos, lo recibido es el abono a capital.
         """
         qs = self.del_mes(usuario, year, month).filter(tipo__in=('TRANSFERENCIA',) + TIPOS_PAGO_DEUDA)
-        netos = {}
-        for cuenta_id, total in qs.filter(destino__isnull=False).values('destino').annotate(
-                total=Sum(F('monto') - F('monto_interes'))).values_list('destino', 'total'):
-            netos[cuenta_id] = netos.get(cuenta_id, CERO) + (total or CERO)
-        for cuenta_id, total in qs.filter(origen__isnull=False).values('origen').annotate(
-                total=Sum('monto')).values_list('origen', 'total'):
-            netos[cuenta_id] = netos.get(cuenta_id, CERO) - (total or CERO)
-        return netos
-
-    def movimientos_de_cuenta(self, cuenta, year=None, month=None):
-        qs = self.filter(propietario=cuenta.propietario).filter(Q(origen=cuenta) | Q(destino=cuenta))
-        if year and month:
-            qs = qs.filter(fecha__year=year, fecha__month=month)
-        return qs
+        return {c: e - s for c, (e, s) in _entradas_salidas(qs).items()}
 
 
 class registro_transacciones(models.Model):
@@ -394,11 +357,6 @@ class registro_transacciones(models.Model):
     def es_pago_deuda(self):
         return self.tipo in TIPOS_PAGO_DEUDA or (
             self.tipo == 'TRANSFERENCIA' and self.destino_id and self.destino.es_pasivo)
-
-    @property
-    def cuenta_principal(self):
-        """Cuenta "protagonista" para mostrar en listados."""
-        return self.destino if self.tipo == 'INGRESO' else self.origen
 
     def clean(self):
         errores = {}
@@ -493,21 +451,6 @@ class registro_transacciones(models.Model):
         super().delete(*args, **kwargs)
 
 
-class GoogleCredentials(models.Model):
-    # Un enlace uno-a-uno con el usuario de Django. Cada usuario solo puede tener un set de credenciales.
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-
-    # Usamos TextField porque los tokens pueden ser largos
-    token = models.TextField()
-    refresh_token = models.TextField(null=True, blank=True)
-    token_uri = models.CharField(max_length=255)
-    client_id = models.CharField(max_length=255)
-    client_secret = models.CharField(max_length=255)
-    scopes = models.TextField()
-
-    def __str__(self):
-        return f"Credenciales de Google para {self.user.username}"
-    
 class TransaccionPendiente(models.Model):
     ESTADOS = (
         ('pendiente', 'Pendiente'),
@@ -616,19 +559,6 @@ class Suscripcion(models.Model):
     def __str__(self):
         return f"Suscripción de {self.usuario.username} - {self.get_estado_display()}"
 
-class GananciaMensual(models.Model):
-    """Almacena la suma de ganancias/pérdidas no realizadas por mes para un usuario."""
-    propietario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    mes = models.CharField(max_length=7) # Formato YYYY-MM
-    total = models.DecimalField(max_digits=20, decimal_places=2)
-
-    class Meta:
-        # Clave única para que no haya dos entradas para el mismo mes y usuario
-        unique_together = ('propietario', 'mes')
-
-    def __str__(self):
-        return f"{self.propietario.username} - {self.mes} - ${self.total}"
-    
 class PendingInvestment(models.Model):
     ESTADOS = (
         ('pendiente', 'Pendiente'),
@@ -725,10 +655,6 @@ class Deuda(models.Model):
         return (self.monto_total or CERO) - self.saldo_pendiente
 
     @property
-    def total_pagado(self):
-        return self.total_gastado if not self.es_tarjeta else (self.monto_total or CERO) - self.disponible
-
-    @property
     def valor_barra(self):
         """Valor para la barra de progreso: tarjeta -> disponible; préstamo -> deuda restante."""
         return self.disponible if self.es_tarjeta else self.saldo_pendiente
@@ -785,47 +711,24 @@ class Deuda(models.Model):
 
     @property
     def proxima_fecha_corte(self):
-        if not self.dia_corte:
-            return None
-        import calendar
-        from datetime import timedelta
-        hoy = timezone.now().date()
-        try:
-            fecha_este_mes = hoy.replace(day=self.dia_corte)
-        except ValueError:
-            _, last_day = calendar.monthrange(hoy.year, hoy.month)
-            fecha_este_mes = hoy.replace(day=last_day)
-
-        if fecha_este_mes < hoy:
-            mes_siguiente = (fecha_este_mes.replace(day=1) + timedelta(days=32)).replace(day=1)
-            try:
-                return mes_siguiente.replace(day=self.dia_corte)
-            except ValueError:
-                _, last_day = calendar.monthrange(mes_siguiente.year, mes_siguiente.month)
-                return mes_siguiente.replace(day=last_day)
-        return fecha_este_mes
+        return proximo_dia_del_mes(self.dia_corte)
 
     @property
     def proxima_fecha_pago(self):
-        if not self.dia_pago:
-            return None
-        import calendar
-        from datetime import timedelta
-        hoy = timezone.now().date()
-        try:
-            fecha_este_mes = hoy.replace(day=self.dia_pago)
-        except ValueError:
-            _, last_day = calendar.monthrange(hoy.year, hoy.month)
-            fecha_este_mes = hoy.replace(day=last_day)
+        return proximo_dia_del_mes(self.dia_pago)
 
-        if fecha_este_mes < hoy:
-            mes_siguiente = (fecha_este_mes.replace(day=1) + timedelta(days=32)).replace(day=1)
-            try:
-                return mes_siguiente.replace(day=self.dia_pago)
-            except ValueError:
-                _, last_day = calendar.monthrange(mes_siguiente.year, mes_siguiente.month)
-                return mes_siguiente.replace(day=last_day)
-        return fecha_este_mes
+
+def proximo_dia_del_mes(dia, hoy=None):
+    """Próxima fecha (hoy o después) con ese día del mes; en meses más cortos, su último día."""
+    if not dia:
+        return None
+    hoy = hoy or timezone.now().date()
+    y, m = hoy.year, hoy.month
+    fecha = date(y, m, min(dia, calendar.monthrange(y, m)[1]))
+    if fecha < hoy:
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+        fecha = date(y, m, min(dia, calendar.monthrange(y, m)[1]))
+    return fecha
 
 
 class PagoAmortizacion(models.Model):

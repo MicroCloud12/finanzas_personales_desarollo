@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize socialaccount %}
 {% block title %}Mi Perfil | Finanzas Personales{% endblock %}
 {% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5{% endblock %}
 
@@ -109,7 +109,7 @@
                             </div>
                         </div>
                         <div>
-                            {% if google_creds %}
+                            {% if google_cuenta %}
                             <span
                                 class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
                                 <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Conectado
@@ -122,15 +122,14 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% if not google_creds %}
-                    <div class="mt-4">
-                        <a href="#" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Conectar cuenta
-                            &rarr;</a>
-                    </div>
-                    {% endif %}
-                    {% if google_creds %}
+                    {% if google_cuenta %}
                     <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <p class="text-xs text-gray-500">Token ID: ...{{ google_creds.client_id|slice:"-10:" }}</p>
+                        <p class="text-xs text-gray-500">Cuenta: {{ google_cuenta.extra_data.email|default:google_cuenta.uid }}</p>
+                    </div>
+                    {% else %}
+                    <div class="mt-4">
+                        <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Conectar cuenta
+                            &rarr;</a>
                     </div>
                     {% endif %}
                 </div>

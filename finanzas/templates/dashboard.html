@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize static %}
+{% load humanize static dinero %}
 {% block title %}Dashboard de Finanzas Personales | Tu Resumen Financiero{% endblock %}
 {% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5 md:p-8 lg:p-10{% endblock %}
 
@@ -39,13 +39,6 @@
             class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Balance del Mes</h3>
-                <!-- Por ahora usamos solo MXN
-                <select
-                    class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
-                    <option>USD</option>
-                    <option>MXN</option>
-                </select>
-                -->
             </div>
 
             <div class="mb-4">
@@ -68,11 +61,11 @@
                                 <path id="balanceTrendArrow" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                                     d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
                             </svg>
-                            <span id="balancePercentageText">12.1%</span>
+                            <span id="balancePercentageText">—</span>
                         </span>
                     </div>
                     <p class="text-[11px] text-gray-400 font-medium leading-snug">
-                        Has ahorrado <span id="balanceEarnText">extra</span> <span id="balanceExtraAmount" class="font-bold text-gray-700">$1,700</span><br>comparado al mes pasado
+                        Has ahorrado <span id="balanceEarnText">extra</span> <span id="balanceExtraAmount" class="font-bold text-gray-700">—</span><br>comparado al mes pasado
                     </p>
                 </div>
 
@@ -107,13 +100,6 @@
             class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Ingresos</h3>
-                <!-- Por ahora usamos solo MXN, a futuro habilitaremos multidivisas
-                <select
-                    class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
-                    <option>MXN</option>
-                    <option>USD</option>
-                </select>
-                -->
             </div>
 
             <div class="mb-4">
@@ -132,11 +118,11 @@
                                 <path id="incomeTrendArrow" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                                     d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
                             </svg>
-                            <span id="incomePercentageText">6.3%</span>
+                            <span id="incomePercentageText">—</span>
                         </span>
                     </div>
                     <p class="text-[11px] text-gray-400 font-medium leading-snug">
-                        Has generado <span id="incomeEarnText">extra</span> <span id="incomeExtraAmount" class="font-bold text-gray-700">$500</span><br>comparado al mes pasado
+                        Has generado <span id="incomeEarnText">extra</span> <span id="incomeExtraAmount" class="font-bold text-gray-700">—</span><br>comparado al mes pasado
                     </p>
                 </div>
 
@@ -171,13 +157,6 @@
             class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Gastos</h3>
-                <!-- Por ahora usamos solo MXN
-                <select
-                    class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
-                    <option>USD</option>
-                    <option>MXN</option>
-                </select>
-                -->
             </div>
 
             <div class="mb-4">
@@ -201,11 +180,11 @@
                                 <path id="expenseTrendArrow" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                                     d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
                             </svg>
-                            <span id="expensePercentageText">2.4%</span>
+                            <span id="expensePercentageText">—</span>
                         </span>
                     </div>
                     <p class="text-[11px] text-gray-400 font-medium leading-snug">
-                        Has gastado <span id="expenseEarnText">extra</span> <span id="expenseExtraAmount" class="font-bold text-gray-700">$1,222</span><br>comparado al mes pasado
+                        Has gastado <span id="expenseEarnText">extra</span> <span id="expenseExtraAmount" class="font-bold text-gray-700">—</span><br>comparado al mes pasado
                     </p>
                 </div>
 
@@ -245,13 +224,6 @@
             class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Ahorros</h3>
-                <!-- Por ahora usamos solo MXN
-                <select
-                    class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
-                    <option>USD</option>
-                    <option>MXN</option>
-                </select>
-                -->
             </div>
 
             <div class="mb-4">
@@ -263,18 +235,8 @@
             <div class="grid grid-cols-2 gap-4 mt-2 h-full">
                 <!-- Left Details -->
                 <div class="flex flex-col justify-end gap-3 pb-1">
-                    <div>
-                        <span
-                            class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 px-2.5 py-1 rounded-lg text-xs font-bold">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                    d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-                            </svg>
-                            5.2%
-                        </span>
-                    </div>
                     <p class="text-[11px] text-gray-400 font-medium leading-snug">
-                        Has ahorrado <span class="font-bold text-gray-700">$200</span> extra<br>comparado al mes pasado
+                        Ahorro neto del mes<br><span class="font-bold text-gray-700">{{ ahorro_mes|dinero_signo }}</span>
                     </p>
                 </div>
 
@@ -309,13 +271,6 @@
             class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Deuda Total</h3>
-                <!-- Por ahora usamos solo MXN
-                <select
-                    class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none hover:bg-gray-100 transition-colors">
-                    <option>USD</option>
-                    <option>MXN</option>
-                </select>
-                -->
             </div>
 
             <div class="mb-4">
@@ -437,8 +392,8 @@
                         <p class="text-sm sm:text-base uppercase tracking-widest font-medium text-gray-200 shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]" id="visualCardName">{{ tarjetas_list.0.nombre }}</p>
                     </div>
                     <div class="text-right flex flex-col gap-1">
-                        <p class="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Válida hasta</p>
-                        <p class="text-sm sm:text-base uppercase tracking-widest font-mono text-gray-200 shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]">12/28</p>
+                        <p class="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Saldo</p>
+                        <p class="text-sm sm:text-base tracking-widest font-mono text-gray-200 shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]" id="visualCardSaldo">{{ tarjetas_list.0.saldo }}</p>
                     </div>
                 </div>
             </div>
@@ -484,12 +439,6 @@
                             </svg>
                             <span class="text-[11px] text-gray-500 font-medium">Mismo periodo mes pasado</span>
                         </div>
-                        <!--
-                        <select
-                            class="hidden md:block bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none ml-2">
-                            <option>Total balance</option>
-                        </select>
-                        -->
                     </div>
                 </div>
                 <div class="relative h-96 w-full">
@@ -570,13 +519,13 @@
     {# Inject Chart Data #}
     {{ investment_chart_labels|json_script:"savings-labels-data" }}
     {{ investment_chart_data|json_script:"savings-values-data" }}
+    {{ metricas|json_script:"metricas-data" }}
 
 </div>
 
 {% block javascript %}
 {# Chart.js solo se carga en las páginas que dibujan gráficos #}
-<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1"></script>
 <script defer src="{% static 'js/dashboard_charts.js' %}"></script>
 <script defer src="{% static 'js/dashboard_cards.js' %}"></script>
 {% endblock javascript %}

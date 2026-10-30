@@ -105,10 +105,96 @@
         </div>
     </div>
 
-    {# --- 2. Movimientos entre cuentas --- #}
+    {# --- 2. Balance general --- #}
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-gray-100 bg-gray-50/50">
-            <h3 class="font-bold text-lg text-gray-800">2. Dinero que pasaste entre tus cuentas (no es gasto)</h3>
+            <h3 class="font-bold text-lg text-gray-800">2. Balance general al {{ fin_mes|date:"d/m/Y" }}: activos, pasivos y capital</h3>
+            <p class="text-xs text-gray-500 mt-1">Lo que tienes (activos) menos lo que debes (pasivos) es tu capital. El sueldo no está aquí: el sueldo explica por qué subió el activo; el activo es el dinero que quedó.</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3">Cuenta</th>
+                        <th class="px-4 py-3 text-right">{{ nombre_mes_prev }}</th>
+                        <th class="px-4 py-3 text-right">{{ nombre_mes }}</th>
+                        <th class="px-4 py-3 text-right">Variación $</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr class="bg-gray-50/30"><td colspan="4" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Activos (lo que tienes)</td></tr>
+                    {% for g in balance_general.activos %}
+                    <tr>
+                        <td class="px-6 py-3 font-semibold text-gray-700" style="padding-left:1.75rem">{{ g.titulo }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ g.total_anterior|dinero }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-gray-900">{{ g.total|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ g.variacion|dinero_signo }}</td>
+                    </tr>
+                    {% for f in g.filas %}
+                    <tr>
+                        <td class="px-6 py-3 text-gray-900" style="padding-left:3.5rem">{{ f.cuenta.nombre }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ f.anterior|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-900">{{ f.actual|dinero }}</td>
+                        <td class="px-4 py-3 text-right {% if f.dif > 0 %}text-emerald-700{% elif f.dif < 0 %}text-red-600{% else %}text-gray-400{% endif %}">{{ f.dif|dinero_signo }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                    <tr class="bg-gray-50 font-semibold">
+                        <td class="px-6 py-3 text-gray-900">Total activos</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ balance_general.total_activos_prev|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-900">{{ balance_general.total_activos|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ balance_general.variacion_activos|dinero_signo }}</td>
+                    </tr>
+
+                    <tr class="bg-gray-50/30"><td colspan="4" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Pasivos (lo que debes)</td></tr>
+                    {% for g in balance_general.pasivos %}
+                    <tr>
+                        <td class="px-6 py-3 font-semibold text-gray-700" style="padding-left:1.75rem">{{ g.titulo }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ g.total_anterior|dinero }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-gray-900">{{ g.total|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ g.variacion|dinero_signo }}</td>
+                    </tr>
+                    {% for f in g.filas %}
+                    <tr>
+                        <td class="px-6 py-3 text-gray-900" style="padding-left:3.5rem">{{ f.cuenta.nombre }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ f.anterior|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-900">{{ f.actual|dinero }}</td>
+                        <td class="px-4 py-3 text-right {% if f.dif < 0 %}text-emerald-700{% elif f.dif > 0 %}text-red-600{% else %}text-gray-400{% endif %}">{{ f.dif|dinero_signo }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% empty %}
+                    <tr><td colspan="4" class="px-6 py-3 text-sm text-gray-400">Sin deudas registradas.</td></tr>
+                    {% endfor %}
+                    <tr class="bg-gray-50 font-semibold">
+                        <td class="px-6 py-3 text-gray-900">Total pasivos</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ balance_general.total_pasivos_prev|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-900">{{ balance_general.total_pasivos|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600"></td>
+                    </tr>
+
+                    <tr class="bg-gray-50/30"><td colspan="4" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Capital (lo que es tuyo)</td></tr>
+                    <tr class="font-semibold">
+                        <td class="px-6 py-3 text-gray-900" style="padding-left:1.75rem">Patrimonio neto = activos − pasivos</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ balance_general.capital_prev|dinero }}</td>
+                        <td class="px-4 py-3 text-right {% if balance_general.capital >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ balance_general.capital|dinero }}</td>
+                        <td class="px-4 py-3 text-right {% if balance_general.variacion_capital > 0 %}text-emerald-700{% elif balance_general.variacion_capital < 0 %}text-red-600{% else %}text-gray-400{% endif %}">{{ balance_general.variacion_capital|dinero_signo }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-6 py-3 text-xs text-gray-500" colspan="4">
+                            Comprobación: tu capital cambió {{ balance_general.variacion_capital|dinero_signo }} en {{ nombre_mes }} y el resultado del mes (ingresos − gastos) fue {{ bal.resultado|dinero_signo }}.
+                            {% if balance_general.variacion_capital == bal.resultado %}Coinciden ✓: todo lo que cambió tu patrimonio está explicado por ingresos y gastos.
+                            {% else %}La diferencia son ajustes de saldo inicial (conciliaciones), reembolsos a tarjetas o movimientos sin cuenta; los traspasos entre tus cuentas y los pagos a deuda no cambian el capital.{% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# --- 3. Movimientos entre cuentas --- #}
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-lg text-gray-800">3. Dinero que pasaste entre tus cuentas (no es gasto)</h3>
             <p class="text-xs text-gray-500 mt-1">Ahorros, pagos a tarjetas y préstamos, retiros de efectivo y traspasos. Positivo = la cuenta recibió; negativo = envió.</p>
         </div>
         {% if entre_cuentas %}
@@ -144,7 +230,7 @@
     {# --- 3. Cuadre por cuenta --- #}
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-gray-100 bg-gray-50/50">
-            <h3 class="font-bold text-lg text-gray-800">3. Cuadre de {{ nombre_mes }}: saldo inicial + entradas − salidas = saldo final</h3>
+            <h3 class="font-bold text-lg text-gray-800">4. Cuadre de {{ nombre_mes }}: saldo inicial + entradas − salidas = saldo final</h3>
             <p class="text-xs text-gray-500 mt-1">Así se mueve cada cuenta según tu registro. En tarjetas y préstamos el saldo es lo que debes (las compras son "salidas" que lo suben; los pagos, "entradas" que lo bajan).</p>
         </div>
         <div class="overflow-x-auto">
@@ -177,7 +263,7 @@
     <form method="POST" class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
         {% csrf_token %}
         <div class="p-6 border-b border-gray-100 bg-gray-50/50">
-            <h3 class="font-bold text-lg text-gray-800">4. Conciliación con el banco al {{ fin_mes|date:"d/m/Y" }}</h3>
+            <h3 class="font-bold text-lg text-gray-800">5. Conciliación con el banco al {{ fin_mes|date:"d/m/Y" }}</h3>
             <p class="text-xs text-gray-500 mt-1">
                 Escribe el saldo final que aparece en cada estado de cuenta (en tarjetas y préstamos, lo que debes). Si la diferencia es 0, no se te escapó ningún movimiento.
                 Si el mes anterior cuadraba y este no, la diferencia son movimientos de este mes que faltan (o sobran) en tu registro.

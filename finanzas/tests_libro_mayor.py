@@ -230,9 +230,15 @@ class DashboardCuadraTest(BaseLibro):
         r = self.client.get(reverse('api_datos_gastos') + '?year=2026&month=10')
         self.assertEqual(sum(D(str(x)) for x in r.json()['data']), D('5500'))
 
-        r = self.client.get(reverse('api_ingresos_tarjeta') + '?cuenta_nombre=BBVA&year=2026&month=10')
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json()['balance']['total'], '8,001.00')
+        # Tarjetas de arriba = cifras globales del mes (no el saldo de la cuenta del carrusel)
+        r = self.client.get(reverse('dashboard') + '?year=2026&month=10')
+        metricas = r.context['metricas']
+        self.assertEqual(metricas['balance']['total'], '9,500.00')
+        self.assertEqual(metricas['ingresos']['total'], '15,000.00')
+        self.assertEqual(metricas['gastos']['total'], '5,500.00')
+        # el saldo de cada cuenta se muestra en el widget "Mis tarjetas"
+        bbva = next(t for t in r.context['tarjetas_list'] if t['nombre'] == 'BBVA')
+        self.assertEqual(bbva['saldo'], '$8,001.00')
 
 
 class FormularioTest(BaseLibro):

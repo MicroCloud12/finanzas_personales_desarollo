@@ -5,9 +5,8 @@ from .models import registro_transacciones, TransaccionPendiente, inversiones, S
 admin.site.register(registro_transacciones)
 admin.site.register(TransaccionPendiente)
 admin.site.register(inversiones)
-admin.site.register(Suscripcion) # <-- Esta línea es la importante
+admin.site.register(Suscripcion)
 admin.site.register(PendingInvestment)
 admin.site.register(Presupuesto)
 admin.site.register(Cuenta)
 admin.site.register(Deuda)
-#admin.site.register(Venta)

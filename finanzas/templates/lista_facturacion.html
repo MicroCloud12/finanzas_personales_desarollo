@@ -44,19 +44,6 @@
     </div>
   </div>
 
-  <!-- Notifications Section usually handled by base.html global toast, but keeping fallback just in case -->
-  {% if messages %}
-  <div class="mb-6 space-y-2">
-    {% for message in messages %}
-    <div
-      class="p-4 rounded-xl flex items-center shadow-sm {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-100{% else %}bg-yellow-50 text-yellow-800 border border-yellow-100{% endif %}"
-      role="alert">
-      <span class="font-medium text-sm">{{ message }}</span>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
 
   {# --- Content Card --- #}
   <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">

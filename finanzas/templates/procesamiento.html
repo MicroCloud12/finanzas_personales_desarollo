@@ -4,19 +4,29 @@
 
 {% block content %}
 <div class="max-w-xl mx-auto mt-16 mb-16">
+    {% if back_url %}
+    <div class="mb-6 flex justify-end">
+        <a href="{{ back_url }}"
+            class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
+            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12">
+                </path>
+            </svg>
+            {{ back_text }}
+        </a>
+    </div>
+    {% endif %}
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
 
         <div class="p-8 text-center border-b border-gray-50">
             <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-indigo-50 mb-4">
                 <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ icono }}"></path>
                 </svg>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900 font-display">Sincronización de Facturas</h1>
+            <h1 class="text-2xl font-bold text-gray-900 font-display">{{ titulo }}</h1>
             <p class="mt-2 text-gray-500">
-                Extrae datos fiscales (CFDI) de tus tickets
+                {% if deuda %}Para: <span class="font-bold text-indigo-600">{{ deuda.nombre }}</span>{% else %}{{ subtitulo }}{% endif %}
             </p>
         </div>
 
@@ -42,10 +52,13 @@
                                 </svg>
                                 <div>
                                     <p class="font-semibold text-green-800">¡Cuenta Vinculada!</p>
-                                    <p class="text-sm text-green-600">Google Drive está listo.</p>
+                                    <p class="text-sm text-green-600">Google Drive está listo para usarse.</p>
                                 </div>
                             </div>
                             {% else %}
+                            <p class="text-gray-600 mb-4 text-sm leading-relaxed">
+                                Necesitamos acceso a tu Google Drive para leer los archivos.
+                            </p>
                             <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}"
                                 class="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-medium py-3 px-4 rounded-xl hover:bg-gray-50 focus:outline-none transition-colors shadow-sm">
                                 <img class="h-5 w-5 mr-3"
@@ -72,14 +85,12 @@
                         </div>
                     </div>
                     <div class="ml-4 w-full">
-                        <h2 class="text-lg font-bold text-gray-900">Procesar</h2>
-                        <p class="text-gray-500 text-sm mt-1 mb-4">
-                            Buscaremos tickets en tu carpeta para extraer folios y datos fiscales.
-                        </p>
+                        <h2 class="text-lg font-bold text-gray-900">{{ paso2|default:"Sincronizar" }}</h2>
+                        <p class="text-gray-500 text-sm mt-1 mb-4">{{ descripcion }}</p>
 
                         {% if user.socialaccount_set.all %}
-                        <button id="start-processing-btn" data-start-url="{% url 'procesar_drive_facturacion' %}"
-                            data-redirect-url="{% url 'revisar_facturas_pendientes' %}"
+                        <button id="start-processing-btn" data-start-url="{{ start_url }}"
+                            data-redirect-url="{{ redirect_url }}"
                             class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5">
                             Iniciar Sincronización
                         </button>
@@ -101,6 +112,11 @@
                                     class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out"
                                     style="width: 0%"></div>
                             </div>
+                            <div class="mt-4 text-center">
+                                <button id="cancel-processing-btn" class="text-sm text-red-600 hover:text-red-800 font-medium underline hidden">
+                                    Cancelar Procesamiento
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -110,7 +126,6 @@
 </div>
 {% endblock %}
 
-{# Importamos el script que hace funcionar la barra de progreso #}
 {% block javascript %}
 <script src="{% static 'js/procesamiento.js' %}"></script>
-{% endblock javascript %}
+{% endblock %}

@@ -290,7 +290,7 @@
 {{ perf_ganancias|json_script:"perf-ganancias-data" }}
 
 {# Chart.js solo se carga en esta página #}
-<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1"></script>
 <script defer src="{% static 'js/portfolio_performance.js' %}"></script>
 <script defer src="{% static 'js/assets_table.js' %}"></script>
 {% endblock %}

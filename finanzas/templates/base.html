@@ -5,37 +5,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Finanzas Personales | Controla tus Gastos e Inversiones</title>
+  <title>{% block title %}Finanzas Personales | Controla tus Gastos e Inversiones{% endblock %}</title>
 
-  <!-- Load favicon 
-    <link
-      rel="shortcut icon"
-      type="image/png"
-      href="#"
-    />-->
-
-  <!-- Include your CSS files here 
-    <link
-      rel="preload"
-      as="style"
-      href="#"
-      onload="this.rel = 'stylesheet'"
-    />-->
   <meta name="description"
     content="Toma el control de tus finanzas personales. Registra transacciones, administra inversiones y optimiza tu dinero con nuestra aplicación de finanzas.">
-  <!-- Google Fonts: Inter & Outfit (solo los pesos usados; carga sin bloquear el render) -->
+  <!-- Google Fonts: Outfit (solo los pesos usados; carga sin bloquear el render) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
     rel="stylesheet" media="print" onload="this.media='all'">
   <noscript>
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet">
   </noscript>
 
-  <link rel="shortcut icon" type="image/png" href="{% static 'img/favicon.ico' %}" />
+  <link rel="shortcut icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}" />
   {% tailwind_css %}
   {# Precargas/recursos específicos de cada página (p. ej. imagen LCP) #}
   {% block head_extra %}{% endblock %}
@@ -66,7 +52,7 @@
 
         {% block footer %}
         <footer class="bg-transparent text-gray-400 text-center py-6 mt-auto">
-          <p class="text-xs">&copy; {{ now|date:"Y" }} Prisma Vault. All rights reserved.</p>
+          <p class="text-xs">&copy; {% now "Y" %} Prisma Vault. All rights reserved.</p>
           <a class="text-xs hover:text-indigo-500 transition-colors" href="{% url 'privacy_policy' %}">Política de
             Privacidad</a>
         </footer>

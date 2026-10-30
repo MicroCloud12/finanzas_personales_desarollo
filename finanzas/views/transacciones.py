@@ -4,6 +4,7 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
@@ -29,53 +30,35 @@ from ..models import (
 
 logger = logging.getLogger(__name__)
 
+def _aprobar(request, ticket_id):
+    """Aprueba un ticket con los campos de SU fila del formulario (sufijo _<id>)."""
+    campo = lambda nombre, default=None: request.POST.get(f'{nombre}_{ticket_id}', default)
+    return TransactionService.approve_pending_transaction(
+        ticket_id=ticket_id,
+        user=request.user,
+        cuenta=campo('cuenta_origen'),
+        categoria=campo('categoria'),
+        tipo_transaccion=campo('tipo', 'GASTO'),
+        cuenta_destino=campo('cuenta_destino'),
+        monto=campo('monto', '').strip(),
+    )
+
 @login_required
 def aprobar_todos_tickets(request):
-    """
-    Aprueba TODOS los tickets pendientes que estaban en la página, cada uno
-    con su propia configuración seleccionada.
-    """
+    """Aprueba todos los tickets pendientes, cada uno con lo elegido en su fila."""
     if request.method == 'POST':
-        # Primero, obtenemos una lista de todos los IDs de tickets pendientes del usuario.
-        tickets_pendientes = TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente')
-        tickets_aprobados_count = 0
-        omitidos = 0
-
-        # Iteramos sobre cada ticket pendiente
-        for ticket in tickets_pendientes:
+        aprobados = omitidos = 0
+        for ticket in TransaccionPendiente.objects.filter(propietario=request.user, estado='pendiente'):
             monto = request.POST.get(f'monto_{ticket.id}', '').strip()
             if clasificar_ticket(ticket.datos_json) != 'MOVIMIENTO' and not monto:
                 omitidos += 1   # sin monto no hay nada que registrar
-                continue
-            # Para cada ticket, construimos los nombres de sus campos de formulario
-            cuenta_key = f'cuenta_origen_{ticket.id}'
-            categoria_key = f'categoria_{ticket.id}'
-            tipo_key = f'tipo_{ticket.id}'
-            cuenta_destino_key = f'cuenta_destino_{ticket.id}'
+            elif _aprobar(request, ticket.id) is not None:
+                aprobados += 1
+            else:
+                omitidos += 1
 
-            # Extraemos los datos de ESE ticket en particular del POST
-            cuenta = request.POST.get(cuenta_key)
-            categoria = request.POST.get(categoria_key)
-            tipo = request.POST.get(tipo_key, 'GASTO')
-            cuenta_destino = request.POST.get(cuenta_destino_key)
-
-            # Cuenta y categoría tienen valores por defecto (principal / 'Otro'); basta con el tipo.
-            if tipo:
-                if TransactionService.approve_pending_transaction(
-                    ticket_id=ticket.id,
-                    user=request.user,
-                    cuenta=cuenta,
-                    categoria=categoria,
-                    tipo_transaccion=tipo,
-                    cuenta_destino=cuenta_destino,
-                    monto=monto,
-                ) is not None:
-                    tickets_aprobados_count += 1
-                else:
-                    omitidos += 1
-        
-        if tickets_aprobados_count > 0:
-            messages.success(request, f"{tickets_aprobados_count} tickets han sido aprobados correctamente.")
+        if aprobados:
+            messages.success(request, f"{aprobados} tickets han sido aprobados correctamente.")
         elif not omitidos:
             messages.warning(request, "No se seleccionaron tickets para aprobar o faltaron datos.")
         if omitidos:
@@ -91,39 +74,12 @@ def rechazar_todos_tickets(request):
 
 @login_required
 def aprobar_ticket(request, ticket_id):
-    """
-    Aprueba un SOLO ticket. Esta vista ahora es más inteligente y sabe
-    buscar los datos específicos de este ticket dentro del gran formulario.
-    """
+    """Aprueba un SOLO ticket tomando sus campos del formulario grande."""
     if request.method == 'POST':
-        # Construimos los nombres únicos de los campos para este ticket específico
-        cuenta_key = f'cuenta_origen_{ticket_id}'
-        categoria_key = f'categoria_{ticket_id}'
-        tipo_key = f'tipo_{ticket_id}'
-        cuenta_destino_key = f'cuenta_destino_{ticket_id}'
-
-        # Extraemos los valores del POST usando esos nombres únicos
-        cuenta_seleccionada = request.POST.get(cuenta_key)
-        categoria_seleccionada = request.POST.get(categoria_key)
-        tipo_seleccionado = request.POST.get(tipo_key, 'GASTO') # 'GASTO' como valor por defecto
-        cuenta_destino_seleccionada = request.POST.get(cuenta_destino_key)
-        monto = request.POST.get(f'monto_{ticket_id}', '').strip()
-
-        # Usamos el servicio para manejar la aprobación del ticket individual
-        resultado = TransactionService.approve_pending_transaction(
-            ticket_id=ticket_id,
-            user=request.user,
-            cuenta=cuenta_seleccionada,
-            categoria=categoria_seleccionada,
-            tipo_transaccion=tipo_seleccionado,
-            cuenta_destino=cuenta_destino_seleccionada,
-            monto=monto,
-        )
-        if resultado is None:
+        if _aprobar(request, ticket_id) is None:
             messages.warning(request, "Ese ticket no tiene monto: escríbelo en la fila para poder registrarlo.")
         else:
             messages.success(request, "Ticket aprobado correctamente.")
-        
     return redirect('revisar_tickets')
 
 @login_required
@@ -180,15 +136,13 @@ def editar_transaccion(request, transaccion_id):
         # --- CAMBIO 2: Y también lo pasamos aquí ---
         form = TransaccionesForm(instance=transaccion, user=request.user)
     
-    return render(request, 'editar_transaccion.html', {'form': form, 'categorias': categorias_para(request.user)})
+    return render(request, 'transacciones.html', {'form': form, 'categorias': categorias_para(request.user)})
 
 @login_required
+@require_POST
 def eliminar_transaccion(request, transaccion_id):
-    transaccion = get_object_or_404(registro_transacciones, id=transaccion_id, propietario=request.user)
-    if request.method == 'POST':
-        transaccion.delete()
-        return redirect('lista_transacciones')
-    return render(request, 'confirmar_eliminar_transaccion.html', {'transaccion': transaccion})
+    get_object_or_404(registro_transacciones, id=transaccion_id, propietario=request.user).delete()
+    return redirect('lista_transacciones')
 
 @login_required
 def revisar_tickets(request):
@@ -217,14 +171,9 @@ def revisar_tickets(request):
 
 @login_required
 def rechazar_ticket(request, ticket_id):
-    ticket = TransaccionPendiente.objects.get(id=ticket_id, propietario=request.user)
-    ticket.estado = 'rechazada'
-    ticket.save()
+    TransaccionPendiente.objects.filter(id=ticket_id, propietario=request.user).update(estado='rechazada')
     return redirect('revisar_tickets')
 
-'''
-Vista para procesar automáticamente los tickets de Drive.
-'''
 @login_required
 def iniciar_procesamiento_drive(request):
     """
@@ -239,13 +188,18 @@ def iniciar_procesamiento_drive(request):
         # Captura errores generales durante el inicio de la tarea
         return JsonResponse({"error": f"No se pudo iniciar la tarea: {str(e)}"}, status=400)
 
-'''
-vista para los Dashboards y gráficas de transacciones 
-y ganancias mensuales, e inversiones.
-'''
 @login_required
 def vista_procesamiento_automatico(request):
-    return render(request, 'procesamiento_automatico.html')
+    return render(request, 'procesamiento.html', {
+        'titulo': 'Procesamiento Automático',
+        'subtitulo': 'Sincroniza tus tickets desde Google Drive',
+        'icono': 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+        'descripcion': 'Buscaremos nuevos archivos en tu carpeta designada.',
+        'start_url': reverse('procesar_drive'),
+        'redirect_url': reverse('revisar_tickets'),
+        'back_url': reverse('lista_transacciones'),
+        'back_text': 'Volver a Transacciones',
+    })
 
 @login_required
 def get_initial_task_result(request, task_id):
@@ -323,13 +277,9 @@ def cancelar_procesamiento(request):
         elif cancel_type == 'deudas':
             AmortizacionPendiente.objects.filter(deuda__propietario=request.user, estado='pendiente').update(estado='rechazada')
         elif cancel_type == 'facturas':
-            Factura.objects.filter(usuario=request.user, estado='pendiente').update(estado='rechazada')
+            Factura.objects.filter(propietario=request.user, estado='pendiente').update(estado='rechazada')
 
         return JsonResponse({'status': 'success', 'message': 'Procesamiento cancelado exitosamente.'})
     except Exception as e:
         logger.error(f"Error al cancelar procesamiento: {e}")
         return JsonResponse({'status': 'error', 'message': 'Ocurrió un error inesperado al cancelar'}, status=500)
-     
-'''
-Mercado Pago y suscripciones
-'''

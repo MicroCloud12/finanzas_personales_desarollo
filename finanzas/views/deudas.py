@@ -3,7 +3,9 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.shortcuts import render, redirect, get_object_or_404
 
 
@@ -61,35 +63,24 @@ def crear_deuda(request):
     else:
         form = DeudaForm()
 
-    context = {'form': form}
-    return render(request, 'crear_deuda.html', context)
-
-# Placeholder para las vistas que construiremos a continuación.
-# Esto evita que la aplicación se rompa por las URLs que ya creamos.
+    return render(request, 'form_simple.html', {
+        'form': form, 'titulo': 'Añadir Nueva Deuda', 'boton': 'Guardar Deuda', 'cancel_url': reverse('lista_deudas')})
 
 @login_required
 def detalle_deuda(request, deuda_id):
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    # Obtenemos la amortización ordenada para facilitar el cálculo
-    amortizacion = deuda.amortizacion.all().order_by('-numero_cuota') 
 
     if request.method == 'POST':
         form = PagoAmortizacionForm(request.POST)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.deuda = deuda
-            pago.numero_cuota = (amortizacion.first().numero_cuota if amortizacion.exists() else 0) + 1
-
-            # --- LÓGICA DE CÁLCULO AÑADIDA AQUÍ ---
-            ultima_cuota = amortizacion.first()
-            if ultima_cuota:
-                # Si ya hay cuotas, el nuevo saldo es el saldo anterior menos el capital de la nueva cuota
-                pago.saldo_insoluto = ultima_cuota.saldo_insoluto - pago.capital
-            else:
-                # Si es la primera cuota, se calcula sobre el monto total de la deuda
-                pago.saldo_insoluto = deuda.monto_total - pago.capital
-            
-            pago.save() # El modelo ahora solo calculará el pago_total y guardará.
+            # Nueva cuota = la siguiente a la última; su saldo parte del saldo anterior (o del monto total).
+            ultima_cuota = deuda.amortizacion.order_by('-numero_cuota').first()
+            pago.numero_cuota = (ultima_cuota.numero_cuota if ultima_cuota else 0) + 1
+            saldo_previo = ultima_cuota.saldo_insoluto if ultima_cuota else deuda.monto_total
+            pago.saldo_insoluto = saldo_previo - pago.capital
+            pago.save()
             messages.success(request, "Cuota añadida correctamente.")
             return redirect('detalle_deuda', deuda_id=deuda.id)
     else:
@@ -97,8 +88,7 @@ def detalle_deuda(request, deuda_id):
 
     context = {
         'deuda': deuda,
-        # La pasamos ordenada ascendentemente a la plantilla para la visualización
-        'amortizacion': deuda.amortizacion.all().order_by('numero_cuota'), 
+        'amortizacion': deuda.amortizacion.order_by('numero_cuota'),
         'form': form 
     }
     return render(request, 'detalle_deuda.html', context)
@@ -119,30 +109,29 @@ def editar_deuda(request, deuda_id):
     else:
         form = DeudaForm(instance=deuda)
 
-    return render(request, 'editar_deuda.html', {'form': form, 'deuda': deuda})
+    return render(request, 'form_simple.html', {
+        'form': form, 'titulo': 'Editar Deuda', 'boton': 'Guardar Deuda', 'cancel_url': reverse('lista_deudas')})
 
 @login_required
+@require_POST
 def eliminar_deuda(request, deuda_id):
-    """
-    Maneja la eliminación de una deuda y sus pagos de amortización asociados.
-    """
+    """Elimina la deuda, su cuenta de pasivo y su amortización (se confirma en la lista)."""
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    
-    # Si el usuario confirma la eliminación (envía el formulario)
-    if request.method == 'POST':
-        nombre_deuda = deuda.nombre
-        deuda.delete()
-        messages.success(request, f"La deuda '{nombre_deuda}' ha sido eliminada correctamente.")
-        return redirect('lista_deudas')
-    
-    # Si es la primera vez que se carga la página, muestra la confirmación
-    context = {'deuda': deuda}
-    return render(request, 'confirmar_eliminar_deuda.html', context)
+    deuda.delete()
+    messages.success(request, f"La deuda '{deuda.nombre}' ha sido eliminada correctamente.")
+    return redirect('lista_deudas')
 
 @login_required
 def vista_procesamiento_deudas(request, deuda_id):
     deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
-    return render(request, 'procesamiento_deudas.html', {'deuda': deuda})
+    return render(request, 'procesamiento.html', {
+        'deuda': deuda,
+        'titulo': 'Procesamiento de Amortizaciones',
+        'icono': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        'descripcion': 'Buscaremos tablas de amortización en tu carpeta de Drive.',
+        'start_url': reverse('procesar_drive_deudas', args=[deuda.id]),
+        'redirect_url': reverse('revisar_amortizaciones', args=[deuda.id]),
+    })
 
 @login_required
 def iniciar_procesamiento_deudas(request, deuda_id):

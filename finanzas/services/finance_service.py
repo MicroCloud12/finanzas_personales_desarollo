@@ -1,7 +1,7 @@
 # finanzas/services/finance_service.py
 from decimal import Decimal
 import logging
-from datetime import datetime, date
+from datetime import datetime
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from .market_data_service import StockPriceService
@@ -142,51 +142,6 @@ class InvestmentService:
             datos_json=data,
             estado='pendiente'
         )
-
-    @staticmethod
-    def calculate_monthly_profit(user, price_service=None):
-        """Calcula la ganancia mensual no realizada de las inversiones de un usuario."""
-        servicio_precios = price_service or StockPriceService()
-        ganancias_mensuales = defaultdict(Decimal)
-        
-        inversiones_usuario = inversiones.objects.filter(propietario=user)
-        if not inversiones_usuario:
-            return {}
-
-        hoy = datetime.now().date()
-        inversiones_por_ticker = defaultdict(list)
-        inicio_por_ticker = {}
-
-        for inv in inversiones_usuario:
-            inversiones_por_ticker[inv.emisora_ticker].append(inv)
-            inicio = inv.fecha_compra.replace(day=1)
-            if inv.emisora_ticker not in inicio_por_ticker or inicio < inicio_por_ticker[inv.emisora_ticker]:
-                inicio_por_ticker[inv.emisora_ticker] = inicio
-
-        series_cache = {}
-        for ticker, inicio in inicio_por_ticker.items():
-            series = servicio_precios.get_monthly_series(ticker, inicio, hoy)
-            series_cache[ticker] = {p["datetime"][:7]: Decimal(str(p["close"])) for p in series}
-            time.sleep(12)
-
-        for ticker, inversiones_list in inversiones_por_ticker.items():
-            precios_por_mes = series_cache.get(ticker, {})
-            for inv in inversiones_list:
-                fecha_iter = inv.fecha_compra.replace(day=1)
-                while fecha_iter <= hoy:
-                    mes_str = fecha_iter.strftime("%Y-%m")
-                    precio_cierre = precios_por_mes.get(mes_str)
-                    if precio_cierre is not None:
-                        costo_total_adquisicion = inv.cantidad_titulos * inv.precio_compra_titulo
-                        valor_actual_mercado = inv.cantidad_titulos * precio_cierre
-                        ganancia_perdida_no_realizada = valor_actual_mercado - costo_total_adquisicion
-                        ganancias_mensuales[mes_str] += ganancia_perdida_no_realizada
-                        
-                    if fecha_iter.month == 12:
-                        fecha_iter = date(fecha_iter.year + 1, 1, 1)
-                    else:
-                        fecha_iter = date(fecha_iter.year, fecha_iter.month + 1, 1)
-        return dict(sorted(ganancias_mensuales.items()))
 
     @staticmethod
     def calculate_daily_portfolio_history(user, price_service=None):

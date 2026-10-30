@@ -9,12 +9,10 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
 
-from ..forms import (
-    FormularioRegistroPersonalizado
-)
-from ..models import (
-    Suscripcion, GoogleCredentials
-)
+from allauth.socialaccount.models import SocialAccount
+
+from ..forms import FormularioRegistroPersonalizado
+from ..models import Suscripcion
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +22,10 @@ def enviar_pregunta(request):
         message = request.POST.get("message")
         subject = "Nueva pregunta desde el sitio"
         body = f"Correo: {email}\n\nMensaje:\n{message}"
-        send_mail(subject, body, settings.EMAIL_BACKEND, [settings.EMAIL_HOST_USER])
+        send_mail(subject, body, None, [settings.EMAIL_HOST_USER])  # None = DEFAULT_FROM_EMAIL
         messages.success(request, "Tu mensaje ha sido enviado correctamente.")
     return redirect('home')
 
-'''
-Vista de inicio, redirige a la página de inicio,
-inicio de sesión y registro.
-'''
 def home(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -51,9 +45,6 @@ def registro(request):
     context = {'form': form}
     return render(request, 'registro.html', context)
 
-'''
-Views relacionadas a las transacciones
-'''
 def politica_privacidad(request):
     """
     Muestra la política de privacidad de la aplicación.
@@ -71,19 +62,10 @@ def mi_perfil(request):
     """
     Muestra y permite editar el perfil del usuario.
     """
-    try:
-        suscripcion = request.user.suscripcion
-    except Suscripcion.DoesNotExist:
-        suscripcion = None
-        
-    try:
-        google_creds = GoogleCredentials.objects.get(user=request.user)
-    except GoogleCredentials.DoesNotExist:
-        google_creds = None
-
     context = {
-        'suscripcion': suscripcion,
-        'google_creds': google_creds,
+        'suscripcion': Suscripcion.objects.filter(usuario=request.user).first(),
+        # La conexión real con Drive vive en la cuenta social de allauth
+        'google_cuenta': SocialAccount.objects.filter(user=request.user, provider='google').first(),
         'today': timezone.now().date(),
     }
     return render(request, 'mi_perfil.html', context)

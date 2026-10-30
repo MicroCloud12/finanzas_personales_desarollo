@@ -69,16 +69,8 @@ class StockPriceService:
             logger.error(f"TwelveData TimeSeries error for {ticker}: {e}")
             return []
 
-    def get_monthly_series(self, ticker: str, start_date, end_date):
-        return self._get_time_series(ticker, start_date, end_date, "1month")
-
     def get_daily_series(self, ticker: str, start_date, end_date):
         return self._get_time_series(ticker, start_date, end_date, "1day")
-
-    def get_closing_price_for_date(self, ticker: str, target_date):
-        month_start = target_date.replace(day=1)
-        series = self.get_monthly_series(ticker, month_start, target_date)
-        return float(series[0]["close"]) if series else None
 
 class ExchangeRateService:
     """Service to fetch USD/MXN historical exchange rates."""

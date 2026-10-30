@@ -1,6 +1,6 @@
 {% load humanize dinero %}
 <tr class="{% if f.es_total %}bg-gray-50 font-semibold{% endif %}">
-    <td class="px-6 py-3 text-gray-900">{{ f.nombre }}</td>
+    <td class="px-6 py-3 text-gray-900" {% if not f.es_total %}style="padding-left:2.75rem"{% endif %}>{{ f.nombre }}</td>
     <td class="px-4 py-3 text-right text-gray-600">{{ f.anterior|dinero }}</td>
     <td class="px-4 py-3 text-right text-gray-900">{{ f.actual|dinero }}</td>
     <td class="px-4 py-3 text-right {% if f.favorable is None %}text-gray-400{% elif f.favorable %}text-emerald-700{% else %}text-red-600{% endif %}">

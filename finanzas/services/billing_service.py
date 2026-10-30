@@ -75,18 +75,10 @@ class BillingService:
     @staticmethod
     def procesar_datos_facturacion(datos_json: dict) -> dict:
         tienda_detectada = (datos_json.get('tienda') or datos_json.get('establecimiento') or 'DESCONOCIDO').upper().strip()
-        ya_validada_por_ia = datos_json.get('es_conocida') is True
+        # buscar_tienda_fuzzy prueba primero el nombre exacto
+        config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
 
-        config_tienda = None
-        if ya_validada_por_ia:
-            try:
-                config_tienda = TiendaFacturacion.objects.get(tienda=tienda_detectada)
-            except TiendaFacturacion.DoesNotExist:
-                config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
-        else:
-            config_tienda = BillingService.buscar_tienda_fuzzy(tienda_detectada)
-        
-        es_conocida = getattr(config_tienda, 'configuracion_finalizada', False) if config_tienda else False
+        es_conocida = config_tienda.configuracion_finalizada if config_tienda else False
         tienda_nombre = config_tienda.tienda if config_tienda else tienda_detectada
         campos_requeridos = config_tienda.campos_requeridos if config_tienda else []
         url_portal = config_tienda.url_portal if config_tienda else None

@@ -92,53 +92,6 @@ Format: Devuelve ÚNICAMENTE un JSON válido que sea un ARRAY de objetos `[]` co
   "saldo_insoluto": float
 }}
 """,
-    "facturacion": """
-Role: Eres un auditor fiscal especialista en CFDI 4.0.
-
-Objective: Extraer con precisión absoluta los datos para facturación, garantizando capturar el MONTO TOTAL real pagado, sin confundirlo con subtotales o cambio (que suele ser cero).
-
-Approach step-by-step:
-1. Analiza si el establecimiento pertenece a las TIENDAS CONOCIDAS del CONTEXTO. ESTANDARIZA el nombre de la tienda eliminando razones sociales.
-2. Extrae los `campos_requeridos` indicados si es tienda conocida, o los genéricos (Folio, Ticket, etc.) si no lo es.
-3. Busca el monto total a pagar. Identifica explícitamente palabras como "TOTAL", "IMPORTE" o "PAGO".
-4. EVITA extraer líneas que digan "CAMBIO", "VUELTO" o "SUBTOTAL". Si tu extracción inicial del total resulta en 0.0, vuelve a evaluar el texto buscando el verdadero importe cobrado.
-5. Clasifica el tipo de documento.
-
-Contexto de Tiendas:
-{context_str}
-
-Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
-{{
-  "_razonamiento": "string - Explica paso a paso cómo identificaste el total exacto para evitar extraer un cero.",
-  "tienda": "string",
-  "fecha": "YYYY-MM-DD",
-  "total": float,
-  "tipo_documento": "TICKET_COMPRA|TRANSFERENCIA",
-  "campos_adicionales": {{}}
-}}
-""",
-    "facturacion_from_text": """
-Role: Eres un sistema OCR de extracción estructurada avanzado.
-
-Objective: Extraer los datos básicos de facturación a partir de texto OCR, garantizando que el MONTO TOTAL sea el importe final pagado y nunca un valor de cero por error.
-
-Approach step-by-step:
-1. Identifica el nombre comercial de la tienda y ESTANDARIZA el nombre eliminando sufijos legales.
-2. Localiza la fecha de la compra o emisión.
-3. Extrae el monto TOTAL final pagado. Discrimina estrictamente entre el total real y otros números como el "Cambio" o "Vuelto" (que suelen ser $0.00). NO los confundas.
-4. Sense Check: Verifica que el total no sea 0.0 (a menos que el OCR explícitamente indique un descuento del 100%).
-
-Texto OCR:
-{text_content}
-
-Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
-{{
-  "_razonamiento": "string - Indica brevemente la lógica para extraer el total real confirmando que no se tomó el 'cambio'.",
-  "tienda": "string",
-  "fecha": "YYYY-MM-DD",
-  "total": float
-}}
-""",
     "facturacion_from_text_with_context": """
 Role: Eres un Auditor Fiscal CFDI 4.0 automatizado y minucioso.
 
@@ -187,54 +140,4 @@ Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
   "consumo": "string"
 }}
 """,
-    "recibo_servicio_from_text": """
-Role: Eres un analista de servicios domiciliarios operando sobre texto OCR.
-
-Task: Extrae los datos clave del recibo basándote únicamente en el texto OCR proporcionado.
-
-Approach step-by-step:
-1. Lee el documento de arriba hacia abajo para encontrar la fecha de emisión.
-2. Identifica el total a pagar definitivo.
-3. Localiza el mes o rango de meses del periodo de facturación.
-4. Extrae la métrica de consumo.
-
-Texto OCR:
-{text_content}
-
-Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
-{{
-  "_razonamiento": "string - Explica brevemente la extracción.",
-  "fecha_emision": "YYYY-MM-DD",
-  "monto_total": float,
-  "periodo_facturado": "string",
-  "consumo": "string"
-}}
-""",
-    "prediccion_servicio": """
-Role: Eres un Analista Financiero Predictivo Senior experto en series de tiempo.
-
-Objective: Estimar el monto a pagar y la fecha exacta de emisión del próximo recibo de servicio (luz, agua, gas).
-
-Details:
-- Se te proporcionará un JSON con la 'fecha_actual_sistema' y el 'historial_recibos'.
-- Regla para la 'fecha_predicha': Toma la fecha del último recibo y calcula matemáticamente la próxima fecha que sea ESTRICTAMENTE POSTERIOR al mes de 'fecha_actual_sistema'.
-- IMPORTANTE: NO iterar paso a paso escribiendo cada ciclo si la fecha es antigua. Utiliza una suma matemática directa para encontrar el mes futuro correspondiente que preserve el día original.
-- Ejemplos: Si hoy es Junio y el cálculo base te da Julio, DETENTE, esa es la fecha correcta. Si el último recibo fue hace un año, calcula directamente el salto de meses hacia el futuro actual (Julio o Agosto del presente año) conservando el día y la frecuencia (mensual/bimestral).
-
-Approach:
-1. Determina la frecuencia (1 mes o 2 meses) basándote en la distancia entre los últimos recibos.
-2. Identifica el mes y año de la 'fecha_actual_sistema'.
-3. Calcula matemáticamente el próximo ciclo de facturación que caiga en un mes ESTRICTAMENTE MAYOR al mes de la 'fecha_actual_sistema'.
-4. Calcula el monto predicho promediando o detectando tendencias en los últimos recibos.
-
-Contexto (Fecha actual y sumario histórico):
-{context_str}
-
-Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
-{{
-  "_razonamiento": "string - Muestra brevemente la frecuencia detectada y el salto matemático directo a la fecha futura, sin iteraciones largas.",
-  "monto_predicho": float,
-  "fecha_predicha": "YYYY-MM-DD"
-}}
-"""
 }

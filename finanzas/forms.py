@@ -2,8 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import registro_transacciones, inversiones, Deuda, PagoAmortizacion
-from .models import Cuenta
+from .models import registro_transacciones, inversiones, Deuda, PagoAmortizacion, Cuenta, Presupuesto
 
 INPUT_CLASSES = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 SELECT_CLASSES = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -92,7 +91,6 @@ class TransaccionesForm(forms.ModelForm):
         self.fields['origen'].empty_label = '---------'
         self.fields['destino'].empty_label = '---------'
         _aplicar_estilos(self)
-        self.fields['fecha'].widget.attrs.update({'type': 'date'})
 
     def clean(self):
         cleaned = super().clean()
@@ -117,7 +115,6 @@ class TransaccionesForm(forms.ModelForm):
         return cleaned
 
 class FormularioRegistroPersonalizado(UserCreationForm):
-    # El campo de email y la validación que ya teníamos están perfectos.
     email = forms.EmailField(
         required=True,
         help_text='Obligatorio. Introduce una dirección de correo válida.'
@@ -126,22 +123,11 @@ class FormularioRegistroPersonalizado(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         fields = UserCreationForm.Meta.fields + ('email',)
 
-    # --- AQUÍ VIENE LA NUEVA LÓGICA ---
-    # Sobrescribimos el método de inicialización del formulario
     def __init__(self, *args, **kwargs):
-        # Primero, ejecutamos la inicialización original
         super().__init__(*args, **kwargs)
-
-        # Ahora, definimos las clases de Tailwind que queremos aplicar
-        tailwind_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-
-        # Iteramos sobre todos los campos del formulario
-        for field_name, field in self.fields.items():
-            # Y le añadimos las clases a su widget (el input HTML)
-            field.widget.attrs.update({'class': tailwind_classes})
+        _aplicar_estilos(self)
 
     def clean_email(self):
-        # Esta función de validación sigue igual
         email = self.cleaned_data.get('email')
         if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("Este correo electrónico ya está en uso.")
@@ -153,7 +139,6 @@ class InversionForm(forms.ModelForm):
     """
     class Meta:
         model = inversiones
-        # Es más claro definir los campos que SÍ queremos mostrar.
         fields = [
             'tipo_inversion',
             'nombre_activo',
@@ -169,25 +154,7 @@ class InversionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # --- LÓGICA DE ESTILOS MEJORADA ---
-
-        # Clases para inputs normales (texto, número, fecha)
-        input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        
-        # Clases específicas para la lista desplegable (select)
-        select_classes = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-
-        # Aplicamos los estilos de forma condicional
-        for field_name, field in self.fields.items():
-            if isinstance(field.widget, forms.Select):
-                # Si el campo es una lista (como 'tipo_inversion')
-                field.widget.attrs.update({'class': select_classes})
-            else:
-                # Para todos los demás campos
-                field.widget.attrs.update({'class': input_classes})
-        
-        # Añadimos textos de ayuda para guiar al usuario
+        _aplicar_estilos(self)
         self.fields['nombre_activo'].help_text = "Ej: 'NVIDIA Corp', 'Bitcoin', 'Fondo de Inversión Global'."
         self.fields['emisora_ticker'].help_text = "Opcional. Ej: 'AAPL' para Apple, 'BIMBOA.MX' para Bimbo."
 
@@ -205,6 +172,7 @@ class DeudaForm(forms.ModelForm):
     class Meta:
         model = Deuda
         exclude = ('propietario', 'cuenta', 'saldo_legado', 'requiere_configuracion_adicional')
+        widgets = {'fecha_adquisicion': forms.DateInput(attrs={'type': 'date'})}
         help_texts = {
             'nombre': "Dale un apodo fácil de recordar (ej. 'Tarjeta Banamex', 'Crédito Coche').",
             'tasa_interes': "Ingresa la Tasa de Interés Anual (Ej: 16.5 para 16.5%).",
@@ -215,7 +183,6 @@ class DeudaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _aplicar_estilos(self)
-        self.fields['fecha_adquisicion'].widget = forms.DateInput(attrs={'type': 'date', 'class': INPUT_CLASSES})
         if self.instance and self.instance.pk:
             self.fields['saldo_actual'].initial = self.instance.saldo_pendiente
 
@@ -238,21 +205,12 @@ class DeudaForm(forms.ModelForm):
 class PagoAmortizacionForm(forms.ModelForm):
     class Meta:
         model = PagoAmortizacion
-        # Incluimos solo los campos que el usuario debe llenar
         fields = ['fecha_vencimiento', 'capital', 'interes', 'iva']
+        widgets = {'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"
-        
-        for field_name, field in self.fields.items():
-            field.widget.attrs.update({'class': input_classes})
-            
-        self.fields['fecha_vencimiento'].widget = forms.DateInput(
-            attrs={'type': 'date', 'class': input_classes}
-        )
-
-from .models import Presupuesto
+        _aplicar_estilos(self)
 
 class PresupuestoForm(forms.ModelForm):
     class Meta:
@@ -269,12 +227,4 @@ class PresupuestoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        input_classes = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        checkbox_classes = "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-
-        for field_name, field in self.fields.items():
-            if isinstance(field.widget, forms.CheckboxInput):
-                field.widget.attrs.update({'class': checkbox_classes})
-            else:
-                field.widget.attrs.update({'class': input_classes})
+        _aplicar_estilos(self)

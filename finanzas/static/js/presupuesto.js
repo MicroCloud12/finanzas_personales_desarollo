@@ -1,3 +1,4 @@
+// Acciones de la tabla de presupuesto (buscar recibos, procesarlos, predecir) vía fetch + JSON.
 function showToast(message, type = 'info') {
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -9,161 +10,76 @@ function showToast(message, type = 'info') {
     const colors = { success: 'border-green-500 text-green-700', error: 'border-red-500 text-red-700', warning: 'border-yellow-500 text-yellow-700', info: 'border-blue-500 text-blue-700' };
     const toast = document.createElement('div');
     toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 bg-white/90 backdrop-blur-md rounded-lg shadow-2xl border-l-4 ${colors[type] || colors.info}`;
-    toast.innerHTML = `<div class="pl-2 text-sm font-semibold">${message}</div>`;
+    const texto = document.createElement('div');
+    texto.className = 'pl-2 text-sm font-semibold';
+    texto.textContent = message;  // texto plano: un error del servidor nunca se interpreta como HTML
+    toast.appendChild(texto);
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 5000);
 }
 
-function buscarRecibos(btn, presupuestoId) {
-    const url = btn.dataset.url;
-    const iconLupa = btn.querySelector('.icon-lupa');
-    const iconSpinner = btn.querySelector('.icon-spinner');
+const getJSON = url => fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } }).then(r => r.json());
+const dormir = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Muestra el spinner del botón mientras corre `trabajo` y siempre restaura el ícono.
+async function conSpinner(btn, icono, spinner, mensajeError, trabajo) {
+    const i = btn.querySelector(icono), s = btn.querySelector(spinner);
+    i.classList.add('hidden');
+    s.classList.remove('hidden');
+    try {
+        await trabajo();
+    } catch (error) {
+        console.error(error);
+        showToast(mensajeError, 'error');
+    } finally {
+        s.classList.add('hidden');
+        i.classList.remove('hidden');
+    }
+}
+
+function buscarRecibos(btn) {
     const badge = btn.querySelector('.resultado-badge');
-
-    iconLupa.classList.add('hidden');
-    iconSpinner.classList.remove('hidden');
     badge.classList.add('hidden');
-
-    fetch(url, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        iconSpinner.classList.add('hidden');
-        iconLupa.classList.remove('hidden');
-
-        if (data.error) {
-            showToast(data.error, 'error');
-        } else if (data.cantidad !== undefined) {
+    conSpinner(btn, '.icon-lupa', '.icon-spinner', 'Ocurrió un error al buscar recibos.', async () => {
+        const data = await getJSON(btn.dataset.url);
+        if (data.error) return showToast(data.error, 'error');
+        if (data.cantidad !== undefined) {
             badge.textContent = data.cantidad;
             badge.classList.remove('hidden');
         }
-    })
-    .catch(error => {
-        iconSpinner.classList.add('hidden');
-        iconLupa.classList.remove('hidden');
-        showToast("Ocurrió un error al buscar recibos.", 'error');
-        console.error(error);
     });
 }
 
-function predecirRecibo(btn, presupuestoId) {
-    const url = btn.dataset.url;
-    const iconMagia = btn.querySelector('.icon-magia');
-    const iconSpinner = btn.querySelector('.icon-spinner-magia');
-
-    iconMagia.classList.add('hidden');
-    iconSpinner.classList.remove('hidden');
-
-    fetch(url, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        iconSpinner.classList.add('hidden');
-        iconMagia.classList.remove('hidden');
-
-        if (data.error) {
-            showToast(data.error, 'error');
-        } else if (data.success) {
+function predecirRecibo(btn) {
+    conSpinner(btn, '.icon-magia', '.icon-spinner-magia', 'Ocurrió un error al predecir el recibo.', async () => {
+        const data = await getJSON(btn.dataset.url);
+        if (data.error) return showToast(data.error, 'error');
+        if (data.success) {
             showToast(`Predicción: $${data.monto_predicho}${data.fecha_predicha ? ' · ' + data.fecha_predicha : ''}`, 'success');
             window.location.reload();
         }
-    })
-    .catch(error => {
-        iconSpinner.classList.add('hidden');
-        iconMagia.classList.remove('hidden');
-        showToast("Ocurrió un error al predecir el recibo.", 'error');
-        console.error(error);
     });
 }
 
-function procesarRecibosAnteriores(btn, presupuestoId) {
-    const url = btn.dataset.url;
-    const iconProcesar = btn.querySelector('.icon-procesar');
-    const iconSpinner = btn.querySelector('.icon-spinner-procesar');
+function procesarRecibosAnteriores(btn) {
+    conSpinner(btn, '.icon-procesar', '.icon-spinner-procesar', 'Ocurrió un error al procesar los recibos.', async () => {
+        const data = await getJSON(btn.dataset.url);
+        if (data.error) return showToast(data.error, 'error');
+        if (!data.task_id) return showToast(data.mensaje || 'Hecho', 'info');
 
-    iconProcesar.classList.add('hidden');
-    iconSpinner.classList.remove('hidden');
+        // 1) la tarea lanzadora devuelve el id del grupo; 2) se espera a que el grupo termine
+        let inicial;
+        do { await dormir(2000); inicial = await getJSON(`/resultado-tarea-inicial/${data.task_id}/`); }
+        while (inicial.status !== 'SUCCESS' && inicial.status !== 'FAILURE');
+        if (inicial.status === 'FAILURE') return showToast('Hubo un error en el worker de Celery.', 'error');
+        const r = inicial.result;
+        if (r.status !== 'STARTED') return showToast(r.message || 'Error en tarea', r.status === 'NO_FILES' ? 'warning' : 'error');
 
-    fetch(url, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            iconSpinner.classList.add('hidden');
-            iconProcesar.classList.remove('hidden');
-            showToast(data.error, 'error');
-        } else if (data.task_id) {
-            checkInitialTask(data.task_id);
-        } else {
-            iconSpinner.classList.add('hidden');
-            iconProcesar.classList.remove('hidden');
-            showToast(data.mensaje || "Hecho", 'info');
-        }
-    })
-    .catch(error => {
-        iconSpinner.classList.add('hidden');
-        iconProcesar.classList.remove('hidden');
-        showToast("Ocurrió un error al procesar los recibos.", 'error');
-        console.error(error);
+        let grupo;
+        do { await dormir(2000); grupo = await getJSON(`/estado-grupo/${r.task_group_id}/`); }
+        while (grupo.status !== 'COMPLETED' && grupo.status !== 'FAILURE');
+        if (grupo.status === 'FAILURE') return showToast('Falló el procesamiento de los recibos.', 'error');
+        showToast(`¡Se procesaron ${r.total_tasks} recibos exitosamente!`, 'success');
+        window.location.reload();
     });
-
-    function checkInitialTask(taskId) {
-        fetch(`/resultado-tarea-inicial/${taskId}/`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'SUCCESS') {
-                const result = data.result;
-                if (result.status === 'STARTED') {
-                    checkGroupTask(result.task_group_id, result.total_tasks);
-                } else if (result.status === 'NO_FILES') {
-                    iconSpinner.classList.add('hidden');
-                    iconProcesar.classList.remove('hidden');
-                    showToast(result.message, 'warning');
-                } else {
-                    iconSpinner.classList.add('hidden');
-                    iconProcesar.classList.remove('hidden');
-                    showToast(result.message || 'Error en tarea', 'error');
-                }
-            } else if (data.status === 'FAILURE') {
-                iconSpinner.classList.add('hidden');
-                iconProcesar.classList.remove('hidden');
-                showToast("Hubo un error en el worker de Celery.", 'error');
-            } else {
-                setTimeout(() => checkInitialTask(taskId), 2000);
-            }
-        }).catch(err => {
-            console.error(err);
-            setTimeout(() => checkInitialTask(taskId), 2000);
-        });
-    }
-
-    function checkGroupTask(groupId, totalTasks) {
-        fetch(`/estado-grupo/${groupId}/`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'COMPLETED') {
-                iconSpinner.classList.add('hidden');
-                iconProcesar.classList.remove('hidden');
-                showToast(`¡Se procesaron ${totalTasks} recibos exitosamente!`, 'success');
-                window.location.reload();
-            } else {
-                setTimeout(() => checkGroupTask(groupId, totalTasks), 2000);
-            }
-        }).catch(err => {
-            console.error(err);
-            setTimeout(() => checkGroupTask(groupId, totalTasks), 2000);
-        });
-    }
 }

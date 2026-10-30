@@ -1,4 +1,3 @@
-import json
 import logging
 from decimal import Decimal
 import calendar
@@ -7,19 +6,37 @@ from datetime import datetime, date
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Sum, Q, Count
-from django.utils.dateformat import DateFormat
-from django.db.models.functions import TruncMonth
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
 
-from ..models import (
-    registro_transacciones, Suscripcion, inversiones, 
-    GananciaMensual, Cuenta, Presupuesto
-)
+from ..models import registro_transacciones, Suscripcion, Cuenta, Presupuesto
+from ..templatetags.dinero import dinero
 
 logger = logging.getLogger(__name__)
+
+
+def _metrica(act, prev, transactions, categories):
+    """Cifra del mes contra el mes anterior, en el formato que pinta dashboard_cards.js."""
+    dif = act - prev
+    if prev > 0:
+        pct = (dif / prev) * Decimal('100.0')
+    else:
+        pct = Decimal('100.0') if act > 0 else Decimal('0.0')
+    return {
+        'total': f"{act:,.2f}",
+        'transactions': transactions,
+        'categories': categories,
+        'diferencia_monto': f"{abs(dif):,.2f}",
+        'porcentaje': round(float(abs(pct)), 1),
+        'es_positivo': bool(dif >= 0),
+    }
+
+
+def _conteo(qs):
+    agg = qs.aggregate(n=Count('id'), cats=Count('categoria', distinct=True))
+    return agg['n'], agg['cats']
 
 @login_required
 def vista_dashboard(request):
@@ -43,6 +60,8 @@ def vista_dashboard(request):
     # ingresos = lo que entró a cuentas de activo
     # gastos   = gastos de consumo (con débito, efectivo O tarjeta) + intereses de deuda
     bal = registro_transacciones.objects.balance_dashboard(request.user, year, month)
+    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+    bal_prev = registro_transacciones.objects.balance_dashboard(request.user, prev_year, prev_month)
     ingresos = bal['ingresos']
     gastos = bal['gastos']
     balance = bal['resultado']                 # resultado neto del mes
@@ -93,9 +112,18 @@ def vista_dashboard(request):
             'nombre': c.nombre,
             'terminacion': term,
             'tipo': c.tipo,
-            'saldo': f"{c.saldo_calculado:,.2f}",
+            'saldo': dinero(c.saldo_calculado),
         })
-    tarjetas_data_json = json.dumps(tarjetas_list)
+
+    # Tarjetas de arriba: cifras GLOBALES del mes (no de la cuenta elegida en "Mis tarjetas")
+    del_mes = registro_transacciones.objects.del_mes(request.user, year, month)
+    n_ing, cat_ing = _conteo(del_mes.filter(tipo='INGRESO').exclude(destino__tipo__in=Cuenta.TIPOS_PASIVO))
+    n_gas, cat_gas = _conteo(del_mes.filter(tipo='GASTO'))
+    metricas = {
+        'ingresos': _metrica(bal['ingresos'], bal_prev['ingresos'], n_ing, cat_ing),
+        'gastos': _metrica(bal['gastos'], bal_prev['gastos'], n_gas, cat_gas),
+        'balance': _metrica(bal['resultado'], bal_prev['resultado'], n_ing + n_gas, cat_ing + cat_gas),
+    }
 
     context = {
         'ingresos': ingresos,
@@ -121,7 +149,7 @@ def vista_dashboard(request):
         'num_prestamos': num_prestamos,
         'total_pagado_deudas': total_pagado_deudas,
         'abonos_capital': bal['abonos_capital'],
-        'tarjetas_data_json': tarjetas_data_json,
+        'metricas': metricas,
         'tarjetas_list': tarjetas_list,
         'investment_chart_labels': savings_labels,
         'investment_chart_data': savings_data,
@@ -194,157 +222,3 @@ def datos_presupuesto(request):
         'presupuestado': data_presupuestado,
         'real': data_real
     })
-
-@login_required
-@require_GET
-def datos_flujo_dinero(request):
-    try:
-        year = int(request.GET.get('year', datetime.now().year))
-        month = int(request.GET.get('month', datetime.now().month))
-    except ValueError:
-        return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
-    bal = registro_transacciones.objects.balance_dashboard(request.user, year, month)
-    data = {
-        'labels': ['Ingresos del Mes', 'Gastos del Mes'],
-        'data': [bal['ingresos'], bal['gastos']],
-    }
-    return JsonResponse(data)
-
-@login_required
-@require_GET
-def datos_ganancias_mensuales(request):
-    """Retorna las ganancias mensuales acumuladas de las inversiones del usuario.
-    profits = InvestmentService.calculate_monthly_profit(request.user)
-    labels = list(profits.keys())
-    data = [profits[month] for month in labels]
-    return JsonResponse({'labels': labels, 'data': data})
-    """
-    ganancias = GananciaMensual.objects.filter(
-        propietario=request.user
-    ).order_by('mes')
-    labels = [g.mes for g in ganancias]
-    data = [g.total for g in ganancias]
-    return JsonResponse({'labels': labels, 'data': data})
-
-@login_required
-@require_GET
-def datos_inversiones(request):
-    
-    qs = (
-        inversiones.objects
-        .filter(propietario=request.user)
-        .annotate(month=TruncMonth('fecha_compra'))
-        .values('month')
-        .annotate(total=Sum('ganancia_perdida_no_realizada'))
-        .order_by('month')
-    )
-    labels = [DateFormat(item['month']).format('Y-m') for item in qs]
-    values = [item['total'] for item in qs]
-    return JsonResponse({'labels': labels, 'data': values})
-
-'''
-Deudas y amortizaciones
-'''
-@login_required
-@require_GET
-def api_ingresos_tarjeta(request):
-    try:
-        cuenta_nombre = request.GET.get('cuenta_nombre', '')
-        year = request.GET.get('year', '')
-        month = request.GET.get('month', '')
-
-        if not cuenta_nombre or not year or not month:
-            return JsonResponse({'status': 'error', 'message': 'Parámetros incompletos'}, status=400)
-
-        try:
-            year = int(year)
-            month = int(month)
-        except ValueError:
-            return JsonResponse({'status': 'error', 'message': 'El formato de fecha es inválido'}, status=400)
-
-        cuenta = Cuenta.objects.filter(propietario=request.user, nombre=cuenta_nombre).first()
-        if cuenta is None:
-            return JsonResponse({'status': 'error', 'message': 'Cuenta no encontrada'}, status=404)
-
-        # Calcular el mes anterior para la comparación
-        if month == 1:
-            prev_month, prev_year = 12, year - 1
-        else:
-            prev_month, prev_year = month - 1, year
-
-        # --- Flujos de ESTA cuenta según el libro mayor ---
-        def procesar_flujo(es_entrada, y, m):
-            qs = registro_transacciones.objects.del_mes(request.user, y, m)
-            if es_entrada:
-                # Entradas: ingresos y transferencias que LLEGARON a esta cuenta
-                qs = qs.filter(destino=cuenta)
-            else:
-                # Salidas: gastos, transferencias y pagos de deuda que SALIERON de esta cuenta
-                qs = qs.filter(origen=cuenta)
-
-            agregados = qs.aggregate(
-                total=Sum('monto'),
-                num_categorias=Count('categoria', distinct=True)
-            )
-
-            return {
-                'total': agregados['total'] or Decimal('0.00'),
-                'transactions': qs.count(),
-                'categories': agregados['num_categorias'] or 0
-            }
-
-        entradas_act = procesar_flujo(es_entrada=True, y=year, m=month)
-        salidas_act = procesar_flujo(es_entrada=False, y=year, m=month)
-        entradas_prev = procesar_flujo(es_entrada=True, y=prev_year, m=prev_month)
-        salidas_prev = procesar_flujo(es_entrada=False, y=prev_year, m=prev_month)
-
-        def calcular_metricas(act, prev):
-            dif = act['total'] - prev['total']
-            if prev['total'] > 0:
-                pct = (dif / prev['total']) * Decimal('100.0')
-            else:
-                pct = Decimal('100.0') if act['total'] > 0 else Decimal('0.0')
-
-            return {
-                'total': f"{act['total']:,.2f}",
-                'transactions': act['transactions'],
-                'categories': act['categories'],
-                'diferencia_monto': f"{abs(dif):,.2f}",
-                'porcentaje': round(float(abs(pct)), 1),
-                'es_positivo': bool(dif >= 0),
-            }
-
-        ingresos_data = calcular_metricas(entradas_act, entradas_prev)
-        gastos_data = calcular_metricas(salidas_act, salidas_prev)
-
-        # Balance de la tarjeta = SALDO real al cierre del mes (no solo el flujo del mes)
-        fin_de_mes = date(year, month, calendar.monthrange(year, month)[1])
-        fin_mes_prev = date(prev_year, prev_month, calendar.monthrange(prev_year, prev_month)[1])
-        balance_act = cuenta.saldo(hasta=fin_de_mes)
-        balance_prev = cuenta.saldo(hasta=fin_mes_prev)
-
-        dif_balance = balance_act - balance_prev
-        if balance_prev > 0:
-            pct_balance = (dif_balance / balance_prev) * Decimal('100.0')
-        else:
-            pct_balance = Decimal('100.0') if balance_act > 0 else Decimal('0.0')
-
-        balance_data = {
-            'total': f"{balance_act:,.2f}",
-            'transactions': entradas_act['transactions'] + salidas_act['transactions'],
-            'categories': entradas_act['categories'] + salidas_act['categories'],
-            'diferencia_monto': f"{abs(dif_balance):,.2f}",
-            'porcentaje': round(float(abs(pct_balance)), 1),
-            'es_positivo': bool(dif_balance >= 0),
-        }
-
-        return JsonResponse({
-            'status': 'success',
-            'ingresos': ingresos_data,
-            'gastos': gastos_data,
-            'balance': balance_data
-        })
-
-    except Exception as e:
-        logger.error(f"Error en api_ingresos_tarjeta: {e}")
-        return JsonResponse({'status': 'error', 'message': 'Ha ocurrido un error inesperado al procesar los ingresos.'}, status=500)

@@ -15,21 +15,6 @@ const BACKGROUND_GRADIENTS = [
 ];
 
 document.addEventListener('DOMContentLoaded', function() {
-    const dataEl = document.getElementById('tarjetas-data');
-    if (!dataEl) return;
-
-    const tarjetas = JSON.parse(dataEl.textContent);
-    if (tarjetas.length === 0) return;
-
-    const widget = document.getElementById('myCardsWidget');
-    const visualCardName = document.getElementById('visualCardName');
-    const visualCardNumber = document.getElementById('visualCardNumber');
-    const indexLabel = document.getElementById('visualCardIndexLabel');
-    const prevBtn = document.getElementById('prevCardBtn');
-    const nextBtn = document.getElementById('nextCardBtn');
-
-    let currentIndex = 0;
-
     function setText(id, text) {
         const el = document.getElementById(id);
         if (el) el.textContent = text;
@@ -60,23 +45,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (earnText) earnText.textContent = metric.es_positivo ? 'extra' : 'menos';
     }
 
-    function renderCardMetrics(data) {
-        updateMetricCard('income', data.ingresos, BADGE_POSITIVE, BADGE_NEGATIVE);
-        updateMetricCard('expense', data.gastos, BADGE_EXPENSE_UP, BADGE_EXPENSE_DOWN);
-        updateMetricCard('balance', data.balance, BADGE_POSITIVE, BADGE_NEGATIVE);
+    // Tarjetas de arriba: cifras GLOBALES del mes vs. el mes anterior (las calcula la vista)
+    const metricasEl = document.getElementById('metricas-data');
+    if (metricasEl) {
+        const m = JSON.parse(metricasEl.textContent);
+        updateMetricCard('income', m.ingresos, BADGE_POSITIVE, BADGE_NEGATIVE);
+        updateMetricCard('expense', m.gastos, BADGE_EXPENSE_UP, BADGE_EXPENSE_DOWN);
+        updateMetricCard('balance', m.balance, BADGE_POSITIVE, BADGE_NEGATIVE);
     }
 
-    function fetchCardMetrics(cuentaNombre) {
-        const month = document.querySelector('select[name="month"]')?.value;
-        const year = document.querySelector('select[name="year"]')?.value;
-        if (month == null || year == null) return;
+    // Widget "Mis tarjetas": solo cambia la tarjeta visual y su saldo
+    const dataEl = document.getElementById('tarjetas-data');
+    if (!dataEl) return;
+    const tarjetas = JSON.parse(dataEl.textContent);
+    if (tarjetas.length === 0) return;
 
-        const url = `/api/dashboard/ingresos-tarjeta/?cuenta_nombre=${encodeURIComponent(cuentaNombre)}&month=${month}&year=${year}`;
-        fetch(url)
-            .then(response => response.json())
-            .then(data => { if (data.status === 'success') renderCardMetrics(data); })
-            .catch(error => console.error('Error al obtener las estadísticas de ingresos:', error));
-    }
+    const widget = document.getElementById('myCardsWidget');
+    const visualCardName = document.getElementById('visualCardName');
+    const visualCardNumber = document.getElementById('visualCardNumber');
+    const indexLabel = document.getElementById('visualCardIndexLabel');
+    let currentIndex = 0;
 
     function showCard(index) {
         const card = tarjetas[index];
@@ -84,22 +72,20 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             visualCardName.textContent = card.nombre;
             visualCardNumber.innerHTML = `<span class="inline-block relative top-[0.2em] transform translate-y-px">**** **** ****</span> <span class="ml-3">${card.terminacion || '0000'}</span>`;
+            setText('visualCardSaldo', card.saldo);
             if (indexLabel) indexLabel.textContent = `( ${index + 1}/${tarjetas.length} )`;
             widget.style.background = BACKGROUND_GRADIENTS[index % BACKGROUND_GRADIENTS.length];
             widget.style.opacity = '1';
-            fetchCardMetrics(card.nombre);
         }, 150);
     }
 
-    prevBtn?.addEventListener('click', () => {
+    document.getElementById('prevCardBtn')?.addEventListener('click', () => {
         currentIndex = (currentIndex === 0) ? tarjetas.length - 1 : currentIndex - 1;
         showCard(currentIndex);
     });
 
-    nextBtn?.addEventListener('click', () => {
+    document.getElementById('nextCardBtn')?.addEventListener('click', () => {
         currentIndex = (currentIndex === tarjetas.length - 1) ? 0 : currentIndex + 1;
         showCard(currentIndex);
     });
-
-    fetchCardMetrics(tarjetas[currentIndex].nombre);
 });

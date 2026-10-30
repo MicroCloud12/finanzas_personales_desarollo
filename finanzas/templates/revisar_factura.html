@@ -417,7 +417,6 @@
     </div>
     {% endif %}
 </div>
-{% endblock %}
 
 {# --- Modal Editar Factura (Global) --- #}
 <div id="modal-editar-factura" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title"
@@ -492,7 +491,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block javascript %}
-<script src="{% static 'js/procesamiento.js' %}?v=1.10"></script>
+<script src="{% static 'js/procesamiento.js' %}"></script>
 {% endblock %}

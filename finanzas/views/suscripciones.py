@@ -99,16 +99,12 @@ def mercadopago_webhook(request):
                 suscripcion_obj.save()
 
     except (json.JSONDecodeError, KeyError, Suscripcion.DoesNotExist) as e:
-        # Log del error sería ideal aquí en un sistema de producción
-        print(f"Error procesando webhook: {e}")
+        logger.error(f"Error procesando webhook de Mercado Pago: {e}")
         return HttpResponse(status=400)
 
     # Devolvemos un 200 OK para que Mercado Pago sepa que recibimos la notificación
     return HttpResponse(status=200)
 
-'''
-Inversiones
-'''
 @csrf_exempt # Es crucial para permitir que un servicio externo como Google haga POST
 def risc_webhook(request):
     """

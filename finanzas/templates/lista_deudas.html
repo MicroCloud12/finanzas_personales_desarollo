@@ -115,7 +115,9 @@
                         <td class="px-6 py-4 bg-white text-sm text-gray-600 font-medium">${{ deuda.monto_total|floatformat:2|intcomma }}</td>
                         <td class="px-6 py-4 bg-white text-sm">
                             <span class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</span>
-                            {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}
+                            {% if deuda.saldo_pendiente < 0 %}
+                            <div class="text-[10px] text-amber-700 mt-1">Saldo a favor. Si no es real, edita la deuda y escribe cuánto debes hoy.</div>
+                            {% elif deuda.tipo_deuda == 'TARJETA_CREDITO' %}
                             <div class="text-[10px] text-gray-500 mt-1">Disponible: ${{ deuda.disponible|floatformat:2|intcomma }}</div>
                             {% endif %}
                             {% if deuda.proxima_fecha_corte %}
@@ -249,7 +251,8 @@
                 <div class="text-right">
                     <p class="text-xs text-gray-500">{% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Debes{% else %}Saldo{% endif %}</p>
                     <p class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</p>
-                    {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}<p class="text-[10px] text-gray-500">Disponible: ${{ deuda.disponible|floatformat:2|intcomma }}</p>{% endif %}
+                    {% if deuda.saldo_pendiente < 0 %}<p class="text-[10px] text-amber-700">Saldo a favor. Si no es real, edita la deuda y escribe cuánto debes hoy.</p>
+                    {% elif deuda.tipo_deuda == 'TARJETA_CREDITO' %}<p class="text-[10px] text-gray-500">Disponible: ${{ deuda.disponible|floatformat:2|intcomma }}</p>{% endif %}
                     <p class="text-xs text-gray-500 mt-1">{% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Gastado{% else %}Pagado{% endif %}</p>
                     <p class="font-bold text-gray-800">${{ deuda.total_gastado|floatformat:2|intcomma }}</p>
                     {% if deuda.proxima_fecha_corte %}

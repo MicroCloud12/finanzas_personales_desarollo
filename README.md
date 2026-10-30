@@ -5,7 +5,7 @@ Este proyecto es una aplicación web desarrollada en Django para llevar el contr
 ## Características principales
 
 - Registro de transacciones en un **libro mayor**: cada movimiento sale de una cuenta y/o entra a otra, y los saldos se derivan de los movimientos (ver [Modelo contable](#modelo-contable-libro-mayor)).
-- Administración de inversiones y cálculo de ganancias mensuales.
+- Administración de inversiones e historial diario del portafolio.
 - Integración con Google Drive y Gemini para procesar tickets de compra en imágenes o PDF.
 - Tareas asíncronas gestionadas con Celery y Redis.
 
@@ -30,46 +30,26 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-## Cálculo de ganancias mensuales
+## Worker de Celery
 
-El comando `update_monthly_profits` calcula y almacena las ganancias o pérdidas no realizadas de todas las inversiones. Ejecútelo así:
-
-```bash
-python manage.py update_monthly_profits
-```
-
-Este proceso consultará la API de precios y almacenará los resultados en la tabla `GananciaMensual`. El dashboard leerá estos datos ya guardados.
-
-### Programar la actualización
-
-Puede automatizar este comando de dos maneras:
-
-#### Con Celery Beat
-
-1. Asegúrese de que `celery` esté configurado correctamente. Inicie un worker con:
+El procesamiento de Drive (tickets, inversiones, amortizaciones, facturas y recibos) corre en Celery:
 
 ```bash
 celery -A config worker -l info -P gevent -c 4
 ```
 
-2. Inicie un proceso `beat` para lanzar el comando de forma periódica (por ejemplo, cada día primero de mes):
+## Precios e historial del portafolio
 
 ```bash
-celery -A config beat -l info
+python manage.py update_prices              # precio actual de cada inversión (Twelve Data)
+python manage.py update_portfolio_history   # recalcula la gráfica de rendimiento diario
 ```
 
-Configure el intervalo en `CELERY_BEAT_SCHEDULE` dentro de `config/settings.py` si desea personalizar la frecuencia.
-
-#### Con Cron
-
-También puede usar cron si prefiere ejecutar el comando mediante un cron job. Un ejemplo para ejecutarlo cada primero de mes a las 2:00 a.m. sería:
+Para tenerlos al día puede programarlos con cron, por ejemplo cada noche:
 
 ```
-0 2 1 * * cd /ruta/al/proyecto && /usr/bin/python manage.py update_monthly_profits >> cron.log 2>&1
+0 2 * * * cd /ruta/al/proyecto && python manage.py update_prices && python manage.py update_portfolio_history >> cron.log 2>&1
 ```
-
-De esta forma el dashboard siempre utilizará la información precalculada.
-
 
 #### Accesar a la base de datos en Docker 
 1. Ejecutar: docker-compose exec db /bin/bash

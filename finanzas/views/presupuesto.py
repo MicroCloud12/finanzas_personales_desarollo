@@ -3,19 +3,19 @@ from datetime import timedelta
 from statistics import median
 
 from django.utils import timezone
+from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 
-
-from ..tasks import (
-    process_drive_utility_bills,
-)
-from ..models import (
-    Presupuesto, HistorialReciboServicio
-)
+from ..forms import PresupuestoForm
+from ..services import GoogleDriveService
+from ..tasks import process_drive_utility_bills, carpeta_recibos
+from ..models import Presupuesto, HistorialReciboServicio
 
 logger = logging.getLogger(__name__)
+CATEGORIAS_RECIBOS = ('agua', 'luz', 'gas')
 
 
 def cadencia_dias(fechas, categoria):
@@ -56,117 +56,64 @@ def presupuesto_view(request):
 
 @login_required
 def crear_presupuesto(request):
-    from ..forms import PresupuestoForm
-    from django.contrib import messages
-    
-    if request.method == 'POST':
-        form = PresupuestoForm(request.POST)
-        if form.is_valid():
-            presupuesto = form.save(commit=False)
-            presupuesto.propietario = request.user
-            presupuesto.save()
-            messages.success(request, 'Concepto de presupuesto guardado exitosamente.')
-            return redirect('presupuesto')
-    else:
-        form = PresupuestoForm()
-        
-    return render(request, 'crear_presupuesto.html', {'form': form})
+    form = PresupuestoForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        presupuesto = form.save(commit=False)
+        presupuesto.propietario = request.user
+        presupuesto.save()
+        messages.success(request, 'Concepto de presupuesto guardado exitosamente.')
+        return redirect('presupuesto')
+    return render(request, 'form_simple.html', {
+        'form': form, 'titulo': 'Añadir Nuevo Concepto', 'boton': 'Guardar Concepto', 'cancel_url': reverse('presupuesto')})
 
 @login_required
 def editar_presupuesto(request, presupuesto_id):
-    from ..forms import PresupuestoForm
-    from django.contrib import messages
-    from django.shortcuts import get_object_or_404
-    
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
-    
-    if request.method == 'POST':
-        form = PresupuestoForm(request.POST, instance=presupuesto)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Concepto de presupuesto actualizado exitosamente.')
-            return redirect('presupuesto')
-    else:
-        form = PresupuestoForm(instance=presupuesto)
-        
-    return render(request, 'editar_presupuesto.html', {'form': form, 'presupuesto': presupuesto})
+    form = PresupuestoForm(request.POST or None, instance=presupuesto)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Concepto de presupuesto actualizado exitosamente.')
+        return redirect('presupuesto')
+    return render(request, 'form_simple.html', {
+        'form': form, 'titulo': 'Editar Concepto', 'boton': 'Guardar Cambios', 'cancel_url': reverse('presupuesto')})
+
+def _es_ajax(request):
+    return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+def _aviso(request, mensaje, status, nivel=messages.warning):
+    """Error como JSON para fetch() o como mensaje + redirect para navegación normal."""
+    if _es_ajax(request):
+        return JsonResponse({'error': mensaje}, status=status)
+    nivel(request, mensaje)
+    return redirect('presupuesto')
 
 @login_required
 def buscar_recibos_presupuesto(request, presupuesto_id):
-    from django.shortcuts import get_object_or_404
-    from django.contrib import messages
-    from ..services import GoogleDriveService
-
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
     categoria_lower = presupuesto.categoria.lower().strip()
-    
-    if categoria_lower not in ['agua', 'luz', 'gas']:
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'error': f'La búsqueda automática de recibos no está configurada para la categoría: {presupuesto.categoria}'}, status=400)
-        messages.warning(request, f'La búsqueda automática de recibos no está configurada para la categoría: {presupuesto.categoria}')
-        return redirect('presupuesto')
-        
+    if categoria_lower not in CATEGORIAS_RECIBOS:
+        return _aviso(request, f'La búsqueda automática de recibos no está configurada para la categoría: {presupuesto.categoria}', 400)
+
     try:
-        drive_service = GoogleDriveService(request.user)
-        
-        # Buscar carpeta principal 'recibos' (insensible a mayúsculas)
-        query_recibos = "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='recibos' or name='Recibos' or name='RECIBOS')"
-        response_recibos = drive_service.service.files().list(q=query_recibos, spaces='drive', fields='files(id, name)').execute()
-        carpetas_recibos = response_recibos.get('files', [])
-        
-        if not carpetas_recibos:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'error': "No se encontró la carpeta 'Recibos' en tu Google Drive. Asegúrate de crearla."}, status=404)
-            messages.warning(request, "No se encontró la carpeta 'Recibos' en tu Google Drive. Asegúrate de crearla.")
-            return redirect('presupuesto')
-            
-        carpeta_recibos_id = carpetas_recibos[0]['id']
-            
-        # Buscar la subcarpeta (ej. 'agua', 'Agua', 'AGUA') dentro de 'recibos'
-        cat_title = categoria_lower.capitalize()
-        cat_upper = categoria_lower.upper()
-        
-        query_sub = f"mimeType='application/vnd.google-apps.folder' and '{carpeta_recibos_id}' in parents and trashed=false and (name='{categoria_lower}' or name='{cat_title}' or name='{cat_upper}')"
-        response_sub = drive_service.service.files().list(q=query_sub, spaces='drive', fields='files(id, name)').execute()
-        carpetas_encontradas = response_sub.get('files', [])
-        
-        if not carpetas_encontradas:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'error': f"Se encontró la carpeta 'Recibos', pero no la subcarpeta '{categoria_lower}'. Asegúrate de crearla."}, status=404)
-            messages.warning(request, f"Se encontró la carpeta 'Recibos', pero no la subcarpeta '{categoria_lower}'. Asegúrate de crearla.")
-            return redirect('presupuesto')
-            
-        subcarpeta_id = carpetas_encontradas[0]['id']
-        
-        # Como paso intermedio, vamos a listar cuántos PDFs o imágenes hay
-        archivos = drive_service.service.files().list(
-            q=f"'{subcarpeta_id}' in parents and trashed=false",
-            fields="files(id, name, mimeType)"
-        ).execute().get('files', [])
-        
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'cantidad': len(archivos)})
-            
-        messages.success(request, f"Se encontró la carpeta '{categoria_lower}' en Drive con {len(archivos)} archivo(s). ¡Listo para el siguiente paso!")
-        
+        archivos = carpeta_recibos(GoogleDriveService(request.user), categoria_lower)
+    except ValueError as e:  # falta la carpeta 'Recibos' o la subcarpeta
+        return _aviso(request, str(e), 404)
     except Exception as e:
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'error': f"Error al acceder a Google Drive: {str(e)}. Recuerda vincular tu cuenta."}, status=500)
-        messages.error(request, f"Error al acceder a Google Drive: {str(e)}. Recuerda vincular tu cuenta.")
-        
+        return _aviso(request, f"Error al acceder a Google Drive: {e}. Recuerda vincular tu cuenta.", 500, messages.error)
+
+    if _es_ajax(request):
+        return JsonResponse({'cantidad': len(archivos)})
+    messages.success(request, f"Se encontró la carpeta '{categoria_lower}' en Drive con {len(archivos)} archivo(s). ¡Listo para el siguiente paso!")
     return redirect('presupuesto')
 
 @login_required
 def procesar_recibos_anteriores_presupuesto(request, presupuesto_id):
-    from django.shortcuts import get_object_or_404
-    
-    if request.headers.get('x-requested-with') != 'XMLHttpRequest':
+    if not _es_ajax(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
     categoria_lower = presupuesto.categoria.lower().strip()
-    
-    if categoria_lower not in ['agua', 'luz', 'gas']:
+    if categoria_lower not in CATEGORIAS_RECIBOS:
         return JsonResponse({'error': 'Procesamiento no configurado para esta categoría'}, status=400)
 
     try:
@@ -177,21 +124,18 @@ def procesar_recibos_anteriores_presupuesto(request, presupuesto_id):
             'mensaje': 'Tus recibos se están procesando en segundo plano. Los resultados aparecerán pronto.'
         })
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error al encolar process_drive_utility_bills")
         return JsonResponse({'error': f'Ocurrió un error al encolar la tarea: {str(e)}'}, status=500)
 
 @login_required
 def predecir_recibo_presupuesto(request, presupuesto_id):
-    from django.shortcuts import get_object_or_404
-
-    if request.headers.get('x-requested-with') != 'XMLHttpRequest':
+    if not _es_ajax(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
     categoria_lower = presupuesto.categoria.lower().strip()
     
-    if categoria_lower not in ['agua', 'luz', 'gas']:
+    if categoria_lower not in CATEGORIAS_RECIBOS:
         return JsonResponse({'error': 'Predicción no configurada para esta categoría'}, status=400)
 
     try:
@@ -226,8 +170,7 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
         })
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error al predecir recibo")
         return JsonResponse({'error': f'Ocurrió un error al predecir: {str(e)}'}, status=500)
 
 @login_required
