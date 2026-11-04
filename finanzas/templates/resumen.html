@@ -284,7 +284,10 @@
                 <tbody class="divide-y divide-gray-100">
                     {% for c in conciliacion %}
                     <tr>
-                        <td class="px-6 py-3 font-medium text-gray-900">{{ c.cuenta.nombre }} <span class="text-[11px] text-gray-400">· {{ c.cuenta.get_tipo_display }}</span></td>
+                        <td class="px-6 py-3 font-medium text-gray-900">{{ c.cuenta.nombre }} <span class="text-[11px] text-gray-400">· {{ c.cuenta.get_tipo_display }}</span>
+                            <a href="{% if c.cuenta.tipo == 'PRESTAMO' and c.cuenta.deuda %}{% url 'editar_deuda' c.cuenta.deuda.id %}{% else %}{% url 'editar_cuenta' c.cuenta.id %}{% endif %}"
+                               class="block text-[11px] text-indigo-600 hover:underline mt-0.5">ajustar saldo inicial (hoy: {{ c.cuenta.saldo_inicial|dinero }})</a>
+                        </td>
                         <td class="px-4 py-3 text-right text-gray-700">{{ c.registro|dinero }}{% if c.fecha_saldo %}<span class="block text-[10px] text-gray-400">al {{ c.fecha_saldo|date:"d/m" }} (fecha de tu captura)</span>{% endif %}</td>
                         <td class="px-4 py-3 text-right">
                             <input type="text" inputmode="decimal" name="saldo_banco_{{ c.cuenta.id }}"

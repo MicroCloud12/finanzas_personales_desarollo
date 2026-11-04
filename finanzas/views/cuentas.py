@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def gestionar_cuentas(request):
-    cuentas = Cuenta.objects.filter(propietario=request.user).order_by('-es_principal', 'tipo', 'nombre')
+    # Los préstamos tienen cuenta en el libro, pero se administran en Deudas, no aquí.
+    cuentas = Cuenta.objects.filter(propietario=request.user).exclude(tipo='PRESTAMO').order_by('-es_principal', 'tipo', 'nombre')
 
     if request.method == 'POST':
         form = CuentaForm(request.POST)

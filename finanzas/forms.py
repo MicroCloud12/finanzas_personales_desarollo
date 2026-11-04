@@ -33,27 +33,39 @@ class CuentaForm(forms.ModelForm):
 
     class Meta:
         model = Cuenta
-        fields = ['nombre', 'terminacion', 'tipo', 'es_principal']
+        fields = ['nombre', 'terminacion', 'tipo', 'es_principal', 'saldo_inicial']
+        labels = {'saldo_inicial': 'Saldo inicial'}
+        help_texts = {'saldo_inicial': 'Lo que había en la cuenta antes del primer movimiento registrado '
+                                       '(en tarjetas y préstamos, lo que se debía). Saldo actual = saldo inicial + movimientos. '
+                                       'Ponlo en 0 para deshacer un ajuste.'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _aplicar_estilos(self)
+        # Un préstamo se da de alta en Deudas (ahí se captura tasa, plazo y amortización).
+        self.fields['tipo'].choices = [c for c in Cuenta.TIPO_CUENTA if c[0] != 'PRESTAMO']
+        self.fields['saldo_inicial'].required = False
         self.fields['nombre'].widget.attrs.update({'placeholder': 'Ej. Tarjeta Nu, Efectivo, BBVA'})
         self.fields['terminacion'].widget.attrs.update({'placeholder': 'Ej. 1234 (Solo los últimos 4 números)'})
+        self._saldo_calculado = None
         if self.instance and self.instance.pk:
-            self.fields['saldo_actual'].initial = self.instance.saldo()
+            self._saldo_calculado = self.instance.saldo()
+            self.fields['saldo_actual'].initial = self._saldo_calculado
 
     def save(self, commit=True):
         cuenta = super().save(commit=False)
         saldo_actual = self.cleaned_data.get('saldo_actual')
+        if cuenta.saldo_inicial is None:
+            cuenta.saldo_inicial = 0
         es_nueva = cuenta.pk is None
-        if es_nueva and saldo_actual is not None:
+        if es_nueva and saldo_actual is not None and not self.cleaned_data.get('saldo_inicial'):
             # Cuenta nueva: no hay movimientos, el saldo actual ES el saldo inicial.
             cuenta.saldo_inicial = saldo_actual
         if commit:
             cuenta.save()
-            if not es_nueva and saldo_actual is not None:
-                # Cuenta existente: conciliamos contra el saldo real que capturó el usuario.
+            # Cuenta existente: solo si el usuario CAMBIÓ el saldo actual lo conciliamos;
+            # si lo dejó como estaba, respetamos el saldo inicial que haya escrito.
+            if not es_nueva and saldo_actual is not None and saldo_actual != self._saldo_calculado:
                 cuenta.ajustar_saldo_inicial_para(saldo_actual)
         return cuenta
 

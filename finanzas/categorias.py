@@ -9,7 +9,7 @@ CATEGORIAS_BASE = [
     'Comida', 'Transporte', 'Carro', 'Combustible', 'Supermercado', 'Entretenimiento',
     'Servicios', 'Nomina', 'Mascotas', 'Ahorro', 'Suscripciones', 'Salud', 'Educación',
     'Impuestos', 'Inversion', 'Tiendas de conveniencia', 'Ropa', 'Alquiler', 'Pareja',
-    'Viajes', 'Regalos', 'Gastos varios', 'Tecnología', 'Deudas', 'Otro',
+    'Viajes', 'Regalos', 'Gastos varios', 'Tecnología', 'Deudas', 'Vales de despensa','Otro',
 ]
 CATEGORIA_POR_DEFECTO = 'Otro'
 

@@ -1,3 +1,7 @@
+// Formato de pesos para etiquetas y tooltips: $1,450.00
+const formatoPesos = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+function pesos(valor) { return formatoPesos.format(Number(valor) || 0); }
+
 // Gráfico de gastos/ingresos por categoría o descripción (con filtros)
 let gastosChart = null;
 function initGastosChart() {
@@ -34,6 +38,16 @@ function initGastosChart() {
                             legend: {
                                 position: 'bottom',
                                 labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    // "Carro: $1,450.00 (41%)"
+                                    label: function (ctx) {
+                                        const total = ctx.dataset.data.reduce((a, b) => a + Number(b), 0);
+                                        const pct = total ? Math.round(Number(ctx.raw) / total * 100) : 0;
+                                        return ` ${ctx.label}: ${pesos(ctx.raw)} (${pct}%)`;
+                                    }
+                                }
                             }
                         }
                     }
@@ -92,7 +106,8 @@ function initBudgetVsActualChart() {
                         }
                     },
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label || ctx.label}: ${pesos(ctx.raw)}` } }
                     }
                 }
             });

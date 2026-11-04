@@ -1,6 +1,7 @@
 # finanzas/services/ai_service.py
 import os
 import json
+import time
 import logging
 import base64
 from functools import lru_cache
@@ -33,19 +34,34 @@ class GeminiService:
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
         ]
 
+    # Errores de la API que vale la pena reintentar (lentitud o saturación, no un fallo del contenido)
+    ERRORES_TRANSITORIOS = ('504', '503', '429', 'Deadline', 'Unavailable', 'ResourceExhausted', 'timed out', 'timeout')
+
+    @classmethod
+    def es_transitorio(cls, error) -> bool:
+        return any(t.lower() in str(error).lower() for t in cls.ERRORES_TRANSITORIOS)
+
     def _generate_and_parse(self, prompt: str, content) -> dict:
         inputs = [prompt, content] if content else prompt
-        try:
-            # ponytail: timeout duro para que un cuelgue de la API no deje el request colgado
-            response = self.model.generate_content(
-                inputs, safety_settings=self.safety_settings,
-                request_options={"timeout": 30}
-            )
-            # Since response_mime_type="application/json", response.text is guaranteed valid JSON
-            return json.loads(response.text)
-        except Exception as e:
-            logger.error(f"Gemini API Error: {e}")
-            return {"error": str(e)}
+        ultimo_error = None
+        for intento in range(3):
+            try:
+                # Las imágenes tardan: 120 s de tope por llamada, y dos reintentos si la API está lenta.
+                response = self.model.generate_content(
+                    inputs, safety_settings=self.safety_settings,
+                    request_options={"timeout": 120}
+                )
+                # Since response_mime_type="application/json", response.text is guaranteed valid JSON
+                return json.loads(response.text)
+            except Exception as e:
+                ultimo_error = e
+                if not self.es_transitorio(e) or intento == 2:
+                    break
+                espera = 10 * (intento + 1)
+                logger.warning(f"Gemini lento o saturado ({e}); reintento {intento + 1}/2 en {espera}s")
+                time.sleep(espera)
+        logger.error(f"Gemini API Error: {ultimo_error}")
+        return {"error": str(ultimo_error), "transitorio": self.es_transitorio(ultimo_error)}
 
     def extract_data(self, prompt_name: str, file_data, mime_type: str, context: str = "") -> dict:
         if prompt_name not in PROMPTS:

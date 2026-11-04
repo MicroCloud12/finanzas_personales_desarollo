@@ -1,8 +1,9 @@
 """Importa un CSV de movimientos a registro_transacciones (libro mayor).
 Corre: python importar_csv.py <ruta_csv>   (la ruta es obligatoria)
 
-Columnas: Usuario (username) o propietario_id, Fecha (dd/mm/yyyy), Descripcion, Categoria,
-Monto, Tipo (gasto|ingreso|transferencia), Cuenta de origen, Cuenta de destino.
+Columnas: Usuario (tu username, p. ej. "mauricio"; también acepta el id numérico), Fecha (dd/mm/yyyy),
+Descripcion, Categoria, Monto, Tipo (gasto|ingreso|transferencia), Cuenta de origen, Cuenta de destino.
+Columnas extra (p. ej. Nota) se ignoran.
 Un movimiento que ya exista (mismo usuario, fecha, monto, tipo y descripción) se omite,
 así que el archivo se puede volver a correr sin duplicar nada.
 
@@ -43,7 +44,11 @@ def buscar(propietario_id, nombre):
 objs = []
 with open(ruta, encoding="utf-8-sig", newline="") as f:
     for i, r in enumerate(csv.DictReader(f), start=2):
-        propietario_id = usuarios[r["Usuario"].strip()] if r.get("Usuario") else int(r["propietario_id"])
+        usuario = (r.get("Usuario") or r.get("propietario_id") or "").strip()
+        propietario_id = int(usuario) if usuario.isdigit() else usuarios.get(usuario)
+        if propietario_id not in usuarios.values():
+            sys.exit(f"Fila {i}: el usuario {usuario!r} no existe. En la columna Usuario escribe tu "
+                     f"username: {', '.join(usuarios)}")
         tipo = TIPOS[r["Tipo"].strip().lower()]
         fecha = datetime.strptime(r["Fecha"].strip(), "%d/%m/%Y").date()
         monto = Decimal(r["Monto"].strip())
@@ -71,7 +76,10 @@ with open(ruta, encoding="utf-8-sig", newline="") as f:
             cuenta_destino=r["Cuenta de destino"].strip()[:100],
         ))
 
-registro_transacciones.objects.bulk_create(objs, batch_size=500)
+# Guardamos uno por uno para que apliquen las reglas del libro (p. ej. una transferencia
+# a un préstamo se registra como pago de mensualidad y marca su cuota).
+for obj in objs:
+    obj.save()
 print(f"Insertados {len(objs)} movimientos." + (f" Omitidos {duplicados} que ya existían." if duplicados else ""))
 for nombre, n in sorted(sin_cuenta.items(), key=lambda x: -x[1]):
     print(f"  Sin cuenta en el catálogo: {nombre!r} ({n} movimientos)")

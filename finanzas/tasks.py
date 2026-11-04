@@ -6,6 +6,7 @@ from io import BytesIO
 from decimal import Decimal, InvalidOperation
 from .utils import parse_date_safely
 from celery import shared_task, group
+from celery.exceptions import Retry
 from google.api_core.exceptions import ResourceExhausted
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
@@ -70,10 +71,16 @@ def process_single_ticket(self, user_id: int, file_id: str, file_name: str, mime
             extracted_data = extracted_data[0] if extracted_data else {}
 
         if extracted_data.get("error"):
-             return {'status': 'FAILURE', 'file_name': file_name, 'error': extracted_data.get('raw_response', 'Error desconocido')}
+            if extracted_data.get("transitorio") and self.request.retries < self.max_retries:
+                # La API estuvo lenta/saturada: lo volvemos a intentar en un minuto en vez de darlo por perdido.
+                raise self.retry(countdown=60)
+            return {'status': 'FAILURE', 'file_name': file_name,
+                    'error': extracted_data.get('raw_response') or extracted_data.get('error') or 'Error desconocido'}
 
         TransactionService().create_pending_transaction(user, extracted_data)
         return {'status': 'SUCCESS', 'file_name': file_name}
+    except Retry:
+        raise
     except Exception as e:
         self.retry(exc=e)
         return {'status': 'FAILURE', 'file_name': file_name, 'error': str(e)}
