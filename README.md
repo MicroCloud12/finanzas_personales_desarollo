@@ -122,6 +122,17 @@ python manage.py conciliar_saldos --usuario <username> --set "BBVA=12345.67" --s
 python manage.py estado_financiero --usuario <username> --mes 2026-10
 ```
 
+## Suscripción y cuenta (Mi Perfil)
+
+- **Cancelar suscripción**: `POST /suscripcion/cancelar/` cancela el *preapproval* en Mercado Pago
+  (`status: cancelled`) y marca la suscripción como `cancelada`. El usuario conserva Premium hasta
+  `fecha_fin` (el periodo ya pagado); si Mercado Pago falla, no se cambia nada localmente. Si el
+  webhook no alcanzó a guardar `id_suscripcion_mercadopago`, se busca el preapproval por email.
+- **Eliminar cuenta**: `POST /mi_perfil/eliminar/` con `confirmacion=ELIMINAR`. Antes de borrar
+  cancela el cobro en Mercado Pago (si falla, aborta) y revoca el token de Google; luego
+  `user.delete()` borra en cascada cuentas, transacciones, inversiones, deudas, facturas,
+  presupuestos, historial, suscripción y cuentas sociales. Requiere la migración `0029`.
+
 ### Pruebas
 
 La cadena de migraciones histórica no corre en una base vacía, así que las pruebas usan

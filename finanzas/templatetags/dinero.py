@@ -14,22 +14,22 @@ def _dec(valor):
 
 
 @register.filter
-def dinero(valor):
-    """$1,234.56 con el signo antes del símbolo: −$1,234.56."""
+def dinero(valor, decimales=2):
+    """$1,234.56 con el signo antes del símbolo: −$1,234.56. `dinero:0` redondea a pesos."""
     d = _dec(valor)
     if d is None:
         return '—'
-    return f"{'−' if d < 0 else ''}${abs(d):,.2f}"
+    return f"{'−' if d < 0 else ''}${abs(d):,.{int(decimales)}f}"
 
 
 @register.filter
-def dinero_signo(valor):
+def dinero_signo(valor, decimales=2):
     """Igual que dinero pero siempre con signo: +$1,234.56 / −$1,234.56 / $0.00."""
     d = _dec(valor)
     if d is None:
         return '—'
     signo = '+' if d > 0 else ('−' if d < 0 else '')
-    return f"{signo}${abs(d):,.2f}"
+    return f"{signo}${abs(d):,.{int(decimales)}f}"
 
 
 @register.filter

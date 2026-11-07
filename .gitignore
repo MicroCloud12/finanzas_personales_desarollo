@@ -25,3 +25,6 @@ db.sqlite3
 # IDEs / asistentes
 .vscode/
 .idea/
+movimientos_santander_05nov_al_06nov2026.csv
+Claude outputs/balance_general.png
+Claude outputs/estado_resultados.png

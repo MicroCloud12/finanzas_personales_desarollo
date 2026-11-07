@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load humanize dinero %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+    {# --- Encabezado y selector de fecha --- #}
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 font-display">Balance general al {{ fecha|date:"d/m/Y" }}</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                Lo que tienes (activos) menos lo que debes (pasivos) es tu capital. Es una foto a una fecha,
+                comparada con el cierre del mes anterior y con el cierre de {{ anio|add:"-1" }}.
+            </p>
+        </div>
+        <form method="GET" class="flex flex-wrap items-center gap-2 text-sm">
+            <span class="text-gray-400">Ver al</span>
+            <input type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" class="px-2 py-2 border-gray-300 rounded-lg shadow-sm">
+            <button type="submit" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold">Aplicar</button>
+        </form>
+    </div>
+
+    {# --- Tarjetas --- #}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+            <p class="text-xs text-gray-500 uppercase tracking-wider">Activos</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ grupos.total_activos.valores|last|dinero }}</p>
+            <p class="text-[11px] text-gray-400 mt-1">en el año {{ grupos.total_activos.dif_anio|dinero_signo }}</p>
+        </div>
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+            <p class="text-xs text-gray-500 uppercase tracking-wider">Pasivos</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ grupos.total_pasivos.valores|last|dinero }}</p>
+            <p class="text-[11px] text-gray-400 mt-1">en el año {{ grupos.total_pasivos.dif_anio|dinero_signo }}</p>
+        </div>
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+            <p class="text-xs text-gray-500 uppercase tracking-wider">Capital (patrimonio neto)</p>
+            <p class="text-2xl font-bold mt-1 {% if capital_hoy >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ capital_hoy|dinero }}</p>
+            <p class="text-[11px] text-gray-400 mt-1">activos − pasivos</p>
+        </div>
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+            <p class="text-xs text-gray-500 uppercase tracking-wider">Cambio en {{ anio }}</p>
+            <p class="text-2xl font-bold mt-1 {% if grupos.patrimonio.dif_anio >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ grupos.patrimonio.dif_anio|dinero_signo }}</p>
+            <p class="text-[11px] text-gray-400 mt-1">desde el cierre de {{ anio|add:"-1" }} ({{ capital_ini|dinero }})</p>
+        </div>
+    </div>
+
+    {# --- Comprobación del año --- #}
+    <div style="background:{% if cuadra %}#ecfdf5{% else %}#fffbeb{% endif %}" class="rounded-[1.5rem] border {% if cuadra %}border-emerald-100{% else %}border-amber-100{% endif %} p-6 mb-8 text-sm text-gray-700">
+        <h3 class="font-bold text-lg text-gray-900 mb-2">Comprobación del año {% if cuadra %}✓{% endif %}</h3>
+        <p>
+            Capital al cierre de {{ anio|add:"-1" }} <strong>{{ capital_ini|dinero }}</strong>
+            + resultado acumulado del año (ingresos {{ acumulado.ingresos|dinero }} − gastos {{ acumulado.gastos|dinero }}) <strong>{{ acumulado.resultado|dinero_signo }}</strong>
+            = <strong>{{ capital_hoy|dinero }}</strong> esperado.
+            {% if cuadra %}Coincide con tu capital de hoy: todo lo que cambió tu patrimonio en el año está explicado por ingresos y gastos.
+            {% else %}Tu capital de hoy es {{ capital_hoy|dinero }}: hay <strong>{{ sin_explicar|dinero_signo }}</strong> que entró o salió sin pasar por el estado de resultados
+            (un saldo inicial ajustado durante el año, una transferencia a una cuenta que no está dada de alta, un reembolso a tarjeta). La tabla de abajo te dice en qué mes.{% endif %}
+        </p>
+    </div>
+
+    {# --- Balance comparativo --- #}
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-lg text-gray-800">Activos, pasivos y capital</h3>
+            <p class="text-xs text-gray-500 mt-1">En tarjetas y préstamos el saldo es lo que debes. El sueldo no está aquí: explica por qué subió el activo; el activo es el dinero que quedó.</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3">Cuenta</th>
+                        {% for c in cortes %}<th class="px-4 py-3 text-right">{{ c }}</th>{% endfor %}
+                        <th class="px-4 py-3 text-right" style="border-left:1px solid #e5e7eb">vs mes anterior</th>
+                        <th class="px-4 py-3 text-right">vs cierre {{ anio|add:"-1" }}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr class="bg-gray-50/30"><td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Activos (lo que tienes)</td></tr>
+                    {% for g in grupos.grupos_activos %}{% include 'partials/_balance_grupo.html' with sube_es_bueno=True %}{% endfor %}
+                    {% include 'partials/_balance_total.html' with f=grupos.total_activos sube_es_bueno=True %}
+
+                    <tr class="bg-gray-50/30"><td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Pasivos (lo que debes)</td></tr>
+                    {% for g in grupos.grupos_pasivos %}{% include 'partials/_balance_grupo.html' with sube_es_bueno=False %}
+                    {% empty %}<tr><td colspan="6" class="px-6 py-3 text-sm text-gray-400">Sin deudas registradas.</td></tr>{% endfor %}
+                    {% include 'partials/_balance_total.html' with f=grupos.total_pasivos sube_es_bueno=False %}
+
+                    <tr class="bg-gray-50/30"><td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Capital (lo que es tuyo)</td></tr>
+                    {% include 'partials/_balance_total.html' with f=grupos.patrimonio sube_es_bueno=True %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# --- Patrimonio mes a mes --- #}
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-lg text-gray-800">Patrimonio al cierre de cada mes de {{ anio }}</h3>
+            <p class="text-xs text-gray-500 mt-1">Cada mes tu patrimonio debería cambiar exactamente lo que fue el resultado del mes. Si la última columna no es cero, ese mes tiene algo que revisar.</p>
+        </div>
+        <div class="p-6" style="height:260px">
+            <canvas id="grafica-patrimonio"></canvas>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3">Cierre</th>
+                        <th class="px-4 py-3 text-right">Activos</th>
+                        <th class="px-4 py-3 text-right">Pasivos</th>
+                        <th class="px-4 py-3 text-right">Patrimonio</th>
+                        <th class="px-4 py-3 text-right" style="border-left:1px solid #e5e7eb">Cambió</th>
+                        <th class="px-4 py-3 text-right">Resultado del mes</th>
+                        <th class="px-4 py-3 text-right">Sin explicar</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr class="text-gray-500">
+                        <td class="px-6 py-3">Dic {{ anio|add:"-1" }} (punto de partida)</td>
+                        <td class="px-4 py-3 text-right">{{ grupos.total_activos.valores.0|dinero }}</td>
+                        <td class="px-4 py-3 text-right">{{ grupos.total_pasivos.valores.0|dinero }}</td>
+                        <td class="px-4 py-3 text-right font-semibold">{{ capital_ini|dinero }}</td>
+                        <td colspan="3"></td>
+                    </tr>
+                    {% for s in serie %}
+                    <tr>
+                        <td class="px-6 py-3 font-medium text-gray-900">{{ s.nombre }} <span class="text-[11px] text-gray-400">al {{ s.fecha|date:"d/m" }}</span></td>
+                        <td class="px-4 py-3 text-right text-gray-700">{{ s.activos|dinero }}</td>
+                        <td class="px-4 py-3 text-right text-gray-700">{{ s.pasivos|dinero }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-gray-900">{{ s.patrimonio|dinero }}</td>
+                        <td class="px-4 py-3 text-right {% if s.dif > 0 %}text-emerald-700{% elif s.dif < 0 %}text-red-600{% else %}text-gray-400{% endif %}" style="border-left:1px solid #e5e7eb">{{ s.dif|dinero_signo }}</td>
+                        <td class="px-4 py-3 text-right text-gray-700">{{ s.resultado|dinero_signo }}</td>
+                        <td class="px-4 py-3 text-right {% if s.sin_explicar == 0 %}text-gray-300{% else %}text-amber-700 font-semibold{% endif %}">{% if s.sin_explicar == 0 %}0{% else %}{{ s.sin_explicar|dinero_signo }}{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{ grafica|json_script:"grafica-data" }}
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const d = JSON.parse(document.getElementById('grafica-data').textContent);
+    const pesos = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const pesosEnteros = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+    new Chart(document.getElementById('grafica-patrimonio'), {
+        type: 'line',
+        data: { labels: d.labels, datasets: [
+            { label: 'Patrimonio', data: d.patrimonio, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.08)', fill: true, tension: 0.3, borderWidth: 2 },
+            { label: 'Activos', data: d.activos, borderColor: '#059669', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 2 },
+            { label: 'Pasivos', data: d.pasivos, borderColor: '#dc2626', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 2 },
+        ] },
+        options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${pesos.format(ctx.raw)}` } } },
+            scales: { y: { ticks: { callback: v => pesosEnteros.format(v) } } } }
+    });
+});
+</script>
+{% endblock javascript %}

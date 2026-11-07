@@ -1,0 +1,7 @@
+{% load humanize dinero %}
+<tr class="bg-gray-50 font-semibold">
+    <td class="px-6 py-3 text-gray-900">{{ f.nombre }}</td>
+    {% for v in f.valores %}<td class="px-4 py-3 text-right {% if forloop.last %}text-gray-900{% else %}text-gray-600{% endif %}">{{ v|dinero }}</td>{% endfor %}
+    {% include 'partials/_balance_dif.html' with d=f.dif_mes borde=True %}
+    {% include 'partials/_balance_dif.html' with d=f.dif_anio %}
+</tr>

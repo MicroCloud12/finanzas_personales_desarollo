@@ -1,0 +1,16 @@
+{% load humanize dinero %}
+<tr class="{% if f.es_total %}bg-gray-50 font-semibold{% endif %}">
+    <td class="px-4 py-2 text-gray-900" style="position:sticky;left:0;background:{% if f.es_total %}#f9fafb{% else %}#fff{% endif %};{% if not f.es_total %}padding-left:2rem{% endif %}">{{ f.nombre }}</td>
+    {% for c in f.celdas %}
+    <td class="px-1.5 py-2 text-right {% if c.valor == 0 %}text-gray-300{% else %}text-gray-800{% endif %}"
+        {% if c.revisar %}style="background:#fef3c7" title="Se aleja {{ c.dif|dinero_signo:0 }} del promedio {{ f.promedio|dinero:0 }}"{% endif %}>
+        {{ c.valor|dinero:0 }}
+    </td>
+    {% endfor %}
+    <td class="px-3 py-2 text-right font-semibold text-gray-900" style="border-left:1px solid #e5e7eb">{{ f.total|dinero:0 }}</td>
+    <td class="px-3 py-2 text-right text-gray-600">{{ f.promedio|dinero:0 }}</td>
+    {% if hay_presupuesto %}
+    <td class="px-3 py-2 text-right text-gray-600" style="border-left:1px solid #e5e7eb">{% if f.presupuesto is not None %}{{ f.presupuesto|dinero:0 }}{% else %}—{% endif %}</td>
+    <td class="px-3 py-2 text-right {% if f.dif_presupuesto is None %}text-gray-300{% elif f.dif_presupuesto > 0 %}text-red-600{% elif f.dif_presupuesto < 0 %}text-emerald-700{% else %}text-gray-400{% endif %}">{% if f.dif_presupuesto is not None %}{{ f.dif_presupuesto|dinero_signo:0 }}{% else %}—{% endif %}</td>
+    {% endif %}
+</tr>

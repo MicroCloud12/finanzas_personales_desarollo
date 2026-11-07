@@ -74,6 +74,28 @@
             Resumen
         </a>
 
+        <a href="{% url 'estado_resultados' %}"
+            class="flex items-center px-4 py-3 text-gray-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors group {% if 'estado-resultados' in request.path %}bg-indigo-50 text-indigo-600 font-semibold{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-3 group-hover:text-indigo-600 transition-colors {% if 'estado-resultados' in request.path %}text-indigo-600{% endif %}"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 13v-1m4 1v-3m4 3V8M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+            Estado de resultados
+        </a>
+
+        <a href="{% url 'balance_general' %}"
+            class="flex items-center px-4 py-3 text-gray-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors group {% if 'balance-general' in request.path %}bg-indigo-50 text-indigo-600 font-semibold{% endif %}">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-3 group-hover:text-indigo-600 transition-colors {% if 'balance-general' in request.path %}text-indigo-600{% endif %}"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 6l9-3 9 3M3 6v2h18V6M5 8l-3 7h6l-3-7zm14 0l-3 7h6l-3-7zM12 8v13m-4 0h8" />
+            </svg>
+            Balance general
+        </a>
+
         <a href="{% url 'presupuesto' %}"
             class="flex items-center px-4 py-3 text-gray-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors group {% if 'presupuesto' in request.path %}bg-indigo-50 text-indigo-600 font-semibold{% endif %}">
             <svg xmlns="http://www.w3.org/2000/svg"

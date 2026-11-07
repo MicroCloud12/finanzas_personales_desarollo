@@ -543,18 +543,39 @@ class Suscripcion(models.Model):
     estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente')
     fecha_inicio = models.DateTimeField(null=True, blank=True)
     fecha_fin = models.DateTimeField(null=True, blank=True)
+    # Cuándo pidió cancelar (desde su perfil o desde Mercado Pago). Conserva el
+    # acceso hasta ``fecha_fin`` porque ese periodo ya lo pagó.
+    fecha_cancelacion = models.DateTimeField(null=True, blank=True)
     id_suscripcion_mercadopago = models.CharField(max_length=100, blank=True, null=True)
 
     def is_active(self):
         """
-        Verifica si la suscripción está activa.
-        Ahora compara solo las fechas para evitar problemas de zona horaria.
+        Verifica si la suscripción da acceso Premium hoy.
+        Una suscripción cancelada sigue activa hasta ``fecha_fin`` (periodo ya pagado);
+        una pausada (pago rechazado en Mercado Pago) no da acceso.
+        Compara solo fechas para evitar problemas de zona horaria.
         """
-        if self.estado != 'activa' or not self.fecha_fin:
+        if self.estado not in ('activa', 'cancelada') or not self.fecha_fin:
             return False
-        
+
         # Comparamos si la fecha de fin es hoy o una fecha futura.
         return self.fecha_fin.date() >= timezone.now().date()
+
+    @property
+    def esta_cancelada(self):
+        """True si ya no se renovará (aunque todavía tenga acceso)."""
+        return self.estado == 'cancelada'
+
+    @property
+    def puede_cancelarse(self):
+        """Solo se puede cancelar una suscripción activa que aún se renueva."""
+        return self.estado == 'activa' and self.is_active()
+
+    def cancelar(self):
+        """Marca la suscripción como cancelada; el acceso sigue hasta ``fecha_fin``."""
+        self.estado = 'cancelada'
+        self.fecha_cancelacion = timezone.now()
+        self.save(update_fields=['estado', 'fecha_cancelacion'])
 
     def __str__(self):
         return f"Suscripción de {self.usuario.username} - {self.get_estado_display()}"

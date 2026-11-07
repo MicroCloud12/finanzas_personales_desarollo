@@ -1,0 +1,15 @@
+{% load humanize dinero %}
+<tr>
+    <td class="px-6 py-3 font-semibold text-gray-700" style="padding-left:1.75rem">{{ g.nombre }}</td>
+    {% for v in g.valores %}<td class="px-4 py-3 text-right {% if forloop.last %}font-semibold text-gray-900{% else %}text-gray-600{% endif %}">{{ v|dinero }}</td>{% endfor %}
+    <td class="px-4 py-3 text-right text-gray-600" style="border-left:1px solid #e5e7eb">{{ g.dif_mes|dinero_signo }}</td>
+    <td class="px-4 py-3 text-right text-gray-600">{{ g.dif_anio|dinero_signo }}</td>
+</tr>
+{% for f in g.filas %}
+<tr>
+    <td class="px-6 py-3 text-gray-900" style="padding-left:3.5rem">{{ f.nombre }}</td>
+    {% for v in f.valores %}<td class="px-4 py-3 text-right {% if forloop.last %}text-gray-900{% else %}text-gray-600{% endif %}">{{ v|dinero }}</td>{% endfor %}
+    {% include 'partials/_balance_dif.html' with d=f.dif_mes borde=True %}
+    {% include 'partials/_balance_dif.html' with d=f.dif_anio %}
+</tr>
+{% endfor %}

@@ -6,6 +6,7 @@ from .market_data_service import StockPriceService, ExchangeRateService
 from .finance_service import TransactionService, InvestmentService
 from .billing_service import BillingService
 from .integration_service import GoogleDriveService, MercadoPagoService, RISCService
+from .account_service import AccountService
 
 __all__ = [
     "GeminiService",
@@ -18,5 +19,6 @@ __all__ = [
     "BillingService",
     "GoogleDriveService",
     "MercadoPagoService",
-    "RISCService"
+    "RISCService",
+    "AccountService",
 ]

@@ -1,5 +1,6 @@
 # finanzas/services/ai_service.py
 import os
+import re
 import json
 import time
 import logging
@@ -41,26 +42,37 @@ class GeminiService:
     def es_transitorio(cls, error) -> bool:
         return any(t.lower() in str(error).lower() for t in cls.ERRORES_TRANSITORIOS)
 
+    @staticmethod
+    def _espera_sugerida(error):
+        """Un 429 de Gemini dice cuánto esperar ("Please retry in 17.4s"); respetamos eso, tope 60 s."""
+        m = re.search(r"retry in ([\d.]+)s", str(error), re.I)
+        return min(int(float(m.group(1))) + 1, 60) if m else None
+
     def _generate_and_parse(self, prompt: str, content) -> dict:
         inputs = [prompt, content] if content else prompt
         ultimo_error = None
-        for intento in range(3):
+        for intento in range(2):
             try:
-                # Las imágenes tardan: 120 s de tope por llamada, y dos reintentos si la API está lenta.
+                # 60 s de tope por llamada y un reintento si la API está lenta; después entra Mistral.
                 response = self.model.generate_content(
                     inputs, safety_settings=self.safety_settings,
-                    request_options={"timeout": 120}
+                    request_options={"timeout": 60}
                 )
                 # Since response_mime_type="application/json", response.text is guaranteed valid JSON
                 return json.loads(response.text)
             except Exception as e:
                 ultimo_error = e
-                if not self.es_transitorio(e) or intento == 2:
+                if not self.es_transitorio(e) or intento == 1:
                     break
-                espera = 10 * (intento + 1)
-                logger.warning(f"Gemini lento o saturado ({e}); reintento {intento + 1}/2 en {espera}s")
+                espera = self._espera_sugerida(e) or 10
+                logger.warning(f"Gemini lento o saturado ({e}); reintento en {espera}s")
                 time.sleep(espera)
         logger.error(f"Gemini API Error: {ultimo_error}")
+        # Respaldo: Mistral lee el mismo documento con el mismo prompt (dos proveedores > uno perfecto).
+        respaldo = get_mistral_service().generate_and_parse(prompt, content)
+        if "error" not in respaldo:
+            logger.warning("Gemini falló; el documento se leyó con Mistral.")
+            return respaldo
         return {"error": str(ultimo_error), "transitorio": self.es_transitorio(ultimo_error)}
 
     def extract_data(self, prompt_name: str, file_data, mime_type: str, context: str = "") -> dict:
@@ -91,6 +103,46 @@ class GeminiService:
 @lru_cache(maxsize=1)
 def get_gemini_service() -> GeminiService:
     return GeminiService()
+
+
+class MistralService:
+    """Respaldo de Gemini: mismo prompt, misma salida JSON. Las imágenes las lee directo
+    (mistral-small es multimodal); un PDF pasa primero por el OCR que ya usa facturación."""
+    MODELO = "mistral-small-latest"
+
+    def __init__(self):
+        api_key = os.getenv("MISTRAL_API_KEY")
+        self.client = Mistral(api_key=api_key) if api_key else None
+
+    def generate_and_parse(self, prompt: str, content) -> dict:
+        if not self.client:
+            return {"error": "Mistral API Key missing"}
+        if content and "pdf" in content["mime_type"]:
+            ocr = MistralOCRService().get_text_from_image(content["data"], content["mime_type"])
+            if "error" in ocr:
+                return ocr
+            prompt, content = f"{prompt}\n\nTexto del documento (OCR):\n{ocr['text_content']}", None
+        partes = [{"type": "text", "text": prompt}]
+        if content:
+            b64 = base64.b64encode(content["data"]).decode("utf-8")
+            partes.append({"type": "image_url", "image_url": f"data:{content['mime_type']};base64,{b64}"})
+        try:
+            r = self.client.chat.complete(
+                model=self.MODELO, temperature=0.0, timeout_ms=60_000,
+                messages=[{"role": "system", "content": "Extract financial data. Output JSON strictly. No extra text."},
+                          {"role": "user", "content": partes}],
+                response_format={"type": "json_object"},
+            )
+            return json.loads(r.choices[0].message.content)
+        except Exception as e:
+            logger.error(f"Mistral API Error: {e}")
+            return {"error": str(e)}
+
+
+@lru_cache(maxsize=1)
+def get_mistral_service() -> MistralService:
+    return MistralService()
+
 
 class MistralOCRService:
     """Service for Mistral OCR processing."""

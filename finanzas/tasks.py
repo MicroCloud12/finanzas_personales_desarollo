@@ -7,6 +7,7 @@ from decimal import Decimal, InvalidOperation
 from .utils import parse_date_safely
 from celery import shared_task, group
 from celery.exceptions import Retry
+from celery.result import GroupResult
 from google.api_core.exceptions import ResourceExhausted
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
@@ -39,10 +40,16 @@ def _get_files_from_drive_folder(user, folder_name: str, mimetypes=None):
     return gdrive_service.list_files_in_folder(folder_name=folder_name, mimetypes=mimetypes)
 
 def _lanzar_grupo(tarea, archivos, *args):
-    """Una subtarea por archivo, espaciadas 15 s (límite de la API); devuelve el id del grupo para el progreso."""
+    """Una subtarea por archivo, espaciadas 15 s (límite de la API); devuelve el id del grupo para el progreso.
+    El id del grupo es fijo por tarea y usuario (args[0]): si ese lote sigue corriendo, el clic se
+    pega al lote en curso en vez de volver a mandar los mismos archivos a la IA (y duplicar cuota)."""
+    gid = f"{tarea.name}-{args[0]}"
+    en_curso = GroupResult.restore(gid)
+    if en_curso is not None and not en_curso.ready():
+        return {'status': 'STARTED', 'task_group_id': gid, 'total_tasks': len(en_curso)}
     job = group(tarea.s(*args, item['id'], item['name'], item['mimeType']).set(countdown=i * 15)
                 for i, item in enumerate(archivos))
-    result_group = job.apply_async()
+    result_group = job.apply_async(task_id=gid)  # en un group, task_id se usa como id del grupo
     result_group.save()
     return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(archivos)}
 

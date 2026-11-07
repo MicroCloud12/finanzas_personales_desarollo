@@ -1,0 +1,3 @@
+{% load humanize dinero %}
+{# Variación coloreada: subir es bueno en activos y capital, malo en pasivos (sube_es_bueno). #}
+<td class="px-4 py-3 text-right {% if d == 0 %}text-gray-400{% elif d > 0 and sube_es_bueno or d < 0 and not sube_es_bueno %}text-emerald-700{% else %}text-red-600{% endif %}" {% if borde %}style="border-left:1px solid #e5e7eb"{% endif %}>{{ d|dinero_signo }}</td>

@@ -30,6 +30,7 @@ VACIOS = {"", "N/A", "SIN CUENTA", "OTRA CUENTA"}
 cuentas = {(c.propietario_id, c.nombre.strip().upper()): c for c in Cuenta.objects.all()}
 usuarios = {u.username: u.id for u in User.objects.all()}
 sin_cuenta = {}
+vistos = {}
 duplicados = 0
 
 def buscar(propietario_id, nombre):
@@ -53,8 +54,12 @@ with open(ruta, encoding="utf-8-sig", newline="") as f:
         fecha = datetime.strptime(r["Fecha"].strip(), "%d/%m/%Y").date()
         monto = Decimal(r["Monto"].strip())
         descripcion = r["Descripcion"].strip()[:100]
-        if registro_transacciones.objects.filter(propietario_id=propietario_id, fecha=fecha, monto=monto,
-                                                 tipo=tipo, descripcion__iexact=descripcion).exists():
+        # Dos viajes iguales el mismo día son dos movimientos: solo se omite lo que ya esté en la base
+        # tantas veces como venga en el archivo (así el archivo se puede volver a correr sin duplicar).
+        clave = (propietario_id, fecha, monto, tipo, descripcion.lower())
+        vistos[clave] = vistos.get(clave, 0) + 1
+        if vistos[clave] <= registro_transacciones.objects.filter(propietario_id=propietario_id, fecha=fecha, monto=monto,
+                                                                  tipo=tipo, descripcion__iexact=descripcion).count():
             duplicados += 1
             continue
         origen = buscar(propietario_id, r["Cuenta de origen"])

@@ -71,6 +71,40 @@ class MercadoPagoService:
         base_url = "https://www.mercadopago.com.mx/subscriptions/checkout"
         return f"{base_url}?preapproval_plan_id={self.plan_id}"
 
+    def buscar_id_suscripcion(self, user) -> str | None:
+        """Busca el preapproval vigente del usuario por su email (respaldo cuando el
+        webhook no alcanzó a guardar ``id_suscripcion_mercadopago``)."""
+        if not user.email:
+            return None
+        respuesta = self.sdk.preapproval().search({"payer_email": user.email, "status": "authorized"})
+        if respuesta.get("status") != 200:
+            raise RuntimeError(f"Mercado Pago respondió {respuesta.get('status')} al buscar la suscripción")
+        resultados = respuesta.get("response", {}).get("results") or []
+        return resultados[0].get("id") if resultados else None
+
+    def cancelar_suscripcion(self, suscripcion) -> bool:
+        """Cancela el cobro recurrente en Mercado Pago (``status: cancelled``).
+
+        Devuelve True si Mercado Pago confirmó la cancelación y False si no hay ningún
+        preapproval que cancelar (p. ej. activada a mano). Lanza RuntimeError si Mercado
+        Pago responde con error, para que quien llama NO marque la cancelación localmente
+        mientras el cobro sigue vivo.
+        """
+        preapproval_id = suscripcion.id_suscripcion_mercadopago or self.buscar_id_suscripcion(suscripcion.usuario)
+        if not preapproval_id:
+            logger.warning(f"Suscripción de {suscripcion.usuario.username} sin preapproval en Mercado Pago; nada que cancelar.")
+            return False
+
+        respuesta = self.sdk.preapproval().update(preapproval_id, {"status": "cancelled"})
+        if respuesta.get("status") not in (200, 201):
+            raise RuntimeError(f"Mercado Pago respondió {respuesta.get('status')}: {respuesta.get('response')}")
+
+        if not suscripcion.id_suscripcion_mercadopago:
+            suscripcion.id_suscripcion_mercadopago = preapproval_id
+            suscripcion.save(update_fields=['id_suscripcion_mercadopago'])
+        logger.info(f"Suscripción {preapproval_id} de {suscripcion.usuario.username} cancelada en Mercado Pago.")
+        return True
+
 class RISCService:
     """Service to handle Google RISC security events."""
     GOOGLE_RISC_CONFIG_URL = "https://accounts.google.com/.well-known/risc-configuration"

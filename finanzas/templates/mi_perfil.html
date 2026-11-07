@@ -33,7 +33,12 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="p-6 border-b border-gray-50 flex justify-between items-center">
                     <h3 class="font-bold text-lg text-gray-900">Estado de Suscripción</h3>
-                    {% if suscripcion and suscripcion.is_active %}
+                    {% if suscripcion and suscripcion.is_active and suscripcion.esta_cancelada %}
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        Cancelada · acceso hasta {{ suscripcion.fecha_fin|date:"d M" }}
+                    </span>
+                    {% elif suscripcion and suscripcion.is_active %}
                     <span
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                         Activa
@@ -72,10 +77,16 @@
                             <p class="font-medium text-gray-900">{{ suscripcion.fecha_inicio|date:"d M, Y" }}</p>
                         </div>
                         <div>
-                            <p class="text-gray-500 mb-1">Próxima Renovación</p>
+                            <p class="text-gray-500 mb-1">{% if suscripcion.esta_cancelada %}Acceso Premium hasta{% else %}Próxima Renovación{% endif %}</p>
                             <p class="font-medium text-gray-900">{{ suscripcion.fecha_fin|date:"d M, Y" }}</p>
                         </div>
                     </div>
+                    {% if suscripcion.esta_cancelada and suscripcion.is_active %}
+                    <div class="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                        Cancelaste tu suscripción{% if suscripcion.fecha_cancelacion %} el {{ suscripcion.fecha_cancelacion|date:"d M, Y" }}{% endif %}.
+                        No se harán más cobros y tu acceso Premium termina el {{ suscripcion.fecha_fin|date:"d M, Y" }}.
+                    </div>
+                    {% endif %}
                     {% else %}
                     <p class="text-gray-600 text-sm mb-6">
                         Actualiza a Premium para desbloquear todas las funcionalidades avanzadas de análisis y
@@ -83,10 +94,22 @@
                     </p>
                     {% endif %}
 
-                    <a href="{% url 'gestionar_suscripcion' %}"
-                        class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto transition-colors">
-                        {% if suscripcion.is_active %}Administrar Suscripción{% else %}Mejorar Plan{% endif %}
-                    </a>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <a href="{% url 'gestionar_suscripcion' %}"
+                            class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto transition-colors">
+                            {% if suscripcion.esta_cancelada and suscripcion.is_active %}Reactivar Suscripción{% elif suscripcion.is_active %}Administrar Suscripción{% else %}Mejorar Plan{% endif %}
+                        </a>
+                        {% if suscripcion.puede_cancelarse %}
+                        <form method="post" action="{% url 'cancelar_suscripcion' %}" class="w-full sm:w-auto"
+                            onsubmit="return confirm('¿Cancelar tu suscripción Premium?\n\nNo se harán más cobros y conservas el acceso hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.');">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="inline-flex justify-center items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-600 bg-white hover:border-red-300 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 w-full sm:w-auto transition-colors">
+                                Cancelar Suscripción
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -207,15 +230,90 @@
                     <h3 class="font-bold text-red-800 mb-2">Zona de Peligro</h3>
                     <p class="text-xs text-red-600 mb-4">Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor,
                         asegúrate.</p>
-                    <button
+                    <button type="button" id="btn-abrir-eliminar"
                         class="w-full bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors shadow-sm">
                         Eliminar Cuenta
                     </button>
-                    <!-- TODO: Wire up actual delete logic if requested -->
                 </div>
             </div>
 
         </div>
     </div>
 </div>
+
+<!-- Modal: confirmar eliminación de cuenta -->
+<div id="modal-eliminar" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60"
+    role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-titulo">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <div class="h-10 w-10 shrink-0 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 id="modal-eliminar-titulo" class="text-lg font-bold text-gray-900">¿Eliminar tu cuenta?</h3>
+                    <p class="mt-1 text-sm text-gray-600">Esta acción es definitiva y no se puede deshacer. Se borrarán:</p>
+                    <ul class="mt-2 text-sm text-gray-600 list-disc list-inside space-y-0.5">
+                        <li>Tus cuentas y tarjetas, transacciones y presupuestos</li>
+                        <li>Tus inversiones, deudas y facturas</li>
+                        <li>Tu suscripción Premium (se cancela el cobro) y la conexión con Google</li>
+                    </ul>
+                </div>
+            </div>
+
+            <form method="post" action="{% url 'eliminar_cuenta_usuario' %}" class="mt-6" id="form-eliminar">
+                {% csrf_token %}
+                <label for="confirmacion-eliminar" class="block text-sm font-medium text-gray-700">
+                    Escribe <span class="font-mono font-bold text-red-600">{{ palabra_confirmacion }}</span> para confirmar
+                </label>
+                <input type="text" id="confirmacion-eliminar" name="confirmacion" autocomplete="off" autocapitalize="characters"
+                    class="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
+                    placeholder="{{ palabra_confirmacion }}">
+                <div class="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                    <button type="button" id="btn-cerrar-eliminar"
+                        class="inline-flex justify-center px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50">
+                        Conservar mi cuenta
+                    </button>
+                    <button type="submit" id="btn-confirmar-eliminar" disabled
+                        class="inline-flex justify-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                        Eliminar definitivamente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+(function () {
+    const modal = document.getElementById('modal-eliminar');
+    const abrir = document.getElementById('btn-abrir-eliminar');
+    const cerrar = document.getElementById('btn-cerrar-eliminar');
+    const input = document.getElementById('confirmacion-eliminar');
+    const confirmar = document.getElementById('btn-confirmar-eliminar');
+    const form = document.getElementById('form-eliminar');
+    const palabra = '{{ palabra_confirmacion|escapejs }}';
+
+    function mostrar(visible) {
+        modal.classList.toggle('hidden', !visible);
+        if (visible) { input.value = ''; confirmar.disabled = true; input.focus(); }
+    }
+    abrir.addEventListener('click', () => mostrar(true));
+    cerrar.addEventListener('click', () => mostrar(false));
+    modal.addEventListener('click', (e) => { if (e.target === modal) mostrar(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') mostrar(false); });
+    input.addEventListener('input', () => { confirmar.disabled = input.value.trim().toUpperCase() !== palabra; });
+    form.addEventListener('submit', () => {
+        // Evita doble envío mientras el servidor borra la cuenta
+        confirmar.disabled = true;
+        confirmar.textContent = 'Eliminando…';
+    });
+})();
+</script>
 {% endblock %}

@@ -5,11 +5,37 @@
     <div class="bg-white p-8 rounded-lg shadow-md border border-gray-200">
         <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Mi Suscripción Premium</h1>
         
-        {% if suscripcion.is_active %}
+        {% if suscripcion.is_active and suscripcion.esta_cancelada %}
+            <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded mb-6" role="alert">
+                <p class="font-bold">Tu suscripción está cancelada</p>
+                <p>No se harán más cobros. Conservas el acceso Premium hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.
+                   Si cambias de opinión, puedes reactivarla abajo.</p>
+            </div>
+            {% if link_pago %}
+                <div class="text-center mt-6">
+                    <a href="{{ link_pago }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-lg">
+                        Reactivar con MercadoPago
+                    </a>
+                </div>
+            {% endif %}
+        {% elif suscripcion.is_active %}
             <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded" role="alert">
                 <p class="font-bold">¡Tu suscripción está activa!</p>
                 <p>Disfruta de todas las funcionalidades premium hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.</p>
             </div>
+            {% if suscripcion.puede_cancelarse %}
+            <div class="mt-8 pt-6 border-t border-gray-100 text-center">
+                <p class="text-sm text-gray-500 mb-3">¿Ya no quieres renovar? Puedes cancelar cuando quieras: no habrá más cobros y conservas Premium hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.</p>
+                <form method="post" action="{% url 'cancelar_suscripcion' %}" class="inline"
+                    onsubmit="return confirm('¿Cancelar tu suscripción Premium?\n\nNo se harán más cobros y conservas el acceso hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.');">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="gestionar_suscripcion">
+                    <button type="submit" class="text-sm font-medium text-gray-500 hover:text-red-600 underline underline-offset-2 transition-colors">
+                        Cancelar suscripción
+                    </button>
+                </form>
+            </div>
+            {% endif %}
         {% else %}
             <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded mb-6" role="alert">
                 <p class="font-bold">Activa tu plan Premium</p>
