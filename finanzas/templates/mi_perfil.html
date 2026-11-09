@@ -3,6 +3,14 @@
 {% block title %}Mi Perfil | Finanzas Personales{% endblock %}
 {% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5{% endblock %}
 
+{% block head_extra %}
+<style>
+    /* Estilos del modal que no dependen del CSS compilado de Tailwind */
+    #modal-eliminar { background-color: rgba(17, 24, 39, 0.6); }
+    #btn-confirmar-eliminar:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-4xl mx-auto">
 
@@ -24,167 +32,168 @@
         </div>
     </div>
 
+    {# Rejilla de 3 columnas: cada fila comparte altura, así las tarjetas quedan alineadas #}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <!-- Main Info Column (2/3 width) -->
-        <div class="md:col-span-2 space-y-6">
-
-            <!-- Subscription Card -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-6 border-b border-gray-50 flex justify-between items-center">
-                    <h3 class="font-bold text-lg text-gray-900">Estado de Suscripción</h3>
-                    {% if suscripcion and suscripcion.is_active and suscripcion.esta_cancelada %}
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                        Cancelada · acceso hasta {{ suscripcion.fecha_fin|date:"d M" }}
-                    </span>
-                    {% elif suscripcion and suscripcion.is_active %}
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Activa
-                    </span>
-                    {% else %}
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Inactiva
-                    </span>
-                    {% endif %}
-                </div>
-                <div class="p-6">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
-                        <div>
-                            {% if suscripcion and suscripcion.is_active %}
-                            <p class="text-sm text-gray-500">Tu plan actual</p>
-                            <h4 class="text-xl font-bold text-gray-900">Premium Plan</h4>
-                            {% else %}
-                            <p class="text-sm text-gray-500">Plan actual</p>
-                            <h4 class="text-xl font-bold text-gray-900">Gratuito</h4>
-                            {% endif %}
-                        </div>
+        <!-- Fila 1 · Subscription Card -->
+        <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-900">Estado de Suscripción</h3>
+                {% if suscripcion and suscripcion.is_active and suscripcion.esta_cancelada %}
+                <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                    Cancelada · acceso hasta {{ suscripcion.fecha_fin|date:"d M" }}
+                </span>
+                {% elif suscripcion and suscripcion.is_active %}
+                <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Activa
+                </span>
+                {% else %}
+                <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    Inactiva
+                </span>
+                {% endif %}
+            </div>
+            <div class="p-6 flex-1 flex flex-col">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                     </div>
-
-                    {% if suscripcion %}
-                    <div class="grid grid-cols-2 gap-4 text-sm mb-6">
-                        <div>
-                            <p class="text-gray-500 mb-1">Fecha de Inicio</p>
-                            <p class="font-medium text-gray-900">{{ suscripcion.fecha_inicio|date:"d M, Y" }}</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500 mb-1">{% if suscripcion.esta_cancelada %}Acceso Premium hasta{% else %}Próxima Renovación{% endif %}</p>
-                            <p class="font-medium text-gray-900">{{ suscripcion.fecha_fin|date:"d M, Y" }}</p>
-                        </div>
-                    </div>
-                    {% if suscripcion.esta_cancelada and suscripcion.is_active %}
-                    <div class="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                        Cancelaste tu suscripción{% if suscripcion.fecha_cancelacion %} el {{ suscripcion.fecha_cancelacion|date:"d M, Y" }}{% endif %}.
-                        No se harán más cobros y tu acceso Premium termina el {{ suscripcion.fecha_fin|date:"d M, Y" }}.
-                    </div>
-                    {% endif %}
-                    {% else %}
-                    <p class="text-gray-600 text-sm mb-6">
-                        Actualiza a Premium para desbloquear todas las funcionalidades avanzadas de análisis y
-                        automatización.
-                    </p>
-                    {% endif %}
-
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <a href="{% url 'gestionar_suscripcion' %}"
-                            class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto transition-colors">
-                            {% if suscripcion.esta_cancelada and suscripcion.is_active %}Reactivar Suscripción{% elif suscripcion.is_active %}Administrar Suscripción{% else %}Mejorar Plan{% endif %}
-                        </a>
-                        {% if suscripcion.puede_cancelarse %}
-                        <form method="post" action="{% url 'cancelar_suscripcion' %}" class="w-full sm:w-auto"
-                            onsubmit="return confirm('¿Cancelar tu suscripción Premium?\n\nNo se harán más cobros y conservas el acceso hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.');">
-                            {% csrf_token %}
-                            <button type="submit"
-                                class="inline-flex justify-center items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-600 bg-white hover:border-red-300 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 w-full sm:w-auto transition-colors">
-                                Cancelar Suscripción
-                            </button>
-                        </form>
+                    <div>
+                        {% if suscripcion and suscripcion.is_active %}
+                        <p class="text-sm text-gray-500">Tu plan actual</p>
+                        <h4 class="text-xl font-bold text-gray-900">Premium Plan</h4>
+                        {% else %}
+                        <p class="text-sm text-gray-500">Plan actual</p>
+                        <h4 class="text-xl font-bold text-gray-900">Gratuito</h4>
                         {% endif %}
                     </div>
                 </div>
-            </div>
 
-            <!-- Google Integration Card -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-6 border-b border-gray-50">
-                    <h3 class="font-bold text-lg text-gray-900">Integraciones</h3>
+                {% if suscripcion %}
+                <div class="grid grid-cols-2 gap-4 text-sm mb-6">
+                    <div>
+                        <p class="text-gray-500 mb-1">Fecha de Inicio</p>
+                        <p class="font-medium text-gray-900">{{ suscripcion.fecha_inicio|date:"d M, Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 mb-1">{% if suscripcion.esta_cancelada %}Acceso Premium hasta{% else %}Próxima Renovación{% endif %}</p>
+                        <p class="font-medium text-gray-900">{{ suscripcion.fecha_fin|date:"d M, Y" }}</p>
+                    </div>
                 </div>
-                <div class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <div
-                                class="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg"
-                                    alt="Google" class="w-5 h-5">
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-gray-900">Google Drive & Gmail</h4>
-                                <p class="text-xs text-gray-500">Para lectura automática de tickets</p>
-                            </div>
-                        </div>
-                        <div>
-                            {% if google_cuenta %}
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
-                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Conectado
-                            </span>
-                            {% else %}
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200">
-                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Desconectado
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% if google_cuenta %}
-                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <p class="text-xs text-gray-500">Cuenta: {{ google_cuenta.extra_data.email|default:google_cuenta.uid }}</p>
-                    </div>
-                    {% else %}
-                    <div class="mt-4">
-                        <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Conectar cuenta
-                            &rarr;</a>
-                    </div>
+                {% if suscripcion.esta_cancelada and suscripcion.is_active %}
+                <div class="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                    Cancelaste tu suscripción{% if suscripcion.fecha_cancelacion %} el {{ suscripcion.fecha_cancelacion|date:"d M, Y" }}{% endif %}.
+                    No se harán más cobros y tu acceso Premium termina el {{ suscripcion.fecha_fin|date:"d M, Y" }}.
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-gray-600 text-sm mb-6">
+                    Actualiza a Premium para desbloquear todas las funcionalidades avanzadas de análisis y
+                    automatización.
+                </p>
+                {% endif %}
+
+                <div class="mt-auto flex flex-col sm:flex-row sm:items-center gap-3">
+                    <a href="{% url 'gestionar_suscripcion' %}"
+                        class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto transition-colors">
+                        {% if suscripcion.esta_cancelada and suscripcion.is_active %}Reactivar Suscripción{% elif suscripcion.is_active %}Administrar Suscripción{% else %}Mejorar Plan{% endif %}
+                    </a>
+                    {% if suscripcion.puede_cancelarse %}
+                    <form method="post" action="{% url 'cancelar_suscripcion' %}" class="w-full sm:w-auto"
+                        onsubmit="return confirm('¿Cancelar tu suscripción Premium?\n\nNo se harán más cobros y conservas el acceso hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.');">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="inline-flex justify-center items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-600 bg-white hover:border-red-300 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 w-full sm:w-auto transition-colors">
+                            Cancelar Suscripción
+                        </button>
+                    </form>
                     {% endif %}
                 </div>
             </div>
-
         </div>
 
-        <!-- Sidebar / Actions Column -->
-        <div class="space-y-6">
-
-            <!-- Account Details -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-6">
-                    <h3 class="font-bold text-gray-900 mb-4">Detalles de Cuenta</h3>
-
-                    <div class="space-y-4">
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Miembro desde</p>
-                            <p class="text-gray-900 font-medium">{{ request.user.date_joined|date:"d M, Y" }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Último acceso</p>
-                            <p class="text-gray-900 font-medium">{{ request.user.last_login|naturaltime }}</p>
-                        </div>
+        <!-- Fila 1 · Account Details -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 h-full flex flex-col">
+                <h3 class="font-bold text-gray-900 mb-4">Detalles de Cuenta</h3>
+                <div class="flex-1 flex flex-col justify-between gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Miembro desde</p>
+                        <p class="text-gray-900 font-medium">{{ request.user.date_joined|date:"d M, Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Último acceso</p>
+                        <p class="text-gray-900 font-medium">{{ request.user.last_login|naturaltime }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Tarjetas y cuentas</p>
+                        <p class="text-gray-900 font-medium">{{ num_cuentas|intcomma }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Movimientos registrados</p>
+                        <p class="text-gray-900 font-medium">{{ num_movimientos|intcomma }}</p>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Security Actions -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-6">
-                    <h3 class="font-bold text-gray-900 mb-4">Seguridad</h3>
+        <!-- Fila 2 · Google Integration Card -->
+        <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-gray-50">
+                <h3 class="font-bold text-lg text-gray-900">Integraciones</h3>
+            </div>
+            <div class="p-6 flex-1">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg"
+                                alt="Google" class="w-5 h-5">
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900">Google Drive & Gmail</h4>
+                            <p class="text-xs text-gray-500">Para lectura automática de tickets</p>
+                        </div>
+                    </div>
+                    <div>
+                        {% if google_cuenta %}
+                        <span
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Conectado
+                        </span>
+                        {% else %}
+                        <span
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Desconectado
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if google_cuenta %}
+                <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <p class="text-xs text-gray-500">Cuenta: {{ google_cuenta.extra_data.email|default:google_cuenta.uid }}</p>
+                </div>
+                {% else %}
+                <div class="mt-4">
+                    <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Conectar cuenta
+                        &rarr;</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Fila 2 · Security Actions -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 h-full flex flex-col">
+                <h3 class="font-bold text-gray-900 mb-4">Seguridad</h3>
+                <div class="flex-1 flex flex-col justify-center">
                     <a href="{% url 'password_change' %}"
                         class="flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-50 transition-colors group">
                         <div class="flex items-center gap-3">
@@ -223,26 +232,28 @@
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Danger Zone -->
-            <div class="bg-red-50 rounded-2xl shadow-sm border border-red-100 overflow-hidden">
-                <div class="p-6">
-                    <h3 class="font-bold text-red-800 mb-2">Zona de Peligro</h3>
-                    <p class="text-xs text-red-600 mb-4">Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor,
-                        asegúrate.</p>
-                    <button type="button" id="btn-abrir-eliminar"
-                        class="w-full bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors shadow-sm">
-                        Eliminar Cuenta
-                    </button>
-                </div>
+    <!-- Danger Zone (ancho completo, alineada con la rejilla) -->
+    <div class="mt-6 bg-red-50 rounded-2xl shadow-sm border border-red-100 overflow-hidden">
+        <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex-1">
+                <h3 class="font-bold text-red-800 mb-1">Zona de Peligro</h3>
+                <p class="text-xs text-red-600">Eliminar tu cuenta borra de forma definitiva toda tu información
+                    (tarjetas, movimientos, inversiones, deudas, facturas y presupuestos) y cancela tu suscripción.
+                    No hay vuelta atrás.</p>
             </div>
-
+            <button type="button" id="btn-abrir-eliminar"
+                class="shrink-0 w-full sm:w-auto bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white font-medium py-2 px-5 rounded-lg text-sm transition-colors shadow-sm">
+                Eliminar Cuenta
+            </button>
         </div>
     </div>
 </div>
 
 <!-- Modal: confirmar eliminación de cuenta -->
-<div id="modal-eliminar" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60"
+<div id="modal-eliminar" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
     role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-titulo">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div class="p-6">
@@ -279,7 +290,7 @@
                         Conservar mi cuenta
                     </button>
                     <button type="submit" id="btn-confirmar-eliminar" disabled
-                        class="inline-flex justify-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                        class="inline-flex justify-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700">
                         Eliminar definitivamente
                     </button>
                 </div>

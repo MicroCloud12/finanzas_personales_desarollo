@@ -13,7 +13,7 @@ from django.shortcuts import render, redirect
 from allauth.socialaccount.models import SocialAccount
 
 from ..forms import FormularioRegistroPersonalizado
-from ..models import Suscripcion
+from ..models import Suscripcion, Cuenta, registro_transacciones
 from ..services import AccountService
 
 logger = logging.getLogger(__name__)
@@ -70,6 +70,9 @@ def mi_perfil(request):
         'google_cuenta': SocialAccount.objects.filter(user=request.user, provider='google').first(),
         'today': timezone.now().date(),
         'palabra_confirmacion': AccountService.PALABRA_CONFIRMACION,
+        # Resumen de lo que tiene registrado (y de lo que se borraría con la cuenta)
+        'num_cuentas': Cuenta.objects.filter(propietario=request.user).count(),
+        'num_movimientos': registro_transacciones.objects.filter(propietario=request.user).count(),
     }
     return render(request, 'mi_perfil.html', context)
 
