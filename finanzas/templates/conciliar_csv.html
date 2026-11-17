@@ -1,0 +1,202 @@
+{% extends 'revisar_base.html' %}
+{% load static humanize dinero %}
+{% block title %}Conciliar {{ cuenta.nombre }} | Finanzas Personales{% endblock %}
+
+{% block volver %}
+    {% url 'resumen' as url_volver %}
+    {% include 'partials/_boton_volver.html' with url=url_volver texto="Volver al Resumen" only %}
+{% endblock %}
+
+{% block titulo %}Conciliación de {{ cuenta.nombre }} con el banco{% endblock %}
+{% block subtitulo %}
+    {{ nombre }}: movimientos del {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}.
+    Comparé cada movimiento del banco con lo que tienes registrado (mismo monto, misma dirección, fecha ±{{ dias }} días):
+    <span class="font-semibold text-gray-700">{{ coinciden }} coinciden</span>,
+    <span class="font-semibold text-gray-700">{{ solo_app|length }} están solo en la app</span>,
+    <span class="font-semibold text-gray-700">{{ solo_banco|length }} están solo en el banco</span>.
+{% endblock %}
+
+{# No es una sola tabla: saldos, explicación de la diferencia y las dos listas #}
+{% block tarjeta %}
+  {# --- Tarjetas --- #}
+  <div class="mb-8" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem">
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+      <p class="text-xs text-gray-500 uppercase tracking-wider">Según el banco al {{ fin|date:"d/m" }}</p>
+      <p class="text-2xl font-bold text-gray-900 mt-1">{{ banco_fin|dinero }}</p>
+      <p class="text-[11px] text-gray-400 mt-1">último SALDO del archivo</p>
+    </div>
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+      <p class="text-xs text-gray-500 uppercase tracking-wider">Según la app al {{ fin|date:"d/m" }}</p>
+      <p class="text-2xl font-bold text-gray-900 mt-1">{{ app_fin|dinero }}</p>
+      <p class="text-[11px] text-gray-400 mt-1">saldo inicial + entradas − salidas registradas</p>
+    </div>
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+      <p class="text-xs text-gray-500 uppercase tracking-wider">Diferencia (app − banco)</p>
+      <p class="text-2xl font-bold mt-1 {% if cuadra %}text-emerald-700{% else %}text-red-600{% endif %}">{{ dif_fin|dinero_signo }}</p>
+      <p class="text-[11px] text-gray-400 mt-1">
+        {% if cuadra %}<span class="inline-flex px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-800">CUADRA ✓</span>
+        {% elif dif_fin > 0 %}la app cree que tienes más dinero del que hay{% else %}la app cree que tienes menos dinero del que hay{% endif %}
+      </p>
+    </div>
+  </div>
+
+  {# --- De dónde sale la diferencia --- #}
+  {% if not cuadra or solo_app or solo_banco or desfasados %}
+  <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+    <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+      <h3 class="font-bold text-lg text-gray-800">¿De dónde sale la diferencia?</h3>
+      <p class="text-xs text-gray-500 mt-1">Cada renglón suma a la diferencia al cierre. Arregla los que apliquen y vuelve a esta pantalla: se recalcula sola.</p>
+    </div>
+    <table class="min-w-full text-sm">
+      <tbody class="divide-y divide-gray-100">
+        <tr>
+          <td class="px-6 py-3 text-gray-700">
+            Al <b>{{ dia_antes|date:"d/m/Y" }}</b> (antes del primer movimiento del archivo) el banco tenía {{ banco_inicio|dinero }} y la app {{ app_inicio|dinero }}.
+            {% if ajuste_inicial|floatformat:2 != "0.00" %}
+              <span class="block text-[11px] text-gray-500 mt-0.5">Esa diferencia viene de antes de este periodo: el saldo inicial de la cuenta o movimientos anteriores al {{ inicio|date:"d/m" }}{% if desfasados %} (sin contar los desfasados de abajo, que ya están bien){% endif %}.
+                Si no sabes de dónde sale, lo más práctico es ajustar el saldo inicial.</span>
+              <form method="POST" action="{% url 'conciliar_accion' %}" class="mt-2">{% csrf_token %}<input type="hidden" name="accion" value="saldo_inicial">
+                <button type="submit" class="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-xs font-semibold">Ajustar el saldo inicial de {{ cuenta.nombre }} en {{ ajuste_inicial|dinero_signo }} (hoy {{ cuenta.saldo_inicial|dinero }})</button>
+              </form>
+            {% endif %}
+          </td>
+          <td class="px-6 py-3 text-right font-semibold whitespace-nowrap {% if dif_inicio|floatformat:2 == '0.00' %}text-gray-400{% else %}text-red-600{% endif %}">{{ dif_inicio|dinero_signo }}</td>
+        </tr>
+        <tr>
+          <td class="px-6 py-3 text-gray-700"><a href="#solo-app" class="text-indigo-600 hover:underline">{{ solo_app|length }} movimiento{{ solo_app|length|pluralize }} registrado{{ solo_app|length|pluralize }} en la app que el banco no tiene</a>
+            <span class="block text-[11px] text-gray-500 mt-0.5">Casi siempre son duplicados (el ticket y luego el archivo del banco) o cosas que se pagaron con otra cuenta.</span></td>
+          <td class="px-6 py-3 text-right font-semibold whitespace-nowrap {% if solo_app %}text-red-600{% else %}text-gray-400{% endif %}">{{ neto_solo_app|dinero_signo }}</td>
+        </tr>
+        <tr>
+          <td class="px-6 py-3 text-gray-700"><a href="#solo-banco" class="text-indigo-600 hover:underline">{{ solo_banco|length }} movimiento{{ solo_banco|length|pluralize }} del banco que no está{{ solo_banco|length|pluralize:"n" }} en la app</a>
+            <span class="block text-[11px] text-gray-500 mt-0.5">Faltan por registrar; abajo los puedes agregar de un clic.</span></td>
+          <td class="px-6 py-3 text-right font-semibold whitespace-nowrap {% if solo_banco %}text-red-600{% else %}text-gray-400{% endif %}">{{ aporta_solo_banco|dinero_signo }}</td>
+        </tr>
+        {% if desfasados %}
+        <tr>
+          <td class="px-6 py-3 text-gray-700"><a href="#desfasados" class="text-indigo-600 hover:underline">{{ desfasados|length }} movimiento{{ desfasados|length|pluralize }} que sí coincide{{ desfasados|length|pluralize:"n" }} pero con fecha fuera del periodo</a>
+            <span class="block text-[11px] text-gray-500 mt-0.5">Por ejemplo, un ticket del 30 de octubre que el banco cobró el 1 de noviembre. Ya están contados en el saldo de la app al {{ dia_antes|date:"d/m" }}.</span></td>
+          <td class="px-6 py-3 text-right font-semibold whitespace-nowrap text-amber-700">{{ aporta_desfasados|dinero_signo }}</td>
+        </tr>
+        {% endif %}
+        {% if resto|floatformat:2 != "0.00" %}
+        <tr>
+          <td class="px-6 py-3 text-gray-700">Resto que no se explica con lo anterior <span class="block text-[11px] text-gray-500 mt-0.5">Revisa movimientos de {{ cuenta.nombre }} con la cuenta mal puesta o un monto distinto al del banco.</span></td>
+          <td class="px-6 py-3 text-right font-semibold whitespace-nowrap text-red-600">{{ resto|dinero_signo }}</td>
+        </tr>
+        {% endif %}
+        <tr class="bg-gray-50/50">
+          <td class="px-6 py-3 font-bold text-gray-900">Diferencia al {{ fin|date:"d/m/Y" }} (app − banco)</td>
+          <td class="px-6 py-3 text-right font-bold whitespace-nowrap {% if cuadra %}text-emerald-700{% else %}text-red-600{% endif %}">{{ dif_fin|dinero_signo }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# --- Solo en la app --- #}
+  <form id="solo-app" method="POST" action="{% url 'conciliar_accion' %}" class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8"
+        onsubmit="return confirm('¿Eliminar de la app los movimientos marcados? No se puede deshacer.');">
+    {% csrf_token %}<input type="hidden" name="accion" value="eliminar">
+    <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h3 class="font-bold text-lg text-gray-800">Están en la app pero no en el banco ({{ solo_app|length }})</h3>
+        <p class="text-xs text-gray-500 mt-1">Si es un duplicado, márcalo y elimínalo. Si se pagó con otra cuenta (efectivo, otra tarjeta), mejor edítalo y cámbiale la cuenta.</p>
+      </div>
+      {% if solo_app %}{% include 'partials/_boton_rechazar.html' with texto="Eliminar los marcados" only %}{% endif %}
+    </div>
+    {% if solo_app %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <th class="px-4 py-3"><input type="checkbox" class="h-4 w-4 marcar-todos" title="marcar todos"></th>
+            <th class="px-3 py-3">Fecha</th><th class="px-3 py-3">Descripción</th><th class="px-3 py-3">Categoría</th>
+            <th class="px-3 py-3 text-right">Monto</th><th class="px-3 py-3">Tipo</th><th class="px-3 py-3">Con</th><th class="px-3 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for t in solo_app %}
+          <tr style="background:#fff7ed">
+            <td class="px-4 py-2"><input type="checkbox" name="id" value="{{ t.id }}" class="h-4 w-4"></td>
+            <td class="px-3 py-2 text-gray-700 whitespace-nowrap">{{ t.fecha|date:"d/m/Y" }}</td>
+            <td class="px-3 py-2 font-medium text-gray-900">{{ t.descripcion }}</td>
+            <td class="px-3 py-2 text-gray-600">{{ t.categoria }}</td>
+            <td class="px-3 py-2 text-right font-semibold {% if t.entra %}text-emerald-700{% else %}text-gray-900{% endif %}">{% if t.entra %}+{% else %}−{% endif %}{{ t.efecto|dinero }}</td>
+            <td class="px-3 py-2 text-gray-600">{{ t.get_tipo_display }}</td>
+            <td class="px-3 py-2 text-gray-600 whitespace-nowrap">{{ t.otra_cuenta|default:"—" }}</td>
+            <td class="px-3 py-2 text-xs"><a href="{% url 'editar_transaccion' t.id %}" target="_blank" class="text-indigo-600 hover:underline">editar</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="px-6 py-4 text-sm text-gray-400">Nada: todo lo que registraste en el periodo está en el banco.</p>{% endif %}
+  </form>
+
+  {# --- Solo en el banco --- #}
+  <form id="solo-banco" method="POST" action="{% url 'conciliar_accion' %}" class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+    {% csrf_token %}<input type="hidden" name="accion" value="agregar">
+    <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h3 class="font-bold text-lg text-gray-800">Están en el banco pero no en la app ({{ solo_banco|length }})</h3>
+        <p class="text-xs text-gray-500 mt-1">Se agregan con la descripción y categoría que ya conoces (alias y reglas); después puedes editarlos.</p>
+      </div>
+      {% if solo_banco %}{% include 'partials/_boton_aprobar.html' with texto="Agregar los marcados a la app" only %}{% endif %}
+    </div>
+    {% if solo_banco %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <th class="px-4 py-3"><input type="checkbox" class="h-4 w-4 marcar-todos" checked title="marcar todos"></th>
+            <th class="px-3 py-3">Fecha</th><th class="px-3 py-3">Descripción</th><th class="px-3 py-3">Categoría</th>
+            <th class="px-3 py-3 text-right">Monto</th><th class="px-3 py-3">Tipo</th><th class="px-3 py-3">Cuenta</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for r in solo_banco %}
+          <tr>
+            <td class="px-4 py-2"><input type="checkbox" name="id" value="{{ r.i }}" class="h-4 w-4" checked></td>
+            <td class="px-3 py-2 text-gray-700 whitespace-nowrap">{{ r.fila.fecha|date:"d/m/Y" }}</td>
+            <td class="px-3 py-2 font-medium text-gray-900">{{ r.fila.descripcion }}{% if r.fila.banco != r.fila.descripcion %}<span class="block text-[11px] text-gray-400">banco: {{ r.fila.banco }}</span>{% endif %}</td>
+            <td class="px-3 py-2 text-gray-600">{{ r.fila.categoria }}{% if r.fila.nota %}<span class="block text-[11px] text-amber-700">{{ r.fila.nota }}</span>{% endif %}</td>
+            <td class="px-3 py-2 text-right font-semibold {% if r.fila.entra %}text-emerald-700{% else %}text-gray-900{% endif %}">{% if r.fila.entra %}+{% else %}−{% endif %}{{ r.fila.monto|dinero }}</td>
+            <td class="px-3 py-2 text-gray-600">{{ r.fila.tipo|lower|capfirst }}</td>
+            <td class="px-3 py-2 text-gray-600 whitespace-nowrap">{% if r.fila.tipo == 'INGRESO' %}→ {{ r.fila.destino|default:r.fila.origen }}{% elif r.fila.tipo == 'TRANSFERENCIA' %}{{ r.fila.origen }} → {{ r.fila.destino }}{% else %}{{ r.fila.origen }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="px-6 py-4 text-sm text-gray-400">Nada: todos los movimientos del banco ya están registrados.</p>{% endif %}
+  </form>
+
+  {# --- Desfasados --- #}
+  {% if desfasados %}
+  <div id="desfasados" class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+    <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+      <h3 class="font-bold text-lg text-gray-800">Coinciden, pero los tienes con fecha fuera del periodo ({{ desfasados|length }})</h3>
+      <p class="text-xs text-gray-500 mt-1">No sobran ni faltan; solo cámbiales la fecha a la del banco si quieres que el saldo cuadre día por día.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <tbody class="divide-y divide-gray-100">
+          {% for d in desfasados %}
+          <tr>
+            <td class="px-6 py-2 text-gray-700 whitespace-nowrap">banco: {{ d.fila.fecha|date:"d/m/Y" }} {{ d.fila.banco }}</td>
+            <td class="px-3 py-2 text-gray-700 whitespace-nowrap">app: {{ d.mov.fecha|date:"d/m/Y" }} {{ d.mov.descripcion }}</td>
+            <td class="px-3 py-2 text-right font-semibold whitespace-nowrap">{% if d.fila.entra %}+{% else %}−{% endif %}{{ d.fila.monto|dinero }}</td>
+            <td class="px-3 py-2 text-xs"><a href="{% url 'editar_transaccion' d.mov.id %}" target="_blank" class="text-indigo-600 hover:underline">editar</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block javascript %}
+<script defer src="{% static 'js/conciliar_csv.js' %}"></script>
+{% endblock javascript %}

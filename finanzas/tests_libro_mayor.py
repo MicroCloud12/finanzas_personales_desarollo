@@ -223,6 +223,13 @@ class DashboardCuadraTest(BaseLibro):
         # saldos reales al cierre del mes (incluye el gasto de septiembre):
         # débito = 1000 + 15000 - 2000 - 3000 - 2000 - 999 = 8001 ; efectivo = -500
         self.assertEqual(r.context['disponible_banco'], D('7501'))
+        # con cuánto arrancó octubre = lo líquido al cierre de septiembre: 1000 - 999 = 1
+        self.assertEqual(r.context['liquido_inicio'], D('1'))
+        self.assertEqual(r.context['nombre_mes_prev'], 'Septiembre')
+        # el sobrante de octubre NO es ingreso de noviembre: noviembre arranca con lo que quedó (7501)
+        r_nov = self.client.get(reverse('dashboard') + '?year=2026&month=11')
+        self.assertEqual(r_nov.context['ingresos'], D('0'))
+        self.assertEqual(r_nov.context['liquido_inicio'], D('7501'))
         self.assertEqual(r.context['ahorro'], D('2000'))
         self.assertEqual(r.context['deuda_total'], D('0'))      # 3000 comprado - 3000 pagado
         self.assertEqual(r.context['total_pagado_deudas'], D('3000'))

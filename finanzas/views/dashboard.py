@@ -52,6 +52,10 @@ def vista_dashboard(request):
     year = int(request.GET.get('year', current_year))
     month = int(request.GET.get('month', current_month))
     fin_de_mes = date(year, month, calendar.monthrange(year, month)[1])
+    es_mes_actual = (year, month) == (current_year, current_month)
+    corte = min(fin_de_mes, date.today())      # mes en curso: saldos a HOY, no al 30
+    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+    fin_mes_prev = date(prev_year, prev_month, calendar.monthrange(prev_year, prev_month)[1])
 
     suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     es_usuario_premium = suscripcion.is_active()
@@ -60,7 +64,6 @@ def vista_dashboard(request):
     # ingresos = lo que entró a cuentas de activo
     # gastos   = gastos de consumo (con débito, efectivo O tarjeta) + intereses de deuda
     bal = registro_transacciones.objects.balance_dashboard(request.user, year, month)
-    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
     bal_prev = registro_transacciones.objects.balance_dashboard(request.user, prev_year, prev_month)
     ingresos = bal['ingresos']
     gastos = bal['gastos']
@@ -68,9 +71,12 @@ def vista_dashboard(request):
     transferencias = bal['transferencias']
     total_pagado_deudas = bal['pagos_deuda']   # pagos a tarjetas + préstamos del mes
 
-    # ===== 2. BALANCE GENERAL (saldos derivados del libro al cierre del mes) =====
-    resumen = Cuenta.objects.resumen_balance(request.user, hasta=fin_de_mes)
+    # ===== 2. BALANCE GENERAL (saldos derivados del libro al cierre del mes, o a hoy si es el mes en curso) =====
+    resumen = Cuenta.objects.resumen_balance(request.user, hasta=corte)
     disponible_banco = resumen['liquido']      # efectivo + débito
+    # Con cuánto arrancó el mes: lo que quedó en cuentas al cierre del mes anterior. El sobrante
+    # de octubre no es ingreso de noviembre (ya se contó en octubre): es saldo, y aquí se ve.
+    liquido_inicio = Cuenta.objects.resumen_balance(request.user, hasta=fin_mes_prev)['liquido']
     ahorro = resumen['ahorro']                 # saldo de cuentas de ahorro
     deuda_total = resumen['pasivos']           # tarjetas + préstamos
     patrimonio = resumen['patrimonio']
@@ -134,6 +140,9 @@ def vista_dashboard(request):
         'balance': balance,
         'transferencias': transferencias,
         'disponible_banco': disponible_banco,
+        'liquido_inicio': liquido_inicio,
+        'nombre_mes_prev': meses_es[prev_month],
+        'es_mes_actual': es_mes_actual,
         'patrimonio': patrimonio,
         'activos_total': resumen['activos'],
         'ahorro': ahorro,

@@ -140,24 +140,9 @@
 </div>
 {% endblock %}
 
+{% load static %}
 {% block javascript %}
+{# Chart.js solo se carga en las páginas que dibujan gráficos #}
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1"></script>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const d = JSON.parse(document.getElementById('grafica-data').textContent);
-    const pesos = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    const pesosEnteros = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
-    new Chart(document.getElementById('grafica-patrimonio'), {
-        type: 'line',
-        data: { labels: d.labels, datasets: [
-            { label: 'Patrimonio', data: d.patrimonio, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.08)', fill: true, tension: 0.3, borderWidth: 2 },
-            { label: 'Activos', data: d.activos, borderColor: '#059669', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 2 },
-            { label: 'Pasivos', data: d.pasivos, borderColor: '#dc2626', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 2 },
-        ] },
-        options: { responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${pesos.format(ctx.raw)}` } } },
-            scales: { y: { ticks: { callback: v => pesosEnteros.format(v) } } } }
-    });
-});
-</script>
+<script defer src="{% static 'js/balance_general.js' %}"></script>
 {% endblock javascript %}

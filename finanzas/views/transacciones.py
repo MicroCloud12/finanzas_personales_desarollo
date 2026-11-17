@@ -13,6 +13,8 @@ from celery.result import AsyncResult, GroupResult
 from config.celery import app as celery_app
 
 from ..utils import parse_date_safely
+from ..importacion import (a_sesion, aplicar_alias, aprender_alias, coincidencias, completar_desde_historial,
+                           de_sesion, decodificar, importar, leer_csv)
 from ..categorias import Sugeridor, categorias_para, clasificar_ticket, monto_de_ticket
 from ..tasks import (
     process_drive_tickets,
@@ -121,6 +123,75 @@ def lista_transacciones(request):
         'months': range(1, 13),
     }
     return render(request, 'lista_transacciones.html', context)
+
+@require_POST
+@login_required
+def subir_csv(request):
+    """Botón "Subir CSV": lee el archivo (export de Santander o formato propio), busca qué movimientos
+    ya están registrados y muestra la lista para revisar antes de guardar nada."""
+    archivo = request.FILES.get('archivo')
+    if not archivo:
+        messages.error(request, "Elige un archivo .csv.")
+        return redirect('lista_transacciones')
+    try:
+        filas, es_santander = leer_csv(decodificar(archivo.read()))
+    except (ValueError, UnicodeDecodeError) as e:
+        messages.error(request, f"No pude leer {archivo.name}: {e}. No se guardó nada.")
+        return redirect('lista_transacciones')
+    if not filas:
+        messages.warning(request, f"{archivo.name} no trae movimientos.")
+        return redirect('lista_transacciones')
+
+    # Primero lo que tú ya corregiste otras veces (alias); luego, para lo que el archivo no reconoció,
+    # tu historial de movimientos con esa misma descripción.
+    completar_desde_historial(request.user, aplicar_alias(request.user, filas))
+
+    iguales = coincidencias(request.user, filas)
+    renglones = [{'i': i, 'fila': f, 'igual': c, 'marcar': c is None} for i, (f, c) in enumerate(zip(filas, iguales))]
+    request.session['csv_pendiente'] = {'nombre': archivo.name, 'filas': a_sesion(filas)}
+    return render(request, 'subir_csv_revisar.html', {
+        'nombre': archivo.name, 'es_santander': es_santander, 'renglones': renglones,
+        'categorias': categorias_para(request.user),
+        'nuevos': sum(1 for r in renglones if r['igual'] is None),
+        'repetidos': sum(1 for r in renglones if r['igual'] is not None),
+        'por_revisar': sum(1 for f in filas if f['nota']),
+    })
+
+@require_POST
+@login_required
+def confirmar_csv(request):
+    """Guarda solo los renglones que el usuario dejó marcados en la pantalla de revisión."""
+    pendiente = request.session.pop('csv_pendiente', None)
+    if not pendiente:
+        messages.error(request, "No hay un archivo pendiente; vuelve a subirlo.")
+        return redirect('lista_transacciones')
+    filas = de_sesion(pendiente['filas'])
+    elegidas = {int(i) for i in request.POST.getlist('fila') if i.isdigit()}
+    # Lo que corrigió en pantalla (descripción / categoría) se aplica y se aprende para la próxima vez.
+    aprendidos = set()
+    for i, f in enumerate(filas):
+        desc = request.POST.get(f'desc_{i}', f['descripcion'])
+        cat = request.POST.get(f'cat_{i}', f['categoria'])
+        if i in elegidas and aprender_alias(request.user, f, desc, cat):
+            aprendidos.add(f['banco'].upper())
+        f['descripcion'], f['categoria'] = desc.strip()[:100] or f['descripcion'], cat.strip()[:100] or f['categoria']
+    filas = [f for i, f in enumerate(filas) if i in elegidas]
+    if not filas:
+        messages.warning(request, "No marcaste ningún movimiento; no se guardó nada.")
+        return redirect('lista_transacciones')
+
+    r = importar(request.user, filas)   # siempre al usuario conectado, diga lo que diga la columna Usuario
+    texto = f"{pendiente['nombre']}: {r['insertados']} movimientos guardados"
+    if r['omitidos']:
+        texto += f", {r['omitidos']} ya estaban"
+    if aprendidos:
+        texto += f". Aprendí {len(aprendidos)} nombre{'s' if len(aprendidos) > 1 else ''} para la próxima vez"
+    messages.success(request, texto + ".")
+    for nombre, n in r['sin_cuenta'].items():
+        messages.warning(request, f"La cuenta '{nombre}' ({n} movimientos) no existe en Mis Tarjetas: quedaron sin cuenta. "
+                                  "Dala de alta y vuelve a subir el archivo, o edítalos uno por uno.")
+    ultima = max(f['fecha'] for f in filas)
+    return redirect(f"{reverse('lista_transacciones')}?year={ultima.year}&month={ultima.month}")
 
 @login_required
 def editar_transaccion(request, transaccion_id):

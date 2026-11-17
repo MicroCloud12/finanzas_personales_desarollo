@@ -1,5 +1,5 @@
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.http import JsonResponse
@@ -110,6 +110,26 @@ def revisar_inversiones(request):
     context = {'pending_investments': pending_investments}
     return render(request, 'revisar_inversiones.html', context)
 
+def _aprobar_pendiente(usuario, pending):
+    """Convierte una inversión pendiente en una inversión real y la marca como aprobada."""
+    datos = pending.datos_json
+    # Valor de mercado calculado en la tarea; si no existe, el precio de compra.
+    precio_actual = datos.get("valor_actual_mercado", datos.get("precio_por_titulo", "0.0"))
+    tipo_cambio = datos.get("tipo_cambio")
+    # save() calcula costo_total_adquisicion, valor_actual_mercado y la ganancia.
+    inversiones.objects.create(
+        propietario=usuario,
+        fecha_compra=parse_date_safely(datos.get("fecha_compra")),
+        emisora_ticker=datos.get("emisora_ticker"),
+        nombre_activo=datos.get("nombre_activo"),
+        cantidad_titulos=Decimal(datos.get("cantidad_titulos", "0.0")),
+        precio_compra_titulo=Decimal(datos.get("precio_por_titulo", "0.0")),
+        precio_actual_titulo=Decimal(precio_actual) / Decimal(datos.get("cantidad_titulos", "1.0")),
+        tipo_cambio_compra=Decimal(tipo_cambio) if tipo_cambio is not None else None,
+    )
+    pending.estado = 'aprobada'
+    pending.save()
+
 @login_required
 def aprobar_inversion(request, inversion_id):
     """
@@ -118,29 +138,31 @@ def aprobar_inversion(request, inversion_id):
     pending = get_object_or_404(PendingInvestment, id=inversion_id, propietario=request.user)
     
     if request.method == 'POST':
-        datos = pending.datos_json
-        # Valor de mercado calculado en la tarea; si no existe, el precio de compra.
-        precio_actual = datos.get("valor_actual_mercado", datos.get("precio_por_titulo", "0.0"))
-        tipo_cambio = datos.get("tipo_cambio")
-        # save() calcula costo_total_adquisicion, valor_actual_mercado y la ganancia.
-        inversiones.objects.create(
-            propietario=request.user,
-            fecha_compra=parse_date_safely(datos.get("fecha_compra")),
-            emisora_ticker=datos.get("emisora_ticker"),
-            nombre_activo=datos.get("nombre_activo"),
-            cantidad_titulos=Decimal(datos.get("cantidad_titulos", "0.0")),
-            precio_compra_titulo=Decimal(datos.get("precio_por_titulo", "0.0")),
-            precio_actual_titulo=Decimal(precio_actual) / Decimal(datos.get("cantidad_titulos", "1.0")),
-            tipo_cambio_compra=Decimal(tipo_cambio) if tipo_cambio is not None else None,
-        )
-        pending.estado = 'aprobada'
-        pending.save()
-        
+        _aprobar_pendiente(request.user, pending)
         update_user_portfolio_history.delay(request.user.id)
-        
-        messages.success(request, f"Inversión en {datos.get('nombre_activo')} aprobada correctamente.")
+        messages.success(request, f"Inversión en {pending.datos_json.get('nombre_activo')} aprobada correctamente.")
         return redirect('revisar_inversiones')
 
+    return redirect('revisar_inversiones')
+
+@login_required
+def aprobar_todas_inversiones(request):
+    """Aprueba todas las inversiones pendientes; las que traigan datos inválidos se quedan pendientes."""
+    if request.method == 'POST':
+        aprobadas, omitidas = 0, []
+        for pending in PendingInvestment.objects.filter(propietario=request.user, estado='pendiente'):
+            try:
+                _aprobar_pendiente(request.user, pending)
+                aprobadas += 1
+            except (InvalidOperation, TypeError, ValueError, ZeroDivisionError):
+                omitidas.append(pending.datos_json.get('nombre_activo') or pending.datos_json.get('emisora_ticker') or f"#{pending.id}")
+        if aprobadas:
+            update_user_portfolio_history.delay(request.user.id)
+            messages.success(request, f"{aprobadas} inversion{'es' if aprobadas != 1 else ''} aprobada{'s' if aprobadas != 1 else ''} correctamente.")
+        elif not omitidas:
+            messages.warning(request, "No hay inversiones pendientes por aprobar.")
+        if omitidas:
+            messages.info(request, f"Se quedaron pendientes por datos incompletos: {', '.join(omitidas)}. Revísalas una por una.")
     return redirect('revisar_inversiones')
 
 @login_required
@@ -149,6 +171,13 @@ def rechazar_inversion(request, inversion_id):
     Rechaza (elimina) una inversión pendiente.
     """
     PendingInvestment.objects.filter(id=inversion_id, propietario=request.user).update(estado='rechazada')
+    return redirect('revisar_inversiones')
+
+@login_required
+def rechazar_todas_inversiones(request):
+    if request.method == 'POST':
+        n = PendingInvestment.objects.filter(propietario=request.user, estado='pendiente').update(estado='rechazada')
+        messages.success(request, f"{n} inversion{'es' if n != 1 else ''} rechazada{'s' if n != 1 else ''}.")
     return redirect('revisar_inversiones')
 
 @login_required

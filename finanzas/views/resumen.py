@@ -14,13 +14,15 @@ El año completo vive en views/estados.py: Estado de resultados (mes por mes) y
 Balance general (a una fecha, con patrimonio mes a mes).
 """
 import calendar
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
+from ..importacion import (CUENTA_SANTANDER, a_sesion, aplicar_alias, completar_desde_historial, conciliar,
+                           de_sesion, decodificar, importar, leer_csv)
 from ..models import Cuenta, SaldoEstadoCuenta, registro_transacciones
 
 CERO = Decimal('0.00')
@@ -270,6 +272,90 @@ def vista_resumen(request):
         'conciliacion': conciliacion,
         'balance': balance, 'balance_prev': balance_prev,
         'fin_mes': fin_mes,
+        'cuentas_banco': [c for c in cuentas if c.es_activo],
     }
     ctx['notas'] = _notas(ctx)
     return render(request, 'resumen.html', ctx)
+
+
+# ----- Conciliar con el archivo del banco: movimiento por movimiento -----
+
+def _cuenta_para_conciliar(user, cuenta_id):
+    cuentas = Cuenta.objects.filter(propietario=user, tipo__in=Cuenta.TIPOS_ACTIVO)
+    cuenta = cuentas.filter(id=int(cuenta_id)).first() if str(cuenta_id or '').isdigit() else None
+    return cuenta or cuentas.filter(nombre__iexact=CUENTA_SANTANDER).first() or cuentas.filter(es_principal=True).first()
+
+
+@login_required
+def conciliar_csv(request):
+    """Sube el estado de cuenta (export del banco con SALDO) y cruza cada movimiento contra la app.
+
+    POST con archivo: lo lee y lo deja en la sesión. GET: muestra el resultado (así se puede refrescar
+    después de borrar o agregar movimientos sin volver a subir el archivo).
+    """
+    if request.method == 'POST':
+        archivo = request.FILES.get('archivo')
+        cuenta = _cuenta_para_conciliar(request.user, request.POST.get('cuenta'))
+        if not archivo or cuenta is None:
+            messages.error(request, "Elige el archivo del banco y la cuenta a la que pertenece.")
+            return redirect('resumen')
+        try:
+            filas, es_santander = leer_csv(decodificar(archivo.read()))
+            if not es_santander or not filas or any(f['saldo'] is None for f in filas):
+                raise ValueError("necesito el estado de cuenta tal como lo exporta el banco (con la columna SALDO)")
+        except (ValueError, UnicodeDecodeError) as e:
+            messages.error(request, f"No pude usar {archivo.name}: {e}.")
+            return redirect('resumen')
+        completar_desde_historial(request.user, aplicar_alias(request.user, filas))
+        request.session['conciliacion_pendiente'] = {'nombre': archivo.name, 'cuenta': cuenta.id, 'filas': a_sesion(filas)}
+        return redirect('conciliar_csv')
+
+    pendiente = request.session.get('conciliacion_pendiente')
+    cuenta = _cuenta_para_conciliar(request.user, pendiente and pendiente['cuenta'])
+    if not pendiente or cuenta is None:
+        messages.info(request, "Sube el archivo del banco en la sección Conciliación.")
+        return redirect('resumen')
+    filas = de_sesion(pendiente['filas'])
+    r = conciliar(request.user, cuenta, filas)
+    r['solo_banco'] = [{'i': i, 'fila': filas[i]} for i in r['solo_banco']]
+    r['desfasados'] = [{'fila': filas[i], 'mov': t} for i, t in r['desfasados']]
+    r['nombre'] = pendiente['nombre']
+    r['dia_antes'] = r['inicio'] - timedelta(days=1)
+    r['cuadra'] = abs(r['dif_fin']) < Decimal('0.005')
+    # Lo que cada grupo aporta a la diferencia (app − banco): lo que está solo en el banco resta.
+    r['aporta_solo_banco'], r['aporta_desfasados'] = -r['neto_solo_banco'], -r['neto_desfasados']
+    return render(request, 'conciliar_csv.html', r)
+
+
+@login_required
+def conciliar_accion(request):
+    """Botones de la pantalla de conciliación: borrar lo que sobra, agregar lo que falta, ajustar saldo inicial."""
+    if request.method != 'POST':
+        return redirect('conciliar_csv')
+    pendiente = request.session.get('conciliacion_pendiente')
+    cuenta = _cuenta_para_conciliar(request.user, pendiente and pendiente['cuenta'])
+    if not pendiente or cuenta is None:
+        return redirect('conciliar_csv')
+    accion = request.POST.get('accion')
+    ids = [int(i) for i in request.POST.getlist('id') if i.isdigit()]
+
+    if accion == 'eliminar':
+        movimientos = list(registro_transacciones.objects.filter(propietario=request.user, id__in=ids))
+        for t in movimientos:
+            t.delete()   # uno por uno: el delete del modelo libera la cuota si pagaba un préstamo
+        messages.success(request, f"Eliminé {len(movimientos)} movimiento{'s' if len(movimientos) != 1 else ''} que el banco no tenía.")
+    elif accion == 'agregar':
+        filas = de_sesion(pendiente['filas'])
+        elegidas = [filas[i] for i in ids if 0 <= i < len(filas)]
+        if elegidas:
+            r = importar(request.user, elegidas)
+            messages.success(request, f"Agregué {r['insertados']} movimiento{'s' if r['insertados'] != 1 else ''} del banco.")
+            for nombre, n in r['sin_cuenta'].items():
+                messages.warning(request, f"La cuenta '{nombre}' ({n} movimientos) no existe en Mis Tarjetas: quedaron sin cuenta.")
+    elif accion == 'saldo_inicial':
+        filas = de_sesion(pendiente['filas'])
+        r = conciliar(request.user, cuenta, filas)
+        dif = cuenta.ajustar_saldo_inicial_para(r['app_inicio'] + r['ajuste_inicial'], hasta=r['inicio'] - timedelta(days=1))
+        messages.info(request, f"{cuenta.nombre}: saldo inicial ajustado en ${dif:+,.2f} (ahora {cuenta.saldo_inicial:,.2f}); "
+                               f"al {r['inicio'] - timedelta(days=1):%d/%m/%Y} la app ya arranca igual que el banco.")
+    return redirect('conciliar_csv')

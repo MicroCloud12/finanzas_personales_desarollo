@@ -46,7 +46,9 @@
                     $<span id="balanceTotalAmount">{{ balance|floatformat:0|intcomma }}</span><span class="text-gray-300 text-3xl font-bold">.<span id="balanceDecimalAmount">00</span></span>
                 </h2>
                 <p class="text-[11px] text-gray-400 font-medium mt-2 leading-snug">
-                    Ingresos − gastos del mes. Disponible en cuentas: <span class="font-bold text-gray-700">${{ disponible_banco|floatformat:2|intcomma }}</span>
+                    Ingresos − gastos del mes.
+                    Arrancaste con <span class="font-bold text-gray-700">${{ liquido_inicio|floatformat:2|intcomma }}</span> (lo que quedó de {{ nombre_mes_prev }})
+                    y {% if es_mes_actual %}hoy tienes{% else %}cerraste con{% endif %} <span class="font-bold text-gray-700">${{ disponible_banco|floatformat:2|intcomma }}</span> en cuentas
                     · Patrimonio neto: <span class="font-bold text-gray-700">${{ patrimonio|floatformat:2|intcomma }}</span>
                 </p>
             </div>

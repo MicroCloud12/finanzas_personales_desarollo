@@ -1,48 +1,27 @@
-{% extends 'base.html' %}
-{% load humanize %}
-{% load static %}
-
+{% extends 'revisar_base.html' %}
+{% load humanize static %}
 {% block title %}Facturas Pendientes | Finanzas Personales{% endblock %}
 
-{% block content %}
-<div class="max-w-7xl mx-auto">
+{% block volver %}
+    {% url 'facturacion' as url_volver %}
+    {% include 'partials/_boton_volver.html' with url=url_volver texto="Volver al historial" only %}
+{% endblock %}
 
-    {# --- Header Section --- #}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900 font-display">Facturas por Procesar</h1>
-            <p class="mt-1 text-sm text-gray-500">
-                Selecciona un ticket para extraer y confirmar sus datos de facturación.
-            </p>
-        </div>
-        <div class="mt-4 sm:mt-0 flex gap-2">
-            {% if tickets %}
-            <form action="{% url 'eliminar_todas_facturas' %}" method="POST"
-                onsubmit="return confirm('¿Estás seguro de que quieres eliminar TODAS las facturas pendientes? Esta acción no se puede deshacer.');">
-                {% csrf_token %}
-                <button type="submit"
-                    class="inline-flex justify-center items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-xl text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none transition-colors">
-                    <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                        </path>
-                    </svg>
-                    Eliminar Todas
-                </button>
-            </form>
-            {% endif %}
-            <a href="{% url 'facturacion' %}"
-                class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
-                <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
-                </svg>
-                Volver al historial
-            </a>
-        </div>
-    </div>
+{% block titulo %}Facturas por Procesar{% endblock %}
+{% block subtitulo %}Selecciona un ticket para extraer y confirmar sus datos de facturación.{% endblock %}
 
+{% block acciones %}
+    {% if tickets %}
+    <form action="{% url 'eliminar_todas_facturas' %}" method="POST"
+        onsubmit="return confirm('¿Estás seguro de que quieres eliminar TODAS las facturas pendientes? Esta acción no se puede deshacer.');">
+        {% csrf_token %}
+        {% include 'partials/_boton_rechazar.html' with texto="Eliminar Todas" only %}
+    </form>
+    {% endif %}
+{% endblock %}
 
+{# La lista: tabla en pantallas grandes, tarjetas en el teléfono #}
+{% block tarjeta %}
     {# --- Tickets List Card --- #}
     <div class="hidden md:block bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-gray-100 bg-gray-50/50">
@@ -54,25 +33,25 @@
                 <thead>
                     <tr
                         class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        <th class="px-6 py-4">Fecha Ticket</th>
-                        <th class="px-6 py-4">Establecimiento / Concepto</th>
-                        <th class="px-6 py-4">Monto</th>
-                        <th class="px-6 py-4 text-center">Acciones</th>
+                        <th class="px-4 py-4">Fecha Ticket</th>
+                        <th class="px-4 py-4">Establecimiento / Concepto</th>
+                        <th class="px-4 py-4">Monto</th>
+                        <th class="px-4 py-4 text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for ticket in tickets %}
                     <tr class="hover:bg-gray-50/80 transition-colors">
-                        <td class="px-6 py-4 bg-white text-sm text-gray-700">
+                        <td class="px-4 py-4 bg-white text-sm text-gray-700">
                             {{ ticket.fecha_emision|default:"--/--/----" }}
                         </td>
-                        <td class="px-6 py-4 bg-white text-sm text-gray-900 font-medium">
+                        <td class="px-4 py-4 bg-white text-sm text-gray-900 font-medium">
                             {{ ticket.tienda }}
                         </td>
-                        <td class="px-6 py-4 bg-white text-sm font-bold text-gray-800">
+                        <td class="px-4 py-4 bg-white text-sm font-bold text-gray-800">
                             ${{ ticket.total|floatformat:2|intcomma }}
                         </td>
-                        <td class="px-6 py-4 bg-white text-sm text-center">
+                        <td class="px-4 py-4 bg-white text-sm text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <button type="button"
                                     onclick="abrirModalEditar('{{ ticket.id }}', '{{ ticket.tienda|escapejs }}', '{{ ticket.fecha_emision|date:'Y-m-d' }}', '{{ ticket.total|floatformat:2 }}')"
@@ -89,46 +68,22 @@
                                     Revisar
                                 </a>
 
-                                <form action="{% url 'marcar_ticket_facturado' ticket.id %}" method="POST"
-                                    title="Marcar como ya facturado">
+                                <form action="{% url 'marcar_ticket_facturado' ticket.id %}" method="POST">
                                     {% csrf_token %}
-                                    <button type="submit"
-                                        class="p-1.5 rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none transition-colors">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                    </button>
+                                    {% include 'partials/_boton_aprobar.html' with titulo="Marcar como ya facturado" only %}
                                 </form>
-
                                 <form action="{% url 'eliminar_factura' ticket.id %}" method="POST"
                                     onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta factura pendiente?');">
                                     {% csrf_token %}
-                                    <button type="submit"
-                                        class="p-1.5 rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none transition-colors">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                            </path>
-                                        </svg>
-                                    </button>
+                                    {% include 'partials/_boton_rechazar.html' with titulo="Eliminar" only %}
                                 </form>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="px-6 py-10 text-center text-gray-500">
-                            <div class="flex flex-col items-center justify-center">
-                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
-                                    </path>
-                                </svg>
-                                <p class="text-gray-500">No hay tickets pendientes.</p>
-                                <p class="text-sm mt-1 text-gray-400">Sube nuevos tickets desde el Dashboard.</p>
-                            </div>
+                        <td colspan="4" class="px-6 py-12 text-center">
+                            {% include 'partials/_vacio.html' with mensaje="No hay tickets pendientes. Sube nuevos tickets desde el Dashboard." only %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -192,13 +147,15 @@
             </div>
         </div>
         {% empty %}
-        <div class="text-center py-10 text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
-            <p>No hay tickets pendientes.</p>
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 px-6 py-12">
+            {% include 'partials/_vacio.html' with mensaje="No hay tickets pendientes. Sube nuevos tickets desde el Dashboard." only %}
         </div>
         {% endfor %}
     </div>
+{% endblock %}
 
-
+{# Detalle del ticket elegido y ventana para corregir sus datos #}
+{% block extra %}
     {# --- Detail View (Selected Ticket) --- #}
     {% if factura %}
     <div class="mt-8 grid md:grid-cols-2 gap-6 items-start">
@@ -490,7 +447,6 @@
             </form>
         </div>
     </div>
-</div>
 {% endblock %}
 
 {% block javascript %}

@@ -946,3 +946,24 @@ class HistorialReciboServicio(models.Model):
 
     def __str__(self):
         return f"Recibo de {self.presupuesto.categoria} - {self.fecha_emision} - ${self.monto_total}"
+
+
+class AliasComercio(models.Model):
+    """
+    Cómo quiere el usuario que se llame y se clasifique lo que el banco escribe de cierta forma
+    ("SUPER RIDES" -> "DIDI", Transporte). Se aprende solo: cuando en "Revisar antes de guardar"
+    el usuario corrige la descripción o la categoría de un renglón, se guarda aquí y la próxima
+    vez que suba un archivo con ese texto ya sale con su nombre.
+    """
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alias_comercios')
+    texto_banco = models.CharField(max_length=100, help_text="Como lo escribe el banco, ej. 'SUPER RIDES'")
+    descripcion = models.CharField(max_length=100, help_text="Como quieres verlo, ej. 'DIDI'")
+    categoria = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        unique_together = ('propietario', 'texto_banco')
+        verbose_name = "Alias de comercio"
+        verbose_name_plural = "Alias de comercios"
+
+    def __str__(self):
+        return f"{self.texto_banco} -> {self.descripcion}" + (f" ({self.categoria})" if self.categoria else "")

@@ -1,0 +1,12 @@
+{% comment %}Botón verde de aprobar/guardar (submit). Parámetros:
+  texto      lo que dice; sin texto es solo la palomita (para las filas de la tabla)
+  formaction a dónde se envía, si no es la acción del formulario
+  titulo     tooltip
+  id         id del botón (opcional){% endcomment %}
+<button type="submit" {% if formaction %}formaction="{{ formaction }}"{% endif %} {% if titulo %}title="{{ titulo }}"{% endif %} {% if id %}id="{{ id }}"{% endif %}
+    {% if texto %}class="inline-flex justify-center items-center whitespace-nowrap px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+    {% else %}class="p-1.5 rounded-lg text-green-600 hover:bg-green-100 focus:outline-none transition-colors"{% endif %}>
+    <svg class="h-5 w-5 {% if texto %}mr-2{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+    </svg>{{ texto }}
+</button>

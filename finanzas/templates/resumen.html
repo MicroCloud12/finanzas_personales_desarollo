@@ -232,5 +232,23 @@
         </div>
     </form>
 
+    {# --- 4b. Conciliar movimiento por movimiento con el archivo del banco --- #}
+    <form method="POST" action="{% url 'conciliar_csv' %}" enctype="multipart/form-data" class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6 mb-8">
+        {% csrf_token %}
+        <h3 class="font-bold text-lg text-gray-800">¿No cuadra? Sube el estado de cuenta y te digo qué sobra y qué falta</h3>
+        <p class="text-xs text-gray-500 mt-1 mb-4">
+            Exporta los movimientos de tu banco (el mismo CSV que subes en Transacciones, con la columna SALDO). Comparo movimiento por movimiento
+            y te muestro los que están en la app y no en el banco (duplicados), los que faltan, y si la diferencia viene de antes del periodo.
+            No se guarda nada hasta que tú lo decidas.
+        </p>
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+            <select name="cuenta" class="px-3 py-2 border-gray-300 rounded-lg shadow-sm">
+                {% for c in cuentas_banco %}<option value="{{ c.id }}" {% if c.es_principal %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+            </select>
+            <input type="file" name="archivo" accept=".csv,text/csv" required class="text-sm text-gray-600">
+            <button type="submit" class="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800">Conciliar con el banco</button>
+        </div>
+    </form>
+
 </div>
 {% endblock %}

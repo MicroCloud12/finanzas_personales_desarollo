@@ -1,0 +1,89 @@
+{% extends 'revisar_base.html' %}
+{% load static humanize dinero %}
+{% block title %}Revisar CSV | Finanzas Personales{% endblock %}
+
+{% block volver %}
+    {% url 'lista_transacciones' as url_volver %}
+    {% include 'partials/_boton_volver.html' with url=url_volver texto="Volver a Transacciones" only %}
+{% endblock %}
+
+{# Todo va en un formulario: al guardar se envían los renglones marcados y lo que corrijas #}
+{% block formulario_inicio %}<form method="POST" action="{% url 'confirmar_csv' %}">{% csrf_token %}{% endblock %}
+{% block formulario_fin %}</form>{% endblock %}
+
+{% block titulo %}Revisar antes de guardar{% endblock %}
+{% block subtitulo %}
+    {{ nombre }}{% if es_santander %} (archivo de Santander){% endif %}:
+    <span class="font-semibold text-gray-700">{{ nuevos }} nuevos</span>,
+    <span class="font-semibold text-gray-700">{{ repetidos }} que parecen ya registrados</span>{% if por_revisar %},
+    <span class="font-semibold text-gray-700">{{ por_revisar }} con categoría por revisar</span>{% endif %}.
+    Nada se guarda hasta que pulses Guardar: desmarca lo que no quieras y corrige nombre o categoría (lo recuerdo para la próxima vez).
+{% endblock %}
+
+{% block acciones %}
+    {% include 'partials/_boton_aprobar.html' with texto="Guardar los marcados" only %}
+{% endblock %}
+
+{% block tarjeta_titulo %}{{ nombre }}{% endblock %}
+{% block tarjeta_herramientas %}
+    <div class="flex items-center gap-4 text-xs text-gray-500">
+        <label class="inline-flex items-center gap-1 cursor-pointer"><input type="checkbox" id="marcar-todos" class="h-4 w-4"> marcar / desmarcar todos</label>
+        <span><span id="n-marcados" class="font-semibold text-gray-700">{{ nuevos }}</span> marcados</span>
+        <span><span class="inline-block w-3 h-3 rounded align-middle" style="background:#fef3c7"></span> parece ya registrado (se compara monto y fecha ±3 días con lo que ya tienes)</span>
+    </div>
+{% endblock %}
+
+{% block columnas %}
+    <th class="px-4 py-4"></th>
+    <th class="px-4 py-4">Fecha</th>
+    <th class="px-4 py-4">Descripción</th>
+    <th class="px-4 py-4">Categoría</th>
+    <th class="px-4 py-4 text-right">Monto</th>
+    <th class="px-4 py-4">Tipo</th>
+    <th class="px-4 py-4">Cuenta</th>
+    <th class="px-4 py-4">Estado</th>
+{% endblock %}
+
+{% block filas %}
+    {% for r in renglones %}
+    <tr class="hover:bg-gray-50/80 transition-colors" {% if r.igual %}style="background:#fffbeb"{% endif %}>
+        <td class="px-4 py-4"><input type="checkbox" name="fila" value="{{ r.i }}" class="h-4 w-4 fila" {% if r.marcar %}checked{% endif %}></td>
+        <td class="px-4 py-4 text-sm text-gray-700 font-medium whitespace-nowrap">{{ r.fila.fecha|date:"d/m/Y" }}</td>
+        <td class="px-4 py-4">
+            <input type="text" name="desc_{{ r.i }}" value="{{ r.fila.descripcion }}" title="Banco: {{ r.fila.banco }}. Si lo cambias, lo recuerdo para la próxima vez."
+                   class="w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-indigo-400 rounded-md text-sm font-medium text-gray-900" style="background:transparent;min-width:9rem">
+            {% if r.fila.banco != r.fila.descripcion %}<span class="block text-[11px] text-gray-400 pl-2">banco: {{ r.fila.banco }}</span>{% endif %}
+        </td>
+        <td class="px-4 py-4">
+            <input type="text" name="cat_{{ r.i }}" value="{{ r.fila.categoria }}" list="categorias"
+                   class="w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-indigo-400 rounded-md text-sm text-gray-700" style="background:transparent;min-width:9rem">
+            {% if r.fila.nota %}<span class="block text-[11px] text-amber-700 pl-2">{{ r.fila.nota }}</span>{% endif %}
+        </td>
+        <td class="px-4 py-4 text-sm text-right font-bold {% if r.fila.tipo == 'INGRESO' %}text-emerald-700{% else %}text-gray-900{% endif %}">{{ r.fila.monto|dinero }}</td>
+        <td class="px-4 py-4 text-sm text-gray-600">{{ r.fila.tipo|lower|capfirst }}</td>
+        <td class="px-4 py-4 text-sm text-gray-600 whitespace-nowrap">{% if r.fila.tipo == 'INGRESO' %}→ {{ r.fila.destino|default:r.fila.origen }}{% elif r.fila.tipo == 'TRANSFERENCIA' %}{{ r.fila.origen }} → {{ r.fila.destino }}{% else %}{{ r.fila.origen }}{% endif %}</td>
+        <td class="px-4 py-4 text-xs">
+            {% if r.igual %}
+            <span class="inline-flex px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">{% if r.igual.exacta %}Ya registrado{% else %}Parece duplicado{% endif %}</span>
+            <span class="block text-gray-500 mt-1">ya tienes: {{ r.igual.descripcion }} {{ r.igual.monto|dinero }} el {{ r.igual.fecha|date:"d/m" }} · {{ r.igual.cuenta }}
+                <a href="{% url 'editar_transaccion' r.igual.id %}" target="_blank" class="text-indigo-600 hover:underline">ver</a></span>
+            {% else %}
+            <span class="inline-flex px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-800">Nuevo</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="8" class="px-6 py-12 text-center">
+            {% include 'partials/_vacio.html' with mensaje="El archivo no trae movimientos." only %}
+        </td>
+    </tr>
+    {% endfor %}
+{% endblock %}
+
+{# La lista de categorías para autocompletar; se referencia por id desde cada renglón #}
+{% block extra %}<datalist id="categorias">{% for c in categorias %}<option value="{{ c }}">{% endfor %}</datalist>{% endblock %}
+
+{% block javascript %}
+<script defer src="{% static 'js/subir_csv_revisar.js' %}"></script>
+{% endblock javascript %}
