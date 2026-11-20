@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
@@ -7,6 +9,12 @@ from .models import registro_transacciones, inversiones, Deuda, PagoAmortizacion
 INPUT_CLASSES = "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 SELECT_CLASSES = "block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 CHECKBOX_CLASSES = "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+
+
+def _dos_decimales(valor):
+    """Los montos se guardan con 3 decimales; los campos de saldo del formulario aceptan 2.
+    Sin esto, el saldo calculado llega como '1167.040' y el formulario lo rechaza aunque no se toque."""
+    return Decimal(valor or 0).quantize(Decimal('0.01'))
 
 
 def _aplicar_estilos(form):
@@ -49,7 +57,7 @@ class CuentaForm(forms.ModelForm):
         self.fields['terminacion'].widget.attrs.update({'placeholder': 'Ej. 1234 (Solo los últimos 4 números)'})
         self._saldo_calculado = None
         if self.instance and self.instance.pk:
-            self._saldo_calculado = self.instance.saldo()
+            self._saldo_calculado = _dos_decimales(self.instance.saldo())
             self.fields['saldo_actual'].initial = self._saldo_calculado
 
     def save(self, commit=True):
@@ -196,7 +204,7 @@ class DeudaForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         _aplicar_estilos(self)
         if self.instance and self.instance.pk:
-            self.fields['saldo_actual'].initial = self.instance.saldo_pendiente
+            self.fields['saldo_actual'].initial = _dos_decimales(self.instance.saldo_pendiente)
 
     def save(self, commit=True):
         deuda = super().save(commit=False)
@@ -227,11 +235,13 @@ class PagoAmortizacionForm(forms.ModelForm):
 class PresupuestoForm(forms.ModelForm):
     class Meta:
         model = Presupuesto
-        fields = ['categoria', 'monto_presupuestado', 'monto_real', 'es_recurrente', 'mes', 'anio']
+        fields = ['categoria', 'monto_presupuestado', 'monto_real', 'dia_pago', 'es_recurrente', 'mes', 'anio']
         help_texts = {
-            'categoria': "Ej. Vivienda, Alimentación, Transporte.",
-            'monto_presupuestado': "Monto límite que planeas gastar en esta categoría.",
+            'categoria': "Ej. Renta, Luz, Agua, Internet. Si lleva recibos en Drive, usa el nombre de la carpeta (Recibos/luz).",
+            'monto_presupuestado': "Lo que planeas pagar. En los de recibo variable lo actualiza la predicción.",
             'monto_real': "Monto realmente gastado o facturado en este periodo.",
+            'dia_pago': "Solo gastos de monto fijo (renta, mensualidad, suscripción): día del mes en que lo pagas. "
+                        "Déjalo vacío si se estima con recibos (luz, agua, gas...).",
             'es_recurrente': "Si está activo, este presupuesto se aplicará todos los meses.",
             'mes': "Solo si NO es recurrente. (1-12)",
             'anio': "Solo si NO es recurrente. Ej. 2026",
@@ -240,3 +250,9 @@ class PresupuestoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _aplicar_estilos(self)
+
+    def clean_dia_pago(self):
+        dia = self.cleaned_data.get('dia_pago')
+        if dia is not None and not 1 <= dia <= 31:
+            raise forms.ValidationError("El día de pago debe estar entre 1 y 31.")
+        return dia

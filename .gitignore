@@ -28,3 +28,6 @@ db.sqlite3
 movimientos_santander_05nov_al_06nov2026.csv
 Claude outputs/balance_general.png
 Claude outputs/estado_resultados.png
+
+# Estados de cuenta y CSVs que Claude deja en la carpeta (datos bancarios: nunca al repo)
+Claude outputs/*.csv

@@ -177,8 +177,10 @@ def coincidencias(usuario, filas, dias=3):
     Un ticket escaneado o capturado a mano no trae el mismo texto que el banco ("Uber" vs
     "DLO*UBER RIDE") y a veces ni la misma fecha (el cargo se refleja uno o dos días después),
     así que se compara por monto exacto, misma dirección (sale/entra) y fecha a ±`dias`.
-    Cada movimiento registrado solo puede explicar una fila del archivo.
-    Devuelve dicts {'id', 'descripcion', 'monto', 'fecha', 'cuenta', 'exacta'}.
+    Cada movimiento registrado solo puede explicar una fila del archivo, y se reparte en dos pasadas:
+    primero a la fila que además trae la misma cuenta (un gasto de Santander explica la fila "desde
+    Santander", no la de NU del mismo monto), después lo que quede por monto y fecha nada más.
+    Devuelve dicts {'id', 'descripcion', 'monto', 'fecha', 'cuenta', 'tipo', 'destino', 'exacta'}.
     """
     from datetime import timedelta
     from .models import registro_transacciones
@@ -188,24 +190,34 @@ def coincidencias(usuario, filas, dias=3):
     existentes = list(registro_transacciones.objects.filter(
         propietario=usuario, fecha__range=(min(fechas) - timedelta(dias), max(fechas) + timedelta(dias)),
     ).select_related("origen", "destino").order_by("fecha", "id"))
+
+    def cuenta_de(t):
+        cuenta = t.destino if t.tipo == "INGRESO" else t.origen
+        return (cuenta.nombre if cuenta else "").strip().upper()
+
     usados = set()
-    resultado = []
-    for f in filas:
-        sale = f["tipo"] != "INGRESO"
-        candidatos = [t for t in existentes if t.id not in usados and t.monto == f["monto"]
-                      and (t.tipo != "INGRESO") == sale and abs((t.fecha - f["fecha"]).days) <= dias]
-        if not candidatos:
-            resultado.append(None)
-            continue
-        mejor = min(candidatos, key=lambda t: (abs((t.fecha - f["fecha"]).days),
-                                               t.descripcion.strip().lower() != f["descripcion"].strip().lower()))
-        usados.add(mejor.id)
-        cuenta = mejor.destino if mejor.tipo == "INGRESO" else mejor.origen
-        resultado.append({
-            "id": mejor.id, "descripcion": mejor.descripcion, "monto": mejor.monto, "fecha": mejor.fecha,
-            "cuenta": cuenta.nombre if cuenta else "sin cuenta",
-            "exacta": mejor.fecha == f["fecha"] and mejor.descripcion.strip().lower() == f["descripcion"].strip().lower(),
-        })
+    resultado = [None] * len(filas)
+    for misma_cuenta in (True, False):
+        for i, f in enumerate(filas):
+            if resultado[i] is not None:
+                continue
+            sale = f["tipo"] != "INGRESO"
+            cuenta_f = (f["origen"] if sale else (f["destino"] or f["origen"])).strip().upper()
+            candidatos = [t for t in existentes if t.id not in usados and t.monto == f["monto"]
+                          and (t.tipo != "INGRESO") == sale and abs((t.fecha - f["fecha"]).days) <= dias
+                          and (not misma_cuenta or cuenta_de(t) == cuenta_f)]
+            if not candidatos:
+                continue
+            mejor = min(candidatos, key=lambda t: (abs((t.fecha - f["fecha"]).days),
+                                                   t.descripcion.strip().lower() != f["descripcion"].strip().lower()))
+            usados.add(mejor.id)
+            cuenta = mejor.destino if mejor.tipo == "INGRESO" else mejor.origen
+            resultado[i] = {
+                "id": mejor.id, "descripcion": mejor.descripcion, "monto": mejor.monto, "fecha": mejor.fecha,
+                "cuenta": cuenta.nombre if cuenta else "sin cuenta", "tipo": mejor.tipo,
+                "destino": mejor.destino.nombre if mejor.tipo != "INGRESO" and mejor.destino else "",
+                "exacta": mejor.fecha == f["fecha"] and mejor.descripcion.strip().lower() == f["descripcion"].strip().lower(),
+            }
     return resultado
 
 

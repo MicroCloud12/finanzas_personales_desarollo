@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 
 from django.contrib import messages
+from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -17,7 +18,7 @@ from ..importacion import (a_sesion, aplicar_alias, aprender_alias, coincidencia
                            de_sesion, decodificar, importar, leer_csv)
 from ..categorias import Sugeridor, categorias_para, clasificar_ticket, monto_de_ticket
 from ..tasks import (
-    process_drive_tickets,
+    process_drive_tickets, olvidar_lote,
 )
 from ..forms import (
     TransaccionesForm
@@ -27,7 +28,7 @@ from ..services import (
 )
 from ..models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
-    PendingInvestment, AmortizacionPendiente, Factura
+    PendingInvestment, AmortizacionPendiente, Factura, Cuenta
 )
 
 logger = logging.getLogger(__name__)
@@ -113,7 +114,14 @@ def lista_transacciones(request):
         fecha__year=year,
         fecha__month=month
     ).select_related('origen', 'destino').order_by('-fecha', '-id')
-    
+
+    # Filtro por cuenta/tarjeta: un movimiento "es" de la cuenta si sale de ella o entra a ella.
+    cuentas = Cuenta.objects.filter(propietario=request.user).order_by('-es_principal', 'tipo', 'nombre')
+    cuenta_id = request.GET.get('cuenta', '')
+    cuenta_sel = cuentas.filter(id=int(cuenta_id)).first() if cuenta_id.isdigit() else None
+    if cuenta_sel is not None:
+        transacciones_del_mes = transacciones_del_mes.filter(Q(origen=cuenta_sel) | Q(destino=cuenta_sel))
+
     context = {
         'transacciones': transacciones_del_mes,
         'es_usuario_premium': es_usuario_premium, # <-- Añadir la variable al contexto
@@ -121,8 +129,39 @@ def lista_transacciones(request):
         'selected_month': month,
         'years': range(current_year, current_year - 5, -1),
         'months': range(1, 13),
+        'cuentas': cuentas,
+        'cuenta_sel': cuenta_sel,
     }
     return render(request, 'lista_transacciones.html', context)
+
+def _convertible(fila, igual, nombres):
+    """La fila es una transferencia X -> Y (Y es cuenta tuya) y lo que ya tienes es un gasto, o una
+    transferencia a otro lado, que sale de X: en vez de guardar la fila se puede convertir el registrado
+    en transferencia a Y. Pasa cuando el banco de X no dijo a dónde iba el dinero (SPEI con concepto libre)."""
+    if igual is None or fila['tipo'] != 'TRANSFERENCIA' or igual['tipo'] not in ('GASTO', 'TRANSFERENCIA'):
+        return False
+    destino = fila['destino'].strip().upper()
+    return (destino in nombres and igual['cuenta'].strip().upper() == fila['origen'].strip().upper()
+            and igual['destino'].strip().upper() != destino)
+
+
+def _convertir_en_transferencias(usuario, filas, ids, indices):
+    """Convierte los movimientos ya registrados (ids[i]) en transferencias al destino de la fila i.
+    Devuelve {nombre de cuenta destino: cuántos}."""
+    cuentas = {c.nombre.strip().upper(): c for c in Cuenta.objects.filter(propietario=usuario)}
+    convertidos = {}
+    for i in indices:
+        if i >= len(filas) or not ids[i]:
+            continue
+        destino = cuentas.get(filas[i]['destino'].strip().upper())
+        t = registro_transacciones.objects.filter(propietario=usuario, id=ids[i]).first()
+        if destino is None or t is None:
+            continue
+        t.tipo, t.destino, t.categoria, t.cuenta_destino = 'TRANSFERENCIA', destino, 'Transferencia', destino.nombre
+        t.save()
+        convertidos[destino.nombre] = convertidos.get(destino.nombre, 0) + 1
+    return convertidos
+
 
 @require_POST
 @login_required
@@ -147,8 +186,11 @@ def subir_csv(request):
     completar_desde_historial(request.user, aplicar_alias(request.user, filas))
 
     iguales = coincidencias(request.user, filas)
-    renglones = [{'i': i, 'fila': f, 'igual': c, 'marcar': c is None} for i, (f, c) in enumerate(zip(filas, iguales))]
-    request.session['csv_pendiente'] = {'nombre': archivo.name, 'filas': a_sesion(filas)}
+    nombres = {c.nombre.strip().upper() for c in Cuenta.objects.filter(propietario=request.user)}
+    renglones = [{'i': i, 'fila': f, 'igual': c, 'marcar': c is None, 'ajustable': _convertible(f, c, nombres)}
+                 for i, (f, c) in enumerate(zip(filas, iguales))]
+    request.session['csv_pendiente'] = {'nombre': archivo.name, 'filas': a_sesion(filas),
+                                        'iguales': [c['id'] if c else None for c in iguales]}
     return render(request, 'subir_csv_revisar.html', {
         'nombre': archivo.name, 'es_santander': es_santander, 'renglones': renglones,
         'categorias': categorias_para(request.user),
@@ -167,6 +209,10 @@ def confirmar_csv(request):
         return redirect('lista_transacciones')
     filas = de_sesion(pendiente['filas'])
     elegidas = {int(i) for i in request.POST.getlist('fila') if i.isdigit()}
+    # "Convertir el que ya tienes en transferencia a Y": se corrige el registrado y la fila no se guarda.
+    ajustar = {int(i) for i in request.POST.getlist('ajustar') if i.isdigit()}
+    convertidos = _convertir_en_transferencias(request.user, filas, pendiente.get('iguales') or [], sorted(ajustar))
+    elegidas -= ajustar
     # Lo que corrigió en pantalla (descripción / categoría) se aplica y se aprende para la próxima vez.
     aprendidos = set()
     for i, f in enumerate(filas):
@@ -176,8 +222,12 @@ def confirmar_csv(request):
             aprendidos.add(f['banco'].upper())
         f['descripcion'], f['categoria'] = desc.strip()[:100] or f['descripcion'], cat.strip()[:100] or f['categoria']
     filas = [f for i, f in enumerate(filas) if i in elegidas]
+    for nombre, n in convertidos.items():
+        messages.success(request, f"{n} movimiento{'s' if n > 1 else ''} que ya tenías ahora "
+                                  f"{'son transferencias' if n > 1 else 'es transferencia'} a {nombre}.")
     if not filas:
-        messages.warning(request, "No marcaste ningún movimiento; no se guardó nada.")
+        if not convertidos:
+            messages.warning(request, "No marcaste ningún movimiento; no se guardó nada.")
         return redirect('lista_transacciones')
 
     r = importar(request.user, filas)   # siempre al usuario conectado, diga lo que diga la columna Usuario
@@ -192,6 +242,46 @@ def confirmar_csv(request):
                                   "Dala de alta y vuelve a subir el archivo, o edítalos uno por uno.")
     ultima = max(f['fecha'] for f in filas)
     return redirect(f"{reverse('lista_transacciones')}?year={ultima.year}&month={ultima.month}")
+
+
+@login_required
+def descargar_csv(request):
+    """Botón "Descargar CSV": los movimientos que se ven en la lista (mes y cuenta elegidos; todos los meses
+    con ?todo=1) en el formato propio que acepta "Subir CSV", más una columna Id al final que al subir se ignora."""
+    import csv
+    from django.http import HttpResponse
+    from django.utils.text import slugify
+
+    movimientos = (registro_transacciones.objects.filter(propietario=request.user)
+                   .select_related('origen', 'destino').order_by('fecha', 'id'))
+    nombre = 'movimientos'
+    if request.GET.get('todo') != '1':
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+        movimientos = movimientos.filter(fecha__year=year, fecha__month=month)
+        nombre += f'_{year}-{month:02d}'
+    cuenta_id = request.GET.get('cuenta', '')
+    cuenta = Cuenta.objects.filter(propietario=request.user, id=int(cuenta_id)).first() if cuenta_id.isdigit() else None
+    if cuenta is not None:
+        movimientos = movimientos.filter(Q(origen=cuenta) | Q(destino=cuenta))
+        nombre += '_' + slugify(cuenta.nombre)
+
+    respuesta = HttpResponse(content_type='text/csv; charset=utf-8')
+    respuesta['Content-Disposition'] = f'attachment; filename="{nombre}.csv"'
+    respuesta.write('﻿')  # BOM: así Excel abre bien los acentos
+    escritor = csv.writer(respuesta, delimiter=';')
+    escritor.writerow(['Usuario', 'Fecha', 'Descripcion', 'Categoria', 'Monto', 'Tipo',
+                       'Cuenta de origen', 'Cuenta de destino', 'Nota', 'Id'])
+    tipos = {'GASTO': 'gasto', 'INGRESO': 'ingreso'}
+    for t in movimientos:
+        nota = '' if t.tipo in ('GASTO', 'INGRESO', 'TRANSFERENCIA') else t.get_tipo_display()  # pago de mensualidad / a capital
+        if t.monto_interes:
+            nota += f' (interés {t.monto_interes:.2f})'
+        escritor.writerow([request.user.username, t.fecha.strftime('%d/%m/%Y'), t.descripcion, t.categoria,
+                           f'{t.monto:.2f}', tipos.get(t.tipo, 'transferencia'),
+                           t.origen.nombre if t.origen else t.cuenta_origen,
+                           t.destino.nombre if t.destino else t.cuenta_destino, nota, t.id])
+    return respuesta
 
 @login_required
 def editar_transaccion(request, transaccion_id):
@@ -299,7 +389,9 @@ def get_group_status(request, group_id):
              return JsonResponse({"status": "PENDING"})
 
         if group_result.ready():
-            return JsonResponse({"status": "COMPLETED"})
+            # Terminó, pero no todo fue éxito necesariamente: la pantalla avisa cuántos fallaron.
+            fallidos = sum(1 for r in group_result.results if r.failed())
+            return JsonResponse({"status": "COMPLETED", "total": len(group_result), "fallidos": fallidos})
         else:
             total = len(group_result)
             completed = group_result.completed_count()
@@ -339,6 +431,7 @@ def cancelar_procesamiento(request):
             if group_result:
                 group_result.revoke()
                 logger.info(f"Grupo de tareas revocado: {group_id}")
+            olvidar_lote(group_id)  # el siguiente clic lanza un lote nuevo en vez de pegarse a este
 
         # Rechazar los registros que pudieron haberse creado parcialmente antes de cancelar
         if cancel_type == 'tickets':

@@ -128,13 +128,15 @@ Task: Extrae los datos clave del recibo de servicio público o privado.
 Approach step-by-step:
 1. Identifica la fecha exacta de emisión del documento.
 2. Localiza el monto total a pagar.
-3. Extrae el periodo facturado textualmente.
-4. Identifica el nivel de consumo y su unidad de medida.
+3. Localiza la fecha límite de pago ("límite de pago", "pagar antes de", "vencimiento"); si no aparece, null.
+4. Extrae el periodo facturado textualmente.
+5. Identifica el nivel de consumo y su unidad de medida.
 
 Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 {{
-  "_razonamiento": "string - Explica de dónde sacaste el monto y el periodo.",
+  "_razonamiento": "string - Explica de dónde sacaste el monto, el periodo y la fecha límite.",
   "fecha_emision": "YYYY-MM-DD",
+  "fecha_limite_pago": "YYYY-MM-DD o null",
   "monto_total": float,
   "periodo_facturado": "string",
   "consumo": "string"

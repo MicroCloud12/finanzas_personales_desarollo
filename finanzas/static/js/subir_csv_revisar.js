@@ -9,6 +9,11 @@
         contador.textContent = [...cajas].filter(c => c.checked).length;
     }
     cajas.forEach(c => c.addEventListener('change', actualizar));
+    // "Convertir el que ya tienes": el movimiento ya existe, así que la fila no se guarda además.
+    document.querySelectorAll('input[name="ajustar"]').forEach(a => a.addEventListener('change', e => {
+        const fila = e.target.closest('tr').querySelector('input.fila');
+        if (e.target.checked && fila) { fila.checked = false; actualizar(); }
+    }));
     todos.addEventListener('change', e => {
         cajas.forEach(c => { c.checked = e.target.checked; });
         actualizar();

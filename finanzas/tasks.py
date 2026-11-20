@@ -9,6 +9,7 @@ from celery import shared_task, group
 from celery.exceptions import Retry
 from celery.result import GroupResult
 from google.api_core.exceptions import ResourceExhausted
+from django.conf import settings
 from django.contrib.auth.models import User
 from .services import GoogleDriveService, StockPriceService, TransactionService, InvestmentService, get_gemini_service, ExchangeRateService, MistralOCRService, BillingService
 from .models import (Deuda, AmortizacionPendiente, Factura, HistorialReciboServicio, Presupuesto,
@@ -39,18 +40,57 @@ def _get_files_from_drive_folder(user, folder_name: str, mimetypes=None):
         mimetypes = ['image/jpeg', 'image/png', 'application/pdf']
     return gdrive_service.list_files_in_folder(folder_name=folder_name, mimetypes=mimetypes)
 
+def _clave_lote(gid):
+    return f"lote-vence-{gid}"
+
+
+def _lote_vigente(app, gid):
+    """¿El lote guardado bajo `gid` sigue dentro de su plazo? Sin marca (expiró, el worker murió a medio
+    lote, o el backend no la soporta) se da por perdido y se vuelve a lanzar: un grupo cuyas subtareas
+    nunca terminan jamás se reporta "listo", y antes bloqueaba todos los clics siguientes del usuario."""
+    try:
+        marca = app.backend.get(_clave_lote(gid))
+        return marca is not None and float(marca) > time.time()
+    except Exception:
+        return False
+
+
+def _marcar_lote(app, gid, n_archivos):
+    """Plazo del lote: un minuto por archivo (la espera entre archivos + la lectura de la IA), mínimo 30 min."""
+    try:
+        app.backend.set(_clave_lote(gid), str(time.time() + max(1800, n_archivos * 60)).encode())
+    except Exception:
+        logger.warning("No pude guardar el plazo del lote %s; el siguiente clic lo relanzará.", gid)
+
+
+def olvidar_lote(gid):
+    """Al cancelar: borra la marca para que el siguiente clic lance un lote nuevo."""
+    from config.celery import app
+    try:
+        app.backend.delete(_clave_lote(gid))
+    except Exception:
+        pass
+
+
+# Segundos entre un archivo y el siguiente al mandarlos a la IA. 5 s = 12 por minuto, dentro del límite
+# del plan gratuito de Gemini (15/min); con plan de pago puede bajarse en settings (IA_SEGUNDOS_ENTRE_ARCHIVOS).
+SEGUNDOS_ENTRE_ARCHIVOS = getattr(settings, 'IA_SEGUNDOS_ENTRE_ARCHIVOS', 5)
+
+
 def _lanzar_grupo(tarea, archivos, *args):
-    """Una subtarea por archivo, espaciadas 15 s (límite de la API); devuelve el id del grupo para el progreso.
-    El id del grupo es fijo por tarea y usuario (args[0]): si ese lote sigue corriendo, el clic se
-    pega al lote en curso en vez de volver a mandar los mismos archivos a la IA (y duplicar cuota)."""
+    """Una subtarea por archivo, espaciadas SEGUNDOS_ENTRE_ARCHIVOS (límite de la API); devuelve el id del
+    grupo para el progreso. El id del grupo es fijo por tarea y usuario (args[0]): si ese lote sigue
+    corriendo (y dentro de su plazo), el clic se pega al lote en curso en vez de volver a mandar los
+    mismos archivos a la IA."""
     gid = f"{tarea.name}-{args[0]}"
     en_curso = GroupResult.restore(gid)
-    if en_curso is not None and not en_curso.ready():
+    if en_curso is not None and not en_curso.ready() and _lote_vigente(tarea.app, gid):
         return {'status': 'STARTED', 'task_group_id': gid, 'total_tasks': len(en_curso)}
-    job = group(tarea.s(*args, item['id'], item['name'], item['mimeType']).set(countdown=i * 15)
+    job = group(tarea.s(*args, item['id'], item['name'], item['mimeType']).set(countdown=i * SEGUNDOS_ENTRE_ARCHIVOS)
                 for i, item in enumerate(archivos))
     result_group = job.apply_async(task_id=gid)  # en un group, task_id se usa como id del grupo
     result_group.save()
+    _marcar_lote(tarea.app, gid, len(archivos))
     return {'status': 'STARTED', 'task_group_id': result_group.id, 'total_tasks': len(archivos)}
 
 def _build_user_context(user) -> str:

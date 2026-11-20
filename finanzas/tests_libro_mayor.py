@@ -13,7 +13,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
-from .forms import TransaccionesForm
+from .forms import TransaccionesForm, _dos_decimales
 from .migrations import _libro_mayor
 from .models import Cuenta, Deuda, PagoAmortizacion, registro_transacciones
 
@@ -397,6 +397,21 @@ class PantallasTest(BaseLibro):
         self.assertEqual(r.status_code, 302)
         self.debito.refresh_from_db()
         self.assertEqual(self.debito.saldo(), D('7777'))
+
+    def test_editar_saldo_inicial_sin_tocar_saldo_actual(self):
+        """El saldo calculado trae 3 decimales (los montos se guardan así); el formulario lo muestra con 2
+        y debe aceptar que se reenvíe tal cual. Cambiar solo el saldo inicial no dispara la conciliación."""
+        registro_transacciones.objects.create(propietario=self.user, fecha=date(2026, 10, 5), descripcion='Café',
+                                              categoria='Comida', monto=D('18.045'), tipo='GASTO', origen=self.debito)
+        r = self.client.get(reverse('editar_cuenta', args=[self.debito.id]))
+        mostrado = r.context['form']['saldo_actual'].value()
+        self.assertEqual(str(mostrado), str(_dos_decimales(self.debito.saldo())))
+        self.assertLessEqual(len(str(mostrado).split('.')[-1]), 2)          # antes llegaba '....045' y el form lo rechazaba
+        r = self.client.post(reverse('editar_cuenta', args=[self.debito.id]), {
+            'nombre': 'BBVA', 'terminacion': '', 'tipo': 'DEBITO', 'saldo_inicial': '5315.80', 'saldo_actual': str(mostrado)})
+        self.assertEqual(r.status_code, 302, getattr(r, 'context', None) and r.context['form'].errors)
+        self.debito.refresh_from_db()
+        self.assertEqual(self.debito.saldo_inicial, D('5315.80'))            # se respetó lo escrito, sin ajuste encima
 
     def test_editar_deuda_concilia_lo_que_debes(self):
         r = self.client.post(reverse('editar_deuda', args=[self.tarjeta_deuda.id]), {

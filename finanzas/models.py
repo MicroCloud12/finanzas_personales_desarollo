@@ -924,7 +924,13 @@ class Presupuesto(models.Model):
     mes = models.IntegerField(null=True, blank=True, help_text="Mes específico (1-12) si no es recurrente")
     anio = models.IntegerField(null=True, blank=True, help_text="Año específico si no es recurrente")
     fecha_proximo_recibo = models.DateField(null=True, blank=True, help_text="Fecha estimada del próximo recibo (generada por IA)")
-    
+    # Gasto de monto fijo (renta, mensualidad, suscripción): se paga este día cada mes y no lleva recibos.
+    # Sin día de pago, el concepto es de recibo variable (luz, agua, gas...) y la fecha sale de los recibos.
+    dia_pago = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Día del mes en que lo pagas (1-31) si es de monto fijo. Déjalo vacío si se estima con recibos."
+    )
+
     class Meta:
         verbose_name = "Presupuesto"
         verbose_name_plural = "Presupuestos"

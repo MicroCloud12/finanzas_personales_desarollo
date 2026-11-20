@@ -383,3 +383,156 @@ class ConciliarTest(TestCase):
         r = self.client.post(reverse('conciliar_csv'), {'archivo': SimpleUploadedFile('x.csv', PROPIO.encode('utf-8')), 'cuenta': self.santander.id})
         self.assertRedirects(r, reverse('resumen'), fetch_redirect_response=False)
         self.assertIn('columna SALDO', [m.message for m in get_messages(r.wsgi_request)][-1])
+
+
+class FiltroPorCuentaTest(TestCase):
+    """El selector de cuenta en Transacciones deja solo los movimientos que salen de o entran a esa cuenta."""
+
+    def setUp(self):
+        self.user = User.objects.create_user('mau', password='x')
+        self.santander = Cuenta.objects.create(propietario=self.user, nombre='Santander', tipo='DEBITO', es_principal=True)
+        self.nu = Cuenta.objects.create(propietario=self.user, nombre='NU (Debito)', tipo='DEBITO')
+        self.amex = Cuenta.objects.create(propietario=self.user, nombre='AMEX', tipo='CREDITO')
+        crear = registro_transacciones.objects.create
+        crear(propietario=self.user, fecha=date(2026, 11, 2), descripcion='Oxxo', categoria='Tiendas', monto=D('50'), tipo='GASTO', origen=self.santander)
+        crear(propietario=self.user, fecha=date(2026, 11, 3), descripcion='Rappi', categoria='Comida', monto=D('200'), tipo='GASTO', origen=self.amex)
+        crear(propietario=self.user, fecha=date(2026, 11, 4), descripcion='Apartado renta', categoria='Transferencia', monto=D('4888'), tipo='TRANSFERENCIA', origen=self.santander, destino=self.nu)
+        crear(propietario=self.user, fecha=date(2026, 11, 5), descripcion='Nómina', categoria='Nomina', monto=D('23000'), tipo='INGRESO', destino=self.santander)
+        self.client.login(username='mau', password='x')
+
+    def lista(self, **params):
+        r = self.client.get(reverse('lista_transacciones'), {'year': 2026, 'month': 11, **params})
+        return r, [t.descripcion for t in r.context['transacciones']]
+
+    def test_sin_filtro_todas_y_el_selector_trae_mis_cuentas(self):
+        r, descripciones = self.lista()
+        self.assertEqual(len(descripciones), 4)
+        self.assertContains(r, 'Todas las cuentas')
+        self.assertEqual([c.nombre for c in r.context['cuentas']], ['Santander', 'AMEX', 'NU (Debito)'])   # la principal primero, luego por tipo
+
+    def test_filtra_por_cuenta_en_las_dos_direcciones(self):
+        r, descripciones = self.lista(cuenta=self.santander.id)
+        self.assertEqual(descripciones, ['Nómina', 'Apartado renta', 'Oxxo'])   # entra, sale, sale
+        self.assertEqual(r.context['cuenta_sel'], self.santander)
+        _, descripciones = self.lista(cuenta=self.nu.id)
+        self.assertEqual(descripciones, ['Apartado renta'])                     # entra a NU
+        _, descripciones = self.lista(cuenta=self.amex.id)
+        self.assertEqual(descripciones, ['Rappi'])
+
+    def test_cuenta_ajena_o_invalida_no_filtra(self):
+        otro = User.objects.create_user('otro', password='x')
+        ajena = Cuenta.objects.create(propietario=otro, nombre='Ajena', tipo='DEBITO')
+        for valor in (ajena.id, 'abc', ''):
+            r, descripciones = self.lista(cuenta=valor)
+            self.assertEqual(len(descripciones), 4, valor)
+            self.assertIsNone(r.context['cuenta_sel'])
+
+
+# El estado de cuenta de NU: la muchacha se pagó desde NU con dinero que llegó de Santander ese día.
+NU_CSV = """Usuario;Fecha;Descripcion;Categoria;Monto;Tipo;Cuenta de origen;Cuenta de destino;Nota
+mauricio;14/11/2026;MUCHACHA (Geovanina);Limpieza de la casa;350.00;gasto;NU (Debito);;
+mauricio;14/11/2026;DESDE SANTANDER · MUCHACHA;Transferencia;350.00;transferencia;Santander;NU (Debito);
+mauricio;13/11/2026;DESDE SANTANDER · RENTA;Transferencia;4888.00;transferencia;Santander;NU (Debito);
+"""
+
+
+class ConvertirEnTransferenciaTest(TestCase):
+    """Santander exportó 'MUCHACHA 350' sin decir que iba a NU y quedó como gasto de Santander. Al subir el
+    estado de NU, esa fila se reconoce y se puede convertir el gasto registrado en transferencia a NU."""
+
+    def setUp(self):
+        self.user = User.objects.create_user('mau', password='x')
+        self.santander = Cuenta.objects.create(propietario=self.user, nombre='Santander', tipo='DEBITO', saldo_inicial=D('10000'))
+        self.nu = Cuenta.objects.create(propietario=self.user, nombre='NU (Debito)', tipo='DEBITO', saldo_inicial=D('1000'))
+        self.gasto = registro_transacciones.objects.create(
+            propietario=self.user, fecha=date(2026, 11, 14), descripcion='MUCHACHA Y ANUNCIO', categoria='Limpieza de la casa',
+            monto=D('350'), tipo='GASTO', origen=self.santander)
+        self.renta = registro_transacciones.objects.create(
+            propietario=self.user, fecha=date(2026, 11, 13), descripcion='APARTADO RENTA', categoria='Transferencia',
+            monto=D('4888'), tipo='TRANSFERENCIA', origen=self.santander, destino=self.nu)
+        self.client.login(username='mau', password='x')
+
+    def subir(self):
+        archivo = SimpleUploadedFile('nu.csv', NU_CSV.encode('utf-8'), content_type='text/csv')
+        return self.client.post(reverse('subir_csv'), {'archivo': archivo})
+
+    def test_coincidencias_prefiere_la_fila_con_la_misma_cuenta(self):
+        filas, _ = leer_csv(NU_CSV)
+        gasto_nu, desde_santander, renta = coincidencias(self.user, filas)
+        self.assertIsNone(gasto_nu)                               # el gasto de NU es nuevo aunque pese lo mismo
+        self.assertEqual(desde_santander['id'], self.gasto.id)    # el gasto de Santander explica la fila "desde Santander"
+        self.assertEqual((desde_santander['tipo'], desde_santander['destino']), ('GASTO', ''))
+        self.assertEqual((renta['id'], renta['destino']), (self.renta.id, 'NU (Debito)'))
+
+    def test_solo_se_ofrece_convertir_cuando_hace_falta(self):
+        r = self.subir()
+        ajustables = [x['fila']['descripcion'] for x in r.context['renglones'] if x['ajustable']]
+        self.assertEqual(ajustables, ['DESDE SANTANDER · MUCHACHA'])   # la renta ya es transferencia a NU
+        self.assertContains(r, 'convertir el que ya tienes en transferencia a NU (Debito)', count=1)
+        self.assertContains(r, 'Santander → NU (Debito)')             # el "ya tienes" dice a dónde va
+
+    def test_convertir_corrige_el_registrado_y_no_guarda_la_fila(self):
+        r = self.subir()
+        i = next(x['i'] for x in r.context['renglones'] if x['ajustable'])
+        nuevos = [str(x['i']) for x in r.context['renglones'] if x['marcar']]
+        r = self.client.post(reverse('confirmar_csv'), {'fila': nuevos + [str(i)], 'ajustar': [str(i)]}, follow=True)
+        self.gasto.refresh_from_db()
+        self.assertEqual((self.gasto.tipo, self.gasto.destino, self.gasto.categoria), ('TRANSFERENCIA', self.nu, 'Transferencia'))
+        self.assertEqual(registro_transacciones.objects.count(), 3)   # 2 que había + el gasto de NU; la fila convertida no
+        self.assertEqual(self.santander.saldo(), D('10000') - 350 - 4888)
+        self.assertEqual(self.nu.saldo(), D('1000') + 4888 + 350 - 350)
+        self.assertIn('1 movimiento que ya tenías ahora es transferencia a NU (Debito).', [str(m) for m in r.context['messages']])
+
+    def test_solo_convertir_sin_filas_nuevas_no_regana(self):
+        r = self.subir()
+        i = next(x['i'] for x in r.context['renglones'] if x['ajustable'])
+        r = self.client.post(reverse('confirmar_csv'), {'ajustar': [str(i)]}, follow=True)
+        textos = [str(m) for m in r.context['messages']]
+        self.assertNotIn('No marcaste ningún movimiento; no se guardó nada.', textos)
+        self.assertEqual(registro_transacciones.objects.filter(tipo='TRANSFERENCIA').count(), 2)
+
+
+class DescargarCsvTest(TestCase):
+    """'Descargar CSV' en Transacciones: lo que se ve (mes y cuenta) o todo, en el formato que acepta Subir CSV."""
+
+    def setUp(self):
+        self.user = User.objects.create_user('mau', password='x')
+        self.santander = Cuenta.objects.create(propietario=self.user, nombre='Santander', tipo='DEBITO')
+        self.nu = Cuenta.objects.create(propietario=self.user, nombre='NU (Debito)', tipo='DEBITO')
+        crear = registro_transacciones.objects.create
+        crear(propietario=self.user, fecha=date(2026, 10, 2), descripcion='Oxxo', categoria='Tiendas', monto=D('50'), tipo='GASTO', origen=self.santander)
+        crear(propietario=self.user, fecha=date(2026, 11, 4), descripcion='Apartado renta', categoria='Transferencia', monto=D('4888'), tipo='TRANSFERENCIA', origen=self.santander, destino=self.nu)
+        crear(propietario=self.user, fecha=date(2026, 11, 5), descripcion='Nómina', categoria='Nomina', monto=D('23000'), tipo='INGRESO', destino=self.santander)
+        crear(propietario=self.user, fecha=date(2026, 11, 6), descripcion='Rappi', categoria='Comida', monto=D('275.5'), tipo='GASTO', origen=self.nu, cuenta_origen='NU (Debito)')
+        otro = User.objects.create_user('otro', password='x')
+        crear(propietario=otro, fecha=date(2026, 11, 6), descripcion='Ajeno', categoria='X', monto=D('1'), tipo='GASTO')
+        self.client.login(username='mau', password='x')
+
+    def descargar(self, **params):
+        r = self.client.get(reverse('descargar_csv'), params)
+        self.assertEqual(r.status_code, 200)
+        return r, [l for l in r.content.decode('utf-8-sig').splitlines() if l]
+
+    def test_mes_y_cuenta_como_en_la_lista(self):
+        r, lineas = self.descargar(year=2026, month=11)
+        self.assertEqual(r['Content-Disposition'], 'attachment; filename="movimientos_2026-11.csv"')
+        self.assertEqual(lineas[0], 'Usuario;Fecha;Descripcion;Categoria;Monto;Tipo;Cuenta de origen;Cuenta de destino;Nota;Id')
+        self.assertEqual([l.split(';')[2] for l in lineas[1:]], ['Apartado renta', 'Nómina', 'Rappi'])
+        self.assertTrue(r.content.startswith('﻿'.encode('utf-8')))
+        r, lineas = self.descargar(year=2026, month=11, cuenta=self.nu.id)
+        self.assertEqual(r['Content-Disposition'], 'attachment; filename="movimientos_2026-11_nu-debito.csv"')
+        self.assertEqual([l.split(';')[2] for l in lineas[1:]], ['Apartado renta', 'Rappi'])
+        self.assertEqual(lineas[1].split(';')[:9], ['mau', '04/11/2026', 'Apartado renta', 'Transferencia', '4888.00', 'transferencia', 'Santander', 'NU (Debito)', ''])
+
+    def test_todo_y_se_puede_volver_a_subir_sin_duplicar(self):
+        r, lineas = self.descargar(todo=1)
+        self.assertEqual(r['Content-Disposition'], 'attachment; filename="movimientos.csv"')
+        self.assertEqual(len(lineas), 1 + 4)                       # nada del otro usuario
+        filas, es_santander = leer_csv(decodificar(r.content))     # la columna Id se ignora
+        self.assertFalse(es_santander)
+        self.assertEqual(importar(self.user, filas)['omitidos'], 4)
+
+    def test_boton_en_la_lista(self):
+        r = self.client.get(reverse('lista_transacciones'), {'year': 2026, 'month': 11, 'cuenta': self.nu.id})
+        self.assertContains(r, f'{reverse("descargar_csv")}?year=2026&month=11&cuenta={self.nu.id}')
+        self.assertContains(r, f'{reverse("descargar_csv")}?todo=1&cuenta={self.nu.id}')

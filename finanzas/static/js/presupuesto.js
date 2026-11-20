@@ -61,25 +61,63 @@ function predecirRecibo(btn) {
     });
 }
 
+// Segundo clic mientras corre = cancelar (revoca el lote en Celery y deja listo el botón para volver a empezar).
+async function cancelarRecibos(btn) {
+    if (!confirm('¿Cancelar el procesamiento de recibos?')) return;
+    const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    await fetch('/api/cancelar-procesamiento/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.value : '', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ task_id: btn.dataset.taskId, group_id: btn.dataset.groupId || null, cancel_type: 'recibos' }),
+    });
+    btn.dataset.cancelado = '1';
+}
+
 function procesarRecibosAnteriores(btn) {
+    if (btn.dataset.taskId) return cancelarRecibos(btn);
+    const badge = btn.querySelector('.progreso-badge');
+    const progreso = texto => { badge.textContent = texto; badge.classList.toggle('hidden', !texto); };
+    const cancelado = () => btn.dataset.cancelado === '1';
     conSpinner(btn, '.icon-procesar', '.icon-spinner-procesar', 'Ocurrió un error al procesar los recibos.', async () => {
         const data = await getJSON(btn.dataset.url);
         if (data.error) return showToast(data.error, 'error');
         if (!data.task_id) return showToast(data.mensaje || 'Hecho', 'info');
+        btn.dataset.taskId = data.task_id;
+        btn.title = 'Procesando... clic para cancelar';
 
         // 1) la tarea lanzadora devuelve el id del grupo; 2) se espera a que el grupo termine
         let inicial;
         do { await dormir(2000); inicial = await getJSON(`/resultado-tarea-inicial/${data.task_id}/`); }
-        while (inicial.status !== 'SUCCESS' && inicial.status !== 'FAILURE');
+        while (!cancelado() && inicial.status !== 'SUCCESS' && inicial.status !== 'FAILURE');
+        if (cancelado()) return showToast('Procesamiento cancelado.', 'warning');
         if (inicial.status === 'FAILURE') return showToast('Hubo un error en el worker de Celery.', 'error');
         const r = inicial.result;
         if (r.status !== 'STARTED') return showToast(r.message || 'Error en tarea', r.status === 'NO_FILES' ? 'warning' : 'error');
+        btn.dataset.groupId = r.task_group_id;
+        showToast(`Procesando ${r.total_tasks} recibo(s): un PDF tarda unos segundos, una foto hasta medio minuto. Puedes seguir usando la app.`, 'info');
 
+        // Cada recibo espera unos segundos (límite de la API) más la lectura de la IA: si tarda más de un
+        // minuto por recibo, el lote se quedó colgado y no tiene caso seguir esperando aquí.
+        const limite = Date.now() + Math.max(5, r.total_tasks) * 60 * 1000;
         let grupo;
-        do { await dormir(2000); grupo = await getJSON(`/estado-grupo/${r.task_group_id}/`); }
-        while (grupo.status !== 'COMPLETED' && grupo.status !== 'FAILURE');
+        do {
+            await dormir(2000);
+            grupo = await getJSON(`/estado-grupo/${r.task_group_id}/`);
+            if (grupo.status === 'PROGRESS') progreso(`${grupo.completed}/${grupo.total}`);
+        } while (!cancelado() && grupo.status !== 'COMPLETED' && grupo.status !== 'FAILURE' && Date.now() < limite);
+        if (cancelado()) return showToast('Procesamiento cancelado.', 'warning');
         if (grupo.status === 'FAILURE') return showToast('Falló el procesamiento de los recibos.', 'error');
-        showToast(`¡Se procesaron ${r.total_tasks} recibos exitosamente!`, 'success');
+        if (grupo.status !== 'COMPLETED') {
+            return showToast('Esto está tardando demasiado. Revisa que el worker de Celery esté corriendo; ' +
+                             'si estaba colgado, vuelve a dar clic y elige cancelar para empezar de nuevo.', 'warning');
+        }
+        const fallidos = grupo.fallidos || 0;
+        showToast(fallidos ? `Se procesaron ${r.total_tasks - fallidos} recibo(s); ${fallidos} con error (revisa el worker).`
+                           : `¡Se procesaron ${r.total_tasks} recibo(s) exitosamente!`, fallidos ? 'warning' : 'success');
         window.location.reload();
+    }).finally(() => {
+        delete btn.dataset.taskId; delete btn.dataset.groupId; delete btn.dataset.cancelado;
+        btn.title = 'Procesar recibos de Drive';
+        progreso('');
     });
 }

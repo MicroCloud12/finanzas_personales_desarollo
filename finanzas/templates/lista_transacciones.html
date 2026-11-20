@@ -65,6 +65,14 @@
 
       <div class="mt-4 sm:mt-0 bg-white rounded-lg shadow-sm border border-gray-100 p-1 inline-flex items-center">
         <form method="GET" action="" class="flex items-center gap-2">
+          <select name="cuenta" onchange="this.form.submit()" title="Solo los movimientos de esta cuenta o tarjeta"
+            class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold {% if cuenta_sel %}text-indigo-600{% else %}text-gray-600{% endif %} focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
+            <option value="">Todas las cuentas</option>
+            {% for c in cuentas %}
+            <option value="{{ c.id }}" {% if cuenta_sel and c.id == cuenta_sel.id %}selected{% endif %}>{{ c.nombre }}</option>
+            {% endfor %}
+          </select>
+          <span class="text-gray-300">|</span>
           <select name="month" onchange="this.form.submit()"
             class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
             {% for m in months %}
@@ -79,6 +87,13 @@
             {% endfor %}
           </select>
         </form>
+        <span class="text-gray-300">|</span>
+        <a href="{% url 'descargar_csv' %}?year={{ selected_year }}&month={{ selected_month }}{% if cuenta_sel %}&cuenta={{ cuenta_sel.id }}{% endif %}"
+          title="Descarga lo que ves (mes y cuenta elegidos) en CSV, el mismo formato que acepta Subir CSV"
+          class="pl-3 pr-1 py-1.5 text-sm font-semibold text-gray-600 hover:text-indigo-600 whitespace-nowrap">Descargar CSV</a>
+        <a href="{% url 'descargar_csv' %}?todo=1{% if cuenta_sel %}&cuenta={{ cuenta_sel.id }}{% endif %}"
+          title="Descarga todos los meses{% if cuenta_sel %} de {{ cuenta_sel.nombre }}{% endif %} en un solo CSV"
+          class="pr-3 py-1.5 text-xs text-gray-400 hover:text-indigo-600 whitespace-nowrap" style="margin-left:.35rem">(todo)</a>
       </div>
     </div>
 
@@ -184,7 +199,7 @@
                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
                   </path>
                 </svg>
-                <p>No hay transacciones registradas para este periodo.</p>
+                <p>No hay transacciones{% if cuenta_sel %} de {{ cuenta_sel.nombre }}{% endif %} registradas para este periodo.</p>
               </div>
             </td>
           </tr>

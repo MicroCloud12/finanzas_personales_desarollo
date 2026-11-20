@@ -65,8 +65,12 @@
         <td class="px-4 py-4 text-xs">
             {% if r.igual %}
             <span class="inline-flex px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">{% if r.igual.exacta %}Ya registrado{% else %}Parece duplicado{% endif %}</span>
-            <span class="block text-gray-500 mt-1">ya tienes: {{ r.igual.descripcion }} {{ r.igual.monto|dinero }} el {{ r.igual.fecha|date:"d/m" }} · {{ r.igual.cuenta }}
+            <span class="block text-gray-500 mt-1">ya tienes: {{ r.igual.descripcion }} {{ r.igual.monto|dinero }} el {{ r.igual.fecha|date:"d/m" }} · {{ r.igual.cuenta }}{% if r.igual.destino %} → {{ r.igual.destino }}{% endif %}
                 <a href="{% url 'editar_transaccion' r.igual.id %}" target="_blank" class="text-indigo-600 hover:underline">ver</a></span>
+            {% if r.ajustable %}
+            <label class="block mt-1 text-indigo-700 cursor-pointer" title="El banco de {{ r.fila.origen }} no dijo a dónde iba este dinero y quedó como gasto; márcalo y el que ya tienes se vuelve transferencia a {{ r.fila.destino }} (esta fila no se guarda aparte).">
+                <input type="checkbox" name="ajustar" value="{{ r.i }}" class="h-4 w-4 align-middle"> convertir el que ya tienes en transferencia a {{ r.fila.destino }}</label>
+            {% endif %}
             {% else %}
             <span class="inline-flex px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-800">Nuevo</span>
             {% endif %}
