@@ -130,7 +130,7 @@
                         <td class="px-6 py-4 bg-white text-sm">
                             <span class="font-bold text-gray-800">${{ deuda.total_gastado|floatformat:2|intcomma }}</span>
                             <div class="text-[10px] text-gray-500 mt-1">
-                                {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Total gastado{% else %}Total pagado{% endif %}
+                                {% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Total gastado{% else %}Capital pagado{% endif %}
                             </div>
                         </td>
                         <td class="px-6 py-4 bg-white text-sm align-middle">
@@ -181,15 +181,20 @@
                                 </a>
                                 {% endif %}
 
-                                <a href="{% url 'eliminar_deuda' deuda.id %}"
-                                    class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
-                                    title="Eliminar">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                        </path>
-                                    </svg>
-                                </a>
+                                {# La vista solo acepta POST: un enlace normal daba "405 Method Not Allowed" #}
+                                <form method="POST" action="{% url 'eliminar_deuda' deuda.id %}" class="inline"
+                                    onsubmit="return confirm('¿Eliminar la deuda {{ deuda.nombre|escapejs }}? Se borran su cuenta y su tabla de amortización (los movimientos en Transacciones se conservan). Esto no se puede deshacer.');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                                        title="Eliminar">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -253,7 +258,7 @@
                     <p class="font-bold text-red-600">${{ deuda.saldo_pendiente|floatformat:2|intcomma }}</p>
                     {% if deuda.saldo_pendiente < 0 %}<p class="text-[10px] text-amber-700">Saldo a favor. Si no es real, edita la deuda y escribe cuánto debes hoy.</p>
                     {% elif deuda.tipo_deuda == 'TARJETA_CREDITO' %}<p class="text-[10px] text-gray-500">Disponible: ${{ deuda.disponible|floatformat:2|intcomma }}</p>{% endif %}
-                    <p class="text-xs text-gray-500 mt-1">{% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Gastado{% else %}Pagado{% endif %}</p>
+                    <p class="text-xs text-gray-500 mt-1">{% if deuda.tipo_deuda == 'TARJETA_CREDITO' %}Gastado{% else %}Capital pagado{% endif %}</p>
                     <p class="font-bold text-gray-800">${{ deuda.total_gastado|floatformat:2|intcomma }}</p>
                     {% if deuda.proxima_fecha_corte %}
                     <p class="text-[10px] text-gray-500 mt-1">Corte: {{ deuda.proxima_fecha_corte|date:"d M" }}</p>
@@ -271,8 +276,12 @@
                         class="text-indigo-600 font-medium bg-indigo-50 px-3 py-1 rounded-full">Ver</a>
                     <a href="{% url 'editar_deuda' deuda.id %}"
                         class="text-blue-600 font-medium bg-blue-50 px-3 py-1 rounded-full">Editar</a>
-                    <a href="{% url 'eliminar_deuda' deuda.id %}"
-                        class="text-red-600 font-medium bg-red-50 px-3 py-1 rounded-full">Eliminar</a>
+                    <form method="POST" action="{% url 'eliminar_deuda' deuda.id %}" class="inline"
+                        onsubmit="return confirm('¿Eliminar la deuda {{ deuda.nombre|escapejs }}? Se borran su cuenta y su tabla de amortización (los movimientos en Transacciones se conservan). Esto no se puede deshacer.');">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="text-red-600 font-medium bg-red-50 px-3 py-1 rounded-full">Eliminar</button>
+                    </form>
                 </div>
             </div>
         </div>

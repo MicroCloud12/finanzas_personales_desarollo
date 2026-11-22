@@ -39,7 +39,27 @@
     {% endif %}
 
     <div class="bg-white shadow-lg rounded-lg overflow-x-auto">
-        <h2 class="text-xl font-semibold text-gray-700 p-4 border-b">Plan de Pagos Registrado</h2>
+        <div class="p-4 border-b flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-gray-700">Plan de Pagos Registrado</h2>
+            {% if amortizacion %}
+            <form method="POST" action="{% url 'eliminar_amortizacion' deuda.id %}" class="inline"
+                onsubmit="return confirm('¿Borrar las {{ amortizacion|length }} cuotas de la tabla de amortización de {{ deuda.nombre|escapejs }}? Los pagos ya registrados en Transacciones se conservan.');">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors" title="Borra toda la tabla para volver a cargarla">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Borrar tabla
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        {% if amortizacion %}
+        <div class="px-4 py-3 border-b bg-gray-50 text-sm text-gray-700 flex flex-wrap gap-x-6 gap-y-1">
+            <span><span class="font-semibold">Pagado según la tabla:</span> ${{ resumen.total_pagado|floatformat:2|intcomma }}
+                ({{ resumen.n_pagadas }} cuota{{ resumen.n_pagadas|pluralize }} · capital ${{ resumen.capital_pagado|floatformat:2|intcomma }} + intereses e IVA ${{ resumen.interes_pagado|floatformat:2|intcomma }})</span>
+            <span><span class="font-semibold">Falta:</span> ${{ resumen.total_pendiente|floatformat:2|intcomma }} ({{ resumen.n_pendientes }} cuota{{ resumen.n_pendientes|pluralize }})</span>
+            <span class="text-xs text-gray-500 w-full">El "Capital pagado" de la lista de deudas es otra cosa: monto prestado menos lo que debes hoy en el libro, sin intereses.</span>
+        </div>
+        {% endif %}
         <table class="min-w-full leading-normal">
             <thead>
                 <tr class="border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -64,11 +84,17 @@
                         <td class="px-5 py-5 bg-white text-sm font-bold">${{ pago.pago_total|floatformat:2|intcomma }}</td>
                         <td class="px-5 py-5 bg-white text-sm font-semibold text-blue-600">${{ pago.saldo_insoluto|floatformat:2|intcomma }}</td>
                         <td class="px-5 py-5 bg-white text-sm text-center">
-                            {% if pago.pagado %}
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Pagado</span>
-                            {% else %}
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Pendiente</span>
-                            {% endif %}
+                            {# Clic en la etiqueta = cambiar de estado (p. ej. cuotas pagadas antes de usar la app) #}
+                            <form method="POST" action="{% url 'marcar_cuota' pago.id %}" class="inline">
+                                {% csrf_token %}
+                                {% if pago.pagado %}
+                                <button type="submit" title="Clic para marcarla como pendiente"
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 hover:bg-green-200">Pagado</button>
+                                {% else %}
+                                <button type="submit" title="Clic para marcarla como pagada"
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 hover:bg-red-200">Pendiente</button>
+                                {% endif %}
+                            </form>
                         </td>
                     </tr>
                 {% empty %}

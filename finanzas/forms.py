@@ -186,8 +186,8 @@ class DeudaForm(forms.ModelForm):
     saldo_actual = forms.DecimalField(
         required=False, max_digits=12, decimal_places=2,
         label="¿Cuánto debes hoy?",
-        help_text="Préstamo: capital pendiente. Tarjeta: saldo usado (lo que aparece en tu estado de cuenta). "
-                  "Déjalo vacío para no modificarlo.")
+        help_text="Préstamo: capital pendiente (el 'saldo insoluto' de tu tabla de amortización, sin intereses futuros). "
+                  "Tarjeta: saldo usado (lo que aparece en tu estado de cuenta). Déjalo vacío para no modificarlo.")
 
     class Meta:
         model = Deuda
@@ -197,7 +197,8 @@ class DeudaForm(forms.ModelForm):
             'nombre': "Dale un apodo fácil de recordar (ej. 'Tarjeta Banamex', 'Crédito Coche').",
             'tasa_interes': "Ingresa la Tasa de Interés Anual (Ej: 16.5 para 16.5%).",
             'plazo_meses': "Para tarjetas de crédito, puedes dejarlo en 1.",
-            'monto_total': "Préstamo: monto original. Tarjeta: límite de crédito.",
+            'monto_total': "Préstamo: el capital que te prestaron (NO el 'monto total a pagar', que ya trae los intereses). "
+                           "Tarjeta: límite de crédito.",
         }
 
     def __init__(self, *args, **kwargs):

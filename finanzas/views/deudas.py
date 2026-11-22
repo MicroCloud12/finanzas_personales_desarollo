@@ -86,12 +86,43 @@ def detalle_deuda(request, deuda_id):
     else:
         form = PagoAmortizacionForm()
 
+    amortizacion = list(deuda.amortizacion.order_by('numero_cuota'))
     context = {
         'deuda': deuda,
-        'amortizacion': deuda.amortizacion.order_by('numero_cuota'),
+        'amortizacion': amortizacion,
+        'resumen': resumen_cuotas(amortizacion),
         'form': form 
     }
     return render(request, 'detalle_deuda.html', context)
+
+
+def resumen_cuotas(cuotas):
+    """Cuánto llevas pagado según la tabla (capital + intereses de las cuotas marcadas como pagadas)
+    y cuánto falta. Es lo que se compara contra el estado de cuenta del banco."""
+    cero = Decimal('0.00')
+    pagadas = [c for c in cuotas if c.pagado]
+    pendientes = [c for c in cuotas if not c.pagado]
+    return {
+        'n_pagadas': len(pagadas),
+        'n_pendientes': len(pendientes),
+        'capital_pagado': sum((c.capital for c in pagadas), cero),
+        'interes_pagado': sum((c.interes + c.iva for c in pagadas), cero),
+        'total_pagado': sum((c.pago_total for c in pagadas), cero),
+        'total_pendiente': sum((c.pago_total for c in pendientes), cero),
+    }
+
+
+@login_required
+@require_POST
+def marcar_cuota(request, cuota_id):
+    """Cambia una cuota de Pendiente a Pagada (o al revés) sin tocar el libro mayor. Sirve para las
+    cuotas que pagaste antes de empezar a usar la app, o para corregir una tabla recién cargada."""
+    cuota = get_object_or_404(PagoAmortizacion, id=cuota_id, deuda__propietario=request.user)
+    cuota.pagado = not cuota.pagado
+    if not cuota.pagado:
+        cuota.transaccion_pago = None
+    cuota.save(update_fields=['pagado', 'transaccion_pago'])
+    return redirect('detalle_deuda', deuda_id=cuota.deuda_id)
 
 @login_required
 def editar_deuda(request, deuda_id):
@@ -120,6 +151,17 @@ def eliminar_deuda(request, deuda_id):
     deuda.delete()
     messages.success(request, f"La deuda '{deuda.nombre}' ha sido eliminada correctamente.")
     return redirect('lista_deudas')
+
+@login_required
+@require_POST
+def eliminar_amortizacion(request, deuda_id):
+    """Borra toda la tabla de amortización de la deuda (se confirma en el detalle). Los pagos que ya
+    estaban registrados en Transacciones no se tocan: solo desaparecen las cuotas, para volver a
+    cargarlas desde Drive o a mano."""
+    deuda = get_object_or_404(Deuda, id=deuda_id, propietario=request.user)
+    borradas, _ = deuda.amortizacion.all().delete()
+    messages.success(request, f"Se borraron {borradas} cuotas de la tabla de amortización de '{deuda.nombre}'.")
+    return redirect('detalle_deuda', deuda_id=deuda.id)
 
 @login_required
 def vista_procesamiento_deudas(request, deuda_id):
