@@ -5,14 +5,8 @@
 {% block head_extra %}
 <style>
     /* Estilos del modal que no dependen del CSS compilado de Tailwind */
-    #modal-eliminar {
-        background-color: rgba(17, 24, 39, 0.6);
-    }
-
-    #btn-confirmar-eliminar:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-    }
+    #modal-eliminar { background-color: rgba(17, 24, 39, 0.6); }
+    #btn-confirmar-eliminar:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
 {% endblock %}
 
@@ -88,15 +82,13 @@
                         <p class="font-medium text-gray-900">{{ suscripcion.fecha_inicio|date:"d M, Y" }}</p>
                     </div>
                     <div>
-                        <p class="text-gray-500 mb-1">{% if suscripcion.esta_cancelada %}Acceso Premium hasta{% else
-                            %}Próxima Renovación{% endif %}</p>
+                        <p class="text-gray-500 mb-1">{% if suscripcion.esta_cancelada %}Acceso Premium hasta{% else %}Próxima Renovación{% endif %}</p>
                         <p class="font-medium text-gray-900">{{ suscripcion.fecha_fin|date:"d M, Y" }}</p>
                     </div>
                 </div>
                 {% if suscripcion.esta_cancelada and suscripcion.is_active %}
                 <div class="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                    Cancelaste tu suscripción{% if suscripcion.fecha_cancelacion %} el {{
-                    suscripcion.fecha_cancelacion|date:"d M, Y" }}{% endif %}.
+                    Cancelaste tu suscripción{% if suscripcion.fecha_cancelacion %} el {{ suscripcion.fecha_cancelacion|date:"d M, Y" }}{% endif %}.
                     No se harán más cobros y tu acceso Premium termina el {{ suscripcion.fecha_fin|date:"d M, Y" }}.
                 </div>
                 {% endif %}
@@ -110,13 +102,11 @@
                 <div class="mt-auto flex flex-col sm:flex-row sm:items-center gap-3">
                     <a href="{% url 'gestionar_suscripcion' %}"
                         class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto transition-colors">
-                        {% if suscripcion.esta_cancelada and suscripcion.is_active %}Reactivar Suscripción{% elif
-                        suscripcion.is_active %}Administrar Suscripción{% else %}Mejorar Plan{% endif %}
+                        {% if suscripcion.esta_cancelada and suscripcion.is_active %}Reactivar Suscripción{% elif suscripcion.is_active %}Administrar Suscripción{% else %}Mejorar Plan{% endif %}
                     </a>
                     {% if suscripcion.puede_cancelarse %}
                     <form method="post" action="{% url 'cancelar_suscripcion' %}" class="w-full sm:w-auto"
-                        onsubmit="return confirm('¿Cancelar tu suscripción Premium?\n\nNo se harán más cobros y conservas el acceso hasta el {{ suscripcion.fecha_fin|date:"
-                        d/m/Y" }}.');">
+                        onsubmit="return confirm('¿Cancelar tu suscripción Premium?\n\nNo se harán más cobros y conservas el acceso hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.');">
                         {% csrf_token %}
                         <button type="submit"
                             class="inline-flex justify-center items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-600 bg-white hover:border-red-300 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 w-full sm:w-auto transition-colors">
@@ -146,8 +136,7 @@
                         <p class="text-gray-900 font-medium">{{ num_cuentas|intcomma }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Movimientos registrados
-                        </p>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Movimientos registrados</p>
                         <p class="text-gray-900 font-medium">{{ num_movimientos|intcomma }}</p>
                     </div>
                 </div>
@@ -188,13 +177,11 @@
                 </div>
                 {% if google_cuenta %}
                 <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <p class="text-xs text-gray-500 break-all">Cuenta: {{
-                        google_cuenta.extra_data.email|default:google_cuenta.uid }}</p>
+                    <p class="text-xs text-gray-500 break-all">Cuenta: {{ google_cuenta.extra_data.email|default:google_cuenta.uid }}</p>
                 </div>
                 {% else %}
                 <div class="mt-4">
-                    <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}"
-                        class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Conectar cuenta
+                    <a href="{% provider_login_url 'google' auth_params='access_type=offline&prompt=consent' %}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Conectar cuenta
                         &rarr;</a>
                 </div>
                 {% endif %}
@@ -265,8 +252,8 @@
 </div>
 
 <!-- Modal: confirmar eliminación de cuenta -->
-<div id="modal-eliminar" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
-    aria-modal="true" aria-labelledby="modal-eliminar-titulo">
+<div id="modal-eliminar" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-titulo">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div class="p-6">
             <div class="flex items-start gap-4">
@@ -279,8 +266,7 @@
                 </div>
                 <div>
                     <h3 id="modal-eliminar-titulo" class="text-lg font-bold text-gray-900">¿Eliminar tu cuenta?</h3>
-                    <p class="mt-1 text-sm text-gray-600">Esta acción es definitiva y no se puede deshacer. Se borrarán:
-                    </p>
+                    <p class="mt-1 text-sm text-gray-600">Esta acción es definitiva y no se puede deshacer. Se borrarán:</p>
                     <ul class="mt-2 text-sm text-gray-600 list-disc list-inside space-y-0.5">
                         <li>Tus cuentas y tarjetas, transacciones y presupuestos</li>
                         <li>Tus inversiones, deudas y facturas</li>
@@ -292,11 +278,10 @@
             <form method="post" action="{% url 'eliminar_cuenta_usuario' %}" class="mt-6" id="form-eliminar">
                 {% csrf_token %}
                 <label for="confirmacion-eliminar" class="block text-sm font-medium text-gray-700">
-                    Escribe <span class="font-mono font-bold text-red-600">{{ palabra_confirmacion }}</span> para
-                    confirmar
+                    Escribe <span class="font-mono font-bold text-red-600">{{ palabra_confirmacion }}</span> para confirmar
                 </label>
-                <input type="text" id="confirmacion-eliminar" name="confirmacion" autocomplete="off"
-                    autocapitalize="characters" data-palabra="{{ palabra_confirmacion }}"
+                <input type="text" id="confirmacion-eliminar" name="confirmacion" autocomplete="off" autocapitalize="characters"
+                    data-palabra="{{ palabra_confirmacion }}"
                     class="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
                     placeholder="{{ palabra_confirmacion }}">
                 <div class="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">

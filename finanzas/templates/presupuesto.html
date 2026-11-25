@@ -9,25 +9,20 @@
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
     <div>
       <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 font-display">Presupuesto</h1>
-      <p class="mt-1 text-sm text-gray-500">Tus gastos fijos: cuándo toca pagar cada uno y cuánto apartar de cada
-        quincena para llegar.</p>
+      <p class="mt-1 text-sm text-gray-500">Tus gastos fijos: cuándo toca pagar cada uno y cuánto apartar de cada quincena para llegar.</p>
     </div>
 
     {# --- Action Buttons --- #}
     <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-      <a href="{% url 'crear_presupuesto' %}"
-        class="inline-flex justify-center items-center px-4 py-2.5 sm:py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+      <a href="{% url 'crear_presupuesto' %}" class="inline-flex justify-center items-center px-4 py-2.5 sm:py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
         Agregar Concepto
       </a>
-      <a href="{% url 'revisar_historicos' %}"
-        class="inline-flex justify-center items-center px-4 py-2.5 sm:py-2 border border-transparent text-sm font-medium rounded-xl text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+      <a href="{% url 'revisar_historicos' %}" class="inline-flex justify-center items-center px-4 py-2.5 sm:py-2 border border-transparent text-sm font-medium rounded-xl text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
-          </path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
         </svg>
         Revisar Históricos
       </a>
@@ -39,25 +34,17 @@
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5 sm:p-6">
       <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Aparta cada quincena</p>
       <p class="text-2xl sm:text-3xl font-bold text-indigo-600 mt-1">${{ total_quincena|floatformat:2|intcomma }}</p>
-      <p class="text-xs text-gray-500 mt-1">Suma de lo que cada gasto fijo necesita por quincena para que, cuando toque
-        pagarlo, el dinero ya esté.</p>
+      <p class="text-xs text-gray-500 mt-1">Suma de lo que cada gasto fijo necesita por quincena para que, cuando toque pagarlo, el dinero ya esté.</p>
     </div>
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5 sm:p-6">
-      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Vence antes de tu próxima nómina ({{
-        proxima_nomina|date:"d M" }})</p>
-      <p
-        class="text-2xl sm:text-3xl font-bold {% if vence_antes %}text-amber-600{% else %}text-gray-400{% endif %} mt-1">
-        ${{ vence_antes|floatformat:2|intcomma }}</p>
-      <p class="text-xs text-gray-500 mt-1">{% if n_vencen %}{{ n_vencen }} pago{{ n_vencen|pluralize }} (marcado{{
-        n_vencen|pluralize }} en ámbar abajo) que sale{{ n_vencen|pluralize }} del dinero que ya tienes.{% else %}Nada
-        vence antes de la próxima nómina.{% endif %}</p>
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Vence antes de tu próxima nómina ({{ proxima_nomina|date:"d M" }})</p>
+      <p class="text-2xl sm:text-3xl font-bold {% if vence_antes %}text-amber-600{% else %}text-gray-400{% endif %} mt-1">${{ vence_antes|floatformat:2|intcomma }}</p>
+      <p class="text-xs text-gray-500 mt-1">{% if n_vencen %}{{ n_vencen }} pago{{ n_vencen|pluralize }} (marcado{{ n_vencen|pluralize }} en ámbar abajo) que sale{{ n_vencen|pluralize }} del dinero que ya tienes.{% else %}Nada vence antes de la próxima nómina.{% endif %}</p>
     </div>
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5 sm:p-6 sm:col-span-2 lg:col-span-1">
       <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Previsto para {{ mes_siguiente }}</p>
       <p class="text-2xl sm:text-3xl font-bold text-purple-600 mt-1">${{ total_proximo_mes|floatformat:2|intcomma }}</p>
-      <p class="text-xs text-gray-500 mt-1">Suma de la columna "Próximo mes": montos fijos más el pronóstico del próximo
-        recibo de cada concepto variable.{% if n_sin_datos %} {{ n_sin_datos }} concepto{{ n_sin_datos|pluralize }} sin
-        datos para predecir.{% endif %}</p>
+      <p class="text-xs text-gray-500 mt-1">Suma de la columna "Próximo mes": montos fijos más el pronóstico del próximo recibo de cada concepto variable.{% if n_sin_datos %} {{ n_sin_datos }} concepto{{ n_sin_datos|pluralize }} sin datos para predecir.{% endif %}</p>
     </div>
   </div>
 
@@ -67,17 +54,14 @@
     {# --- Card Header --- #}
     <div class="p-6 border-b border-gray-100 bg-gray-50/50">
       <h3 class="font-bold text-lg text-gray-800">Gastos fijos</h3>
-      <p class="text-xs text-gray-500 mt-1">Usa "Editar" para elegir si un gasto es de <strong>Monto fijo</strong>
-        (renta, muchacha, suscripción) o de <strong>Recibo variable</strong> (luz, agua, gas, internet en Drive <span
-          class="font-mono">Recibos/&lt;nombre del concepto&gt;</span>).</p>
+      <p class="text-xs text-gray-500 mt-1">Usa "Editar" para elegir si un gasto es de <strong>Monto fijo</strong> (renta, muchacha, suscripción) o de <strong>Recibo variable</strong> (luz, agua, gas, internet en Drive <span class="font-mono">Recibos/&lt;nombre del concepto&gt;</span>).</p>
     </div>
 
     {# --- Desktop Table --- #}
     <div class="hidden md:block overflow-x-auto">
       <table class="min-w-full leading-normal">
         <thead>
-          <tr
-            class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
             <th class="px-6 py-4">Concepto / Categoría</th>
             <th class="px-6 py-4">Estimado</th>
             <th class="px-6 py-4">Último real</th>
@@ -89,22 +73,17 @@
         </thead>
         <tbody>
           {% for f in filas %}{% with p=f.p %}
-          <tr class="hover:bg-gray-50/80 transition-colors group" {% if f.vence_antes %}style="background:#fffbeb" {%
-            endif %}>
+          <tr class="hover:bg-gray-50/80 transition-colors group" {% if f.vence_antes %}style="background:#fffbeb"{% endif %}>
             <td class="px-6 py-4 text-sm">
               <div class="flex items-center">
                 <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                 </div>
                 <div>
                   <p class="font-bold text-gray-900">{{ p.categoria }}</p>
-                  <p class="text-xs text-gray-500">{% if p.usa_monto_fijo %}Monto fijo · {% if p.dia_pago %}día {{
-                    p.dia_pago }}{% else %}mensual{% endif %}{% elif p.es_recurrente %}Recibo variable · cada ~{{
-                    f.cada_dias }} días{% else %}Mes: {{ p.mes }}/{{ p.anio }}{% endif %}</p>
+                  <p class="text-xs text-gray-500">{% if p.usa_monto_fijo %}Monto fijo · {% if p.dia_pago %}día {{ p.dia_pago }}{% else %}mensual{% endif %}{% elif p.es_recurrente %}Recibo variable · cada ~{{ f.cada_dias }} días{% else %}Mes: {{ p.mes }}/{{ p.anio }}{% endif %}</p>
                 </div>
               </div>
             </td>
@@ -114,12 +93,8 @@
             <td class="px-6 py-4 text-sm text-gray-900 font-bold">
               ${{ p.monto_real|floatformat:2|intcomma }}
             </td>
-            <td
-              class="px-6 py-4 text-sm whitespace-nowrap {% if f.vence_antes %}text-amber-700 font-semibold{% else %}text-gray-700{% endif %}">
-              {% if f.proximo %}{{ f.proximo|date:"d M Y" }}{% if f.facturado %}<span
-                class="block text-[10px] font-normal text-gray-500">recibo en mano: monto exacto</span>{% endif %}{%
-              elif p.usa_monto_fijo %}<span class="text-gray-500">Cada mes</span>{% else %}<span class="text-gray-400"
-                title="Procesa recibos y predice, o márcalo como monto fijo">sin fecha</span>{% endif %}
+            <td class="px-6 py-4 text-sm whitespace-nowrap {% if f.vence_antes %}text-amber-700 font-semibold{% else %}text-gray-700{% endif %}">
+              {% if f.proximo %}{{ f.proximo|date:"d M Y" }}{% if f.facturado %}<span class="block text-[10px] font-normal text-gray-500">recibo en mano: monto exacto</span>{% endif %}{% elif p.usa_monto_fijo %}<span class="text-gray-500">Cada mes</span>{% else %}<span class="text-gray-400" title="Procesa recibos y predice, o márcalo como monto fijo">sin fecha</span>{% endif %}
             </td>
             {% with pm=f.proximo_mes %}
             <td class="px-6 py-4 text-sm whitespace-nowrap">
@@ -127,13 +102,10 @@
               <span class="text-gray-400 font-bold">—</span>
               <span class="block text-[10px] text-gray-500">{{ pm.nota }}</span>
               {% elif pm.fuente == 'sin_datos' %}
-              <span class="text-gray-400 font-bold"
-                title="Procesa sus recibos de Drive o registra un pago con ese nombre">sin datos</span>
+              <span class="text-gray-400 font-bold" title="Procesa sus recibos de Drive o registra un pago con ese nombre">sin datos</span>
               {% else %}
-              <span class="font-bold {% if pm.exacto %}text-gray-900{% else %}text-purple-600{% endif %}">${{
-                pm.monto|floatformat:2|intcomma }}</span>
-              <span class="block text-[10px] text-gray-500">{% if pm.fecha %}{{ pm.fecha|date:"d M" }} · {% endif %}{{
-                pm.nota }}</span>
+              <span class="font-bold {% if pm.exacto %}text-gray-900{% else %}text-purple-600{% endif %}">${{ pm.monto|floatformat:2|intcomma }}</span>
+              <span class="block text-[10px] text-gray-500">{% if pm.fecha %}{{ pm.fecha|date:"d M" }} · {% endif %}{{ pm.nota }}</span>
               {% endif %}
             </td>
             {% endwith %}
@@ -143,76 +115,49 @@
             <td class="px-6 py-4 text-sm text-right">
               <div class="flex items-center justify-end gap-2">
                 {% if not p.usa_monto_fijo %}
-                <button type="button" onclick="buscarRecibos(this)"
-                  data-url="{% url 'buscar_recibos_presupuesto' p.id %}"
-                  class="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded relative group transition-colors"
-                  title="Buscar Recibos en Drive">
+                <button type="button" onclick="buscarRecibos(this)" data-url="{% url 'buscar_recibos_presupuesto' p.id %}" class="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded relative group transition-colors" title="Buscar Recibos en Drive">
                   <svg class="w-4 h-4 icon-lupa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                   </svg>
                   <svg class="w-4 h-4 icon-spinner hidden animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span
-                    class="resultado-badge hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm"></span>
+                  <span class="resultado-badge hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm"></span>
                 </button>
-
-                <button type="button" onclick="procesarRecibosAnteriores(this)"
-                  data-url="{% url 'procesar_recibos_anteriores_presupuesto' p.id %}"
-                  class="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded relative group transition-colors"
-                  title="Procesar recibos de Drive">
-                  <span
-                    class="progreso-badge hidden absolute -top-2 -right-2 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm"
-                    style="white-space:nowrap"></span>
+                
+                <button type="button" onclick="procesarRecibosAnteriores(this)" data-url="{% url 'procesar_recibos_anteriores_presupuesto' p.id %}" class="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded relative group transition-colors" title="Procesar recibos de Drive">
+                  <span class="progreso-badge hidden absolute -top-2 -right-2 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm" style="white-space:nowrap"></span>
                   <svg class="w-4 h-4 icon-procesar" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                   </svg>
                   <svg class="w-4 h-4 icon-spinner-procesar hidden animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </button>
-
-                <button type="button" onclick="predecirRecibo(this)"
-                  data-url="{% url 'predecir_recibo_presupuesto' p.id %}"
-                  class="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded relative group transition-colors"
-                  title="Predecir recibo del próximo mes">
+                
+                <button type="button" onclick="predecirRecibo(this)" data-url="{% url 'predecir_recibo_presupuesto' p.id %}" class="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded relative group transition-colors" title="Predecir recibo del próximo mes">
                   <svg class="w-4 h-4 icon-magia" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                   </svg>
                   <svg class="w-4 h-4 icon-spinner-magia hidden animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </button>
                 {% endif %}
-                <a href="{% url 'editar_presupuesto' p.id %}"
-                  class="text-yellow-600 hover:text-yellow-900 p-1 hover:bg-yellow-50 rounded" title="Editar">
+                <a href="{% url 'editar_presupuesto' p.id %}" class="text-yellow-600 hover:text-yellow-900 p-1 hover:bg-yellow-50 rounded" title="Editar">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                   </svg>
                 </a>
                 <form method="post" action="{% url 'eliminar_presupuesto' p.id %}" class="inline"
                   onsubmit="return confirm('¿Eliminar {{ p.categoria|escapejs }} y su historial de recibos?');">
                   {% csrf_token %}
-                  <button type="submit" class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
-                    title="Eliminar">
+                  <button type="submit" class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded" title="Eliminar">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                      </path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                     </svg>
                   </button>
                 </form>
@@ -236,32 +181,25 @@
       <div class="p-4 space-y-3 {% if f.vence_antes %}bg-amber-50/70{% else %}bg-white{% endif %}">
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center min-w-0">
-            <div
-              class="h-9 w-9 shrink-0 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
+            <div class="h-9 w-9 shrink-0 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                </path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
             <div class="min-w-0">
               <p class="font-bold text-gray-900 truncate">{{ p.categoria }}</p>
-              <p class="text-xs text-gray-500">{% if p.usa_monto_fijo %}Monto fijo · {% if p.dia_pago %}día {{
-                p.dia_pago }}{% else %}mensual{% endif %}{% elif p.es_recurrente %}Recibo variable · cada ~{{
-                f.cada_dias }} días{% else %}Mes: {{ p.mes }}/{{ p.anio }}{% endif %}</p>
+              <p class="text-xs text-gray-500">{% if p.usa_monto_fijo %}Monto fijo · {% if p.dia_pago %}día {{ p.dia_pago }}{% else %}mensual{% endif %}{% elif p.es_recurrente %}Recibo variable · cada ~{{ f.cada_dias }} días{% else %}Mes: {{ p.mes }}/{{ p.anio }}{% endif %}</p>
             </div>
           </div>
           <div class="text-right shrink-0">
             <p class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{{ mes_siguiente }}</p>
             {% if pm.fuente == 'no_toca' %}
-            <p class="text-sm font-bold text-gray-400">—</p>
+              <p class="text-sm font-bold text-gray-400">—</p>
             {% elif pm.fuente == 'sin_datos' %}
-            <p class="text-xs font-bold text-gray-400">sin datos</p>
+              <p class="text-xs font-bold text-gray-400">sin datos</p>
             {% else %}
-            <p class="text-base font-bold {% if pm.exacto %}text-gray-900{% else %}text-purple-600{% endif %}">${{
-              pm.monto|floatformat:2|intcomma }}</p>
-            <p class="text-[10px] text-gray-500">{% if pm.fecha %}{{ pm.fecha|date:"d M" }} · {% endif %}{{ pm.nota }}
-            </p>
+              <p class="text-base font-bold {% if pm.exacto %}text-gray-900{% else %}text-purple-600{% endif %}">${{ pm.monto|floatformat:2|intcomma }}</p>
+              <p class="text-[10px] text-gray-500">{% if pm.fecha %}{{ pm.fecha|date:"d M" }} · {% endif %}{{ pm.nota }}</p>
             {% endif %}
           </div>
         </div>
@@ -274,8 +212,7 @@
           <div>
             <p class="text-[10px] text-gray-400 uppercase">Próximo pago</p>
             <p class="font-semibold {% if f.vence_antes %}text-amber-700{% else %}text-gray-700{% endif %}">
-              {% if f.proximo %}{{ f.proximo|date:"d M Y" }}{% elif p.usa_monto_fijo %}Cada mes{% else %}Sin fecha{%
-              endif %}
+              {% if f.proximo %}{{ f.proximo|date:"d M Y" }}{% elif p.usa_monto_fijo %}Cada mes{% else %}Sin fecha{% endif %}
             </p>
           </div>
           <div class="text-right">
@@ -286,68 +223,46 @@
 
         <div class="flex items-center justify-end gap-2 pt-1">
           {% if not p.usa_monto_fijo %}
-          <button type="button" onclick="buscarRecibos(this)" data-url="{% url 'buscar_recibos_presupuesto' p.id %}"
-            class="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg relative transition-colors"
-            title="Buscar Recibos en Drive">
+          <button type="button" onclick="buscarRecibos(this)" data-url="{% url 'buscar_recibos_presupuesto' p.id %}" class="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg relative transition-colors" title="Buscar Recibos en Drive">
             <svg class="w-4 h-4 icon-lupa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
             <svg class="w-4 h-4 icon-spinner hidden animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-              </path>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span
-              class="resultado-badge hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm"></span>
+            <span class="resultado-badge hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm"></span>
           </button>
 
-          <button type="button" onclick="procesarRecibosAnteriores(this)"
-            data-url="{% url 'procesar_recibos_anteriores_presupuesto' p.id %}"
-            class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-lg relative transition-colors"
-            title="Procesar recibos de Drive">
-            <span
-              class="progreso-badge hidden absolute -top-2 -right-2 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap"></span>
+          <button type="button" onclick="procesarRecibosAnteriores(this)" data-url="{% url 'procesar_recibos_anteriores_presupuesto' p.id %}" class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-lg relative transition-colors" title="Procesar recibos de Drive">
+            <span class="progreso-badge hidden absolute -top-2 -right-2 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap"></span>
             <svg class="w-4 h-4 icon-procesar" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
             </svg>
             <svg class="w-4 h-4 icon-spinner-procesar hidden animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-              </path>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           </button>
 
-          <button type="button" onclick="predecirRecibo(this)" data-url="{% url 'predecir_recibo_presupuesto' p.id %}"
-            class="inline-flex items-center gap-1 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg relative transition-colors"
-            title="Predecir recibo del próximo mes">
+          <button type="button" onclick="predecirRecibo(this)" data-url="{% url 'predecir_recibo_presupuesto' p.id %}" class="inline-flex items-center gap-1 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg relative transition-colors" title="Predecir recibo del próximo mes">
             <svg class="w-4 h-4 icon-magia" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z">
-              </path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
             </svg>
             <svg class="w-4 h-4 icon-spinner-magia hidden animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-              </path>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             Predecir
           </button>
           {% endif %}
-          <a href="{% url 'editar_presupuesto' p.id %}"
-            class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 rounded-lg"
-            title="Editar">
+          <a href="{% url 'editar_presupuesto' p.id %}" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 rounded-lg" title="Editar">
             Editar
           </a>
           <form method="post" action="{% url 'eliminar_presupuesto' p.id %}" class="inline"
             onsubmit="return confirm('¿Eliminar {{ p.categoria|escapejs }} y su historial de recibos?');">
             {% csrf_token %}
-            <button type="submit"
-              class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg"
-              title="Eliminar">
+            <button type="submit" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg" title="Eliminar">
               Eliminar
             </button>
           </form>

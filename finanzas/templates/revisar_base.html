@@ -3,63 +3,59 @@
 Marco común de las pantallas "Revisar …" (tickets, inversiones, amortizaciones, facturas, CSV),
 tomado de Revisar Tickets. Cada página hereda de aquí y solo llena sus bloques:
 
-volver enlace "Volver a …" arriba a la derecha (include partials/_boton_volver.html)
-titulo / subtitulo encabezado
-acciones botones de la derecha del encabezado (partials/_boton_aprobar.html, _boton_rechazar.html)
-tarjeta_titulo título de la tarjeta (por defecto "Detalle de Movimientos")
-tarjeta_herramientas lo que va a la derecha del título de la tarjeta ("aplicar a todos", "marcar todos"…)
-columnas los <th> de la tabla
-    filas los <tr> de la tabla; si no hay nada, partials/_vacio.html dentro de un <td colspan>
-            tarjeta toda la tarjeta, para páginas que no son una sola tabla
-            formulario_inicio / para envolver encabezado y tarjeta en un solo formulario (los botones dicen a dónde
-            formulario_fin se envían con formaction): el primero abre <form …>{% csrf_token %} y el segundo pone </form>
-            extra lo que va después (modales, detalle…), fuera del formulario
-            {% endcomment %}
+  volver               enlace "Volver a …" arriba a la derecha (include partials/_boton_volver.html)
+  titulo / subtitulo   encabezado
+  acciones             botones de la derecha del encabezado (partials/_boton_aprobar.html, _boton_rechazar.html)
+  tarjeta_titulo       título de la tarjeta (por defecto "Detalle de Movimientos")
+  tarjeta_herramientas lo que va a la derecha del título de la tarjeta ("aplicar a todos", "marcar todos"…)
+  columnas             los <th> de la tabla
+  filas                los <tr> de la tabla; si no hay nada, partials/_vacio.html dentro de un <td colspan>
+  tarjeta              toda la tarjeta, para páginas que no son una sola tabla
+  formulario_inicio /  para envolver encabezado y tarjeta en un solo formulario (los botones dicen a dónde
+  formulario_fin       se envían con formaction): el primero abre <form …>{% csrf_token %} y el segundo pone </form>
+  extra                lo que va después (modales, detalle…), fuera del formulario
+{% endcomment %}
 
-            {% block content %}
-            <div class="max-w-7xl mx-auto">
+{% block content %}
+<div class="max-w-7xl mx-auto">
 
-                {% block volver %}{% endblock %}
+    {% block volver %}{% endblock %}
 
-                {% block formulario_inicio %}{% endblock %}
-                {# --- Encabezado --- #}
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-                    <div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 font-display">{% block titulo %}{%
-                            endblock %}</h1>
-                        <p class="mt-1 text-sm text-gray-500">{% block subtitulo %}{% endblock %}</p>
-                    </div>
-                    <div class="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3 w-full sm:w-auto">
-                        {% block acciones %}{% endblock %}
-                    </div>
-                </div>
+    {% block formulario_inicio %}{% endblock %}
+    {# --- Encabezado --- #}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 font-display">{% block titulo %}{% endblock %}</h1>
+            <p class="mt-1 text-sm text-gray-500">{% block subtitulo %}{% endblock %}</p>
+        </div>
+        <div class="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3 w-full sm:w-auto">
+            {% block acciones %}{% endblock %}
+        </div>
+    </div>
 
-                {# --- Tarjeta con la tabla --- #}
-                {% block tarjeta %}
-                <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
-                    <div
-                        class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <h3 class="font-bold text-lg text-gray-800">{% block tarjeta_titulo %}Detalle de Movimientos{%
-                            endblock %}</h3>
-                        {% block tarjeta_herramientas %}{% endblock %}
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full leading-normal">
-                            <thead>
-                                <tr
-                                    class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    {% block columnas %}{% endblock %}
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                {% block filas %}{% endblock %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endblock tarjeta %}
-                {% block formulario_fin %}{% endblock %}
+    {# --- Tarjeta con la tabla --- #}
+    {% block tarjeta %}
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 class="font-bold text-lg text-gray-800">{% block tarjeta_titulo %}Detalle de Movimientos{% endblock %}</h3>
+            {% block tarjeta_herramientas %}{% endblock %}
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {% block columnas %}{% endblock %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% block filas %}{% endblock %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endblock tarjeta %}
+    {% block formulario_fin %}{% endblock %}
 
-                {% block extra %}{% endblock %}
-            </div>
-            {% endblock %}
+    {% block extra %}{% endblock %}
+</div>
+{% endblock %}

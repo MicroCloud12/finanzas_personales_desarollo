@@ -2,123 +2,116 @@
 {% load static %}
 
 {% block volver %}
-{% url 'lista_transacciones' as url_volver %}
-{% include 'partials/_boton_volver.html' with url=url_volver texto="Volver a Transacciones" only %}
+    {% url 'lista_transacciones' as url_volver %}
+    {% include 'partials/_boton_volver.html' with url=url_volver texto="Volver a Transacciones" only %}
 {% endblock %}
 
 {# Todo va dentro de un solo formulario: los botones dicen a dónde se envían con formaction #}
 {% block formulario_inicio %}<form method="POST">{% csrf_token %}{% endblock %}
-    {% block formulario_fin %}</form>{% endblock %}
+{% block formulario_fin %}</form>{% endblock %}
 
 {% block titulo %}Revisar Tickets Pendientes{% endblock %}
-{% block subtitulo %}Cada ticket ya viene pre-llenado (lo que leyó la IA, tu historial o tu cuenta principal). Revisa y
-aprueba.{% endblock %}
+{% block subtitulo %}Cada ticket ya viene pre-llenado (lo que leyó la IA, tu historial o tu cuenta principal). Revisa y aprueba.{% endblock %}
 
 {% block acciones %}
-{% url 'aprobar_todos_tickets' as url_aprobar %}
-{% include 'partials/_boton_aprobar.html' with texto="Aprobar Tickets Preparados" formaction=url_aprobar only %}
-{% url 'rechazar_todos_tickets' as url_rechazar %}
-{% include 'partials/_boton_rechazar.html' with texto="Rechazar Todos" formaction=url_rechazar only %}
+    {% url 'aprobar_todos_tickets' as url_aprobar %}
+    {% include 'partials/_boton_aprobar.html' with texto="Aprobar Tickets Preparados" formaction=url_aprobar only %}
+    {% url 'rechazar_todos_tickets' as url_rechazar %}
+    {% include 'partials/_boton_rechazar.html' with texto="Rechazar Todos" formaction=url_rechazar only %}
 {% endblock %}
 
 {% block tarjeta_herramientas %}
-{% if tickets %}
-<div class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-    <span class="w-full sm:w-auto text-xs sm:text-sm">Aplicar a todos:</span>
-    <select id="aplicar_cuenta"
-        class="flex-1 sm:flex-none min-w-[8rem] pl-2 pr-8 py-1.5 text-sm border-gray-300 rounded-lg shadow-sm bg-white">
-        <option value="">Cuenta…</option>
-        {% for cuenta in cuentas_usuario %}<option value="{{ cuenta.nombre }}">{{ cuenta.nombre }}</option>{% endfor %}
-    </select>
-    <select id="aplicar_categoria"
-        class="flex-1 sm:flex-none min-w-[8rem] pl-2 pr-8 py-1.5 text-sm border-gray-300 rounded-lg shadow-sm bg-white">
-        <option value="">Categoría…</option>
-        {% for c in categorias %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
-    </select>
-</div>
-{% endif %}
+    {% if tickets %}
+    <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+        <span class="w-full sm:w-auto text-xs sm:text-sm">Aplicar a todos:</span>
+        <select id="aplicar_cuenta" class="flex-1 sm:flex-none min-w-[8rem] pl-2 pr-8 py-1.5 text-sm border-gray-300 rounded-lg shadow-sm bg-white">
+            <option value="">Cuenta…</option>
+            {% for cuenta in cuentas_usuario %}<option value="{{ cuenta.nombre }}">{{ cuenta.nombre }}</option>{% endfor %}
+        </select>
+        <select id="aplicar_categoria" class="flex-1 sm:flex-none min-w-[8rem] pl-2 pr-8 py-1.5 text-sm border-gray-300 rounded-lg shadow-sm bg-white">
+            <option value="">Categoría…</option>
+            {% for c in categorias %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+    </div>
+    {% endif %}
 {% endblock %}
 
 {% block columnas %}
-<th class="px-4 py-4">Fecha</th>
-<th class="px-4 py-4">Descripción</th>
-<th class="px-4 py-4">Total</th>
-<th class="px-4 py-4">Cuenta</th>
-<th class="px-4 py-4">Categoría</th>
-<th class="px-4 py-4">Tipo</th>
-<th class="px-4 py-4">Destino</th>
-<th class="px-4 py-4 text-center">Acciones</th>
+    <th class="px-4 py-4">Fecha</th>
+    <th class="px-4 py-4">Descripción</th>
+    <th class="px-4 py-4">Total</th>
+    <th class="px-4 py-4">Cuenta</th>
+    <th class="px-4 py-4">Categoría</th>
+    <th class="px-4 py-4">Tipo</th>
+    <th class="px-4 py-4">Destino</th>
+    <th class="px-4 py-4 text-center">Acciones</th>
 {% endblock %}
 
 {% block filas %}
-{% for ticket in tickets %}
-<tr class="hover:bg-gray-50/80 transition-colors" data-ticket="{{ ticket.id }}">
-    <td class="px-4 py-4 bg-white text-sm text-gray-700 font-medium whitespace-nowrap">
-        {{ ticket.fecha_formateada }}
-    </td>
-    <td class="px-4 py-4 bg-white text-sm text-gray-900">
-        {# firstof tolera que el JSON no traiga alguna de las dos llaves; |default:variable truena si falta #}
-        {% firstof ticket.datos_json.establecimiento ticket.datos_json.descripcion_corta as nombre_ticket %}
-        {% if ticket.datos_json.tipo_documento == 'TRANSFERENCIA' or ticket.datos_json.tipo_movimiento ==
-        'TRANSFERENCIA' %}
-        <span class="italic text-gray-600">{{ ticket.datos_json.descripcion_corta|lower|capfirst }}</span>
-        {% else %}
-        <span>{{ nombre_ticket|lower|capfirst }}</span>
-        {% endif %}
-        {% if ticket.sug.aviso %}<p class="text-[11px] text-amber-700 mt-1">{{ ticket.sug.aviso }}</p>{% endif %}
-    </td>
-    <td class="px-4 py-4 bg-white text-sm font-bold text-gray-900">
-        {% if ticket.clase == 'MOVIMIENTO' %}
-        ${{ ticket.monto|floatformat:2 }}
-        {% else %}
-        <input type="text" inputmode="decimal" name="monto_{{ ticket.id }}" placeholder="monto"
-            style="width:7rem;background:#fefce8" class="text-right px-2 py-1.5 border-gray-300 rounded-lg shadow-sm"
-            title="La IA no leyó el monto: escríbelo">
-        <p class="text-[10px] text-amber-700 mt-1 font-normal">no se leyó el monto</p>
-        {% endif %}
-    </td>
-    <td class="px-4 py-4 bg-white">
-        <select name="cuenta_origen_{{ ticket.id }}" data-rol="cuenta"
-            class="block w-full min-w-[160px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
-            {% include 'partials/_ticket_select_options.html' %}
-        </select>
-    </td>
-    <td class="px-4 py-4 bg-white">
-        <select name="categoria_{{ ticket.id }}" data-rol="categoria"
-            class="block w-full min-w-[130px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
-            {% include 'partials/_ticket_category_options.html' %}
-        </select>
-    </td>
-    <td class="px-4 py-4 bg-white">
-        <select name="tipo_{{ ticket.id }}" data-rol="tipo"
-            class="block w-full min-w-[100px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
-            {% include 'partials/_ticket_tipo_options.html' %}
-        </select>
-    </td>
-    <td class="px-4 py-4 bg-white">
-        <select name="cuenta_destino_{{ ticket.id }}" data-rol="destino"
-            class="block w-full min-w-[160px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
-            {% include 'partials/_ticket_cuentadestino_options.html' %}
-        </select>
-    </td>
-    <td class="px-4 py-4 bg-white text-center">
-        <div class="flex items-center justify-center gap-2">
-            {% url 'aprobar_ticket' ticket.id as url_aprobar_uno %}
-            {% include 'partials/_boton_aprobar.html' with formaction=url_aprobar_uno titulo="Aprobar individualmente"
-            only %}
-            {% url 'rechazar_ticket' ticket.id as url_rechazar_uno %}
-            {% include 'partials/_boton_rechazar.html' with href=url_rechazar_uno icono="x" titulo="Rechazar
-            individualmente" only %}
-        </div>
-    </td>
-</tr>
-{% empty %}
-<tr>
-    <td colspan="8" class="px-6 py-12 text-center">
-        {% include 'partials/_vacio.html' with mensaje="No hay tickets pendientes por revisar." only %}
-    </td>
-</tr>
-{% endfor %}
+    {% for ticket in tickets %}
+    <tr class="hover:bg-gray-50/80 transition-colors" data-ticket="{{ ticket.id }}">
+        <td class="px-4 py-4 bg-white text-sm text-gray-700 font-medium whitespace-nowrap">
+            {{ ticket.fecha_formateada }}
+        </td>
+        <td class="px-4 py-4 bg-white text-sm text-gray-900">
+            {# firstof tolera que el JSON no traiga alguna de las dos llaves; |default:variable truena si falta #}
+            {% firstof ticket.datos_json.establecimiento ticket.datos_json.descripcion_corta as nombre_ticket %}
+            {% if ticket.datos_json.tipo_documento == 'TRANSFERENCIA' or ticket.datos_json.tipo_movimiento == 'TRANSFERENCIA' %}
+            <span class="italic text-gray-600">{{ ticket.datos_json.descripcion_corta|lower|capfirst }}</span>
+            {% else %}
+            <span>{{ nombre_ticket|lower|capfirst }}</span>
+            {% endif %}
+            {% if ticket.sug.aviso %}<p class="text-[11px] text-amber-700 mt-1">{{ ticket.sug.aviso }}</p>{% endif %}
+        </td>
+        <td class="px-4 py-4 bg-white text-sm font-bold text-gray-900">
+            {% if ticket.clase == 'MOVIMIENTO' %}
+            ${{ ticket.monto|floatformat:2 }}
+            {% else %}
+            <input type="text" inputmode="decimal" name="monto_{{ ticket.id }}" placeholder="monto"
+                   style="width:7rem;background:#fefce8" class="text-right px-2 py-1.5 border-gray-300 rounded-lg shadow-sm" title="La IA no leyó el monto: escríbelo">
+            <p class="text-[10px] text-amber-700 mt-1 font-normal">no se leyó el monto</p>
+            {% endif %}
+        </td>
+        <td class="px-4 py-4 bg-white">
+            <select name="cuenta_origen_{{ ticket.id }}" data-rol="cuenta"
+                class="block w-full min-w-[160px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                {% include 'partials/_ticket_select_options.html' %}
+            </select>
+        </td>
+        <td class="px-4 py-4 bg-white">
+            <select name="categoria_{{ ticket.id }}" data-rol="categoria"
+                class="block w-full min-w-[130px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                {% include 'partials/_ticket_category_options.html' %}
+            </select>
+        </td>
+        <td class="px-4 py-4 bg-white">
+            <select name="tipo_{{ ticket.id }}" data-rol="tipo"
+                class="block w-full min-w-[100px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                {% include 'partials/_ticket_tipo_options.html' %}
+            </select>
+        </td>
+        <td class="px-4 py-4 bg-white">
+            <select name="cuenta_destino_{{ ticket.id }}" data-rol="destino"
+                class="block w-full min-w-[160px] pl-2 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg shadow-sm bg-gray-50">
+                {% include 'partials/_ticket_cuentadestino_options.html' %}
+            </select>
+        </td>
+        <td class="px-4 py-4 bg-white text-center">
+            <div class="flex items-center justify-center gap-2">
+                {% url 'aprobar_ticket' ticket.id as url_aprobar_uno %}
+                {% include 'partials/_boton_aprobar.html' with formaction=url_aprobar_uno titulo="Aprobar individualmente" only %}
+                {% url 'rechazar_ticket' ticket.id as url_rechazar_uno %}
+                {% include 'partials/_boton_rechazar.html' with href=url_rechazar_uno icono="x" titulo="Rechazar individualmente" only %}
+            </div>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="8" class="px-6 py-12 text-center">
+            {% include 'partials/_vacio.html' with mensaje="No hay tickets pendientes por revisar." only %}
+        </td>
+    </tr>
+    {% endfor %}
 {% endblock %}
 
 {% block javascript %}

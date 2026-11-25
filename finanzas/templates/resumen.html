@@ -9,36 +9,25 @@
         <div>
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 font-display">Resumen de {{ nombre_mes }}</h1>
             <p class="mt-1 text-sm text-gray-500">
-                Tu cierre del mes: el estado de resultados comparado con {{ nombre_mes_prev }}, qué cambió, y si tu
-                registro cuadra con el banco.
-                El año completo está en <a href="{% url 'estado_resultados' %}?year={{ selected_year }}"
-                    class="text-indigo-600 hover:underline">Estado de resultados</a>
+                Tu cierre del mes: el estado de resultados comparado con {{ nombre_mes_prev }}, qué cambió, y si tu registro cuadra con el banco.
+                El año completo está en <a href="{% url 'estado_resultados' %}?year={{ selected_year }}" class="text-indigo-600 hover:underline">Estado de resultados</a>
                 y <a href="{% url 'balance_general' %}" class="text-indigo-600 hover:underline">Balance general</a>.
             </p>
         </div>
         <form method="GET" class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <select name="month" onchange="this.form.submit()"
-                class="pl-2 pr-8 py-2 border-gray-300 rounded-lg shadow-sm bg-white">
-                {% for m in months %}<option value="{{ m }}" {% if m==selected_month %}selected{% endif %}>{{ m }}
-                </option>{% endfor %}
+            <select name="month" onchange="this.form.submit()" class="pl-2 pr-8 py-2 border-gray-300 rounded-lg shadow-sm bg-white">
+                {% for m in months %}<option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>{% endfor %}
             </select>
-            <select name="year" onchange="this.form.submit()"
-                class="pl-2 pr-8 py-2 border-gray-300 rounded-lg shadow-sm bg-white">
-                {% for y in years %}<option value="{{ y }}" {% if y==selected_year %}selected{% endif %}>{{ y }}
-                </option>{% endfor %}
+            <select name="year" onchange="this.form.submit()" class="pl-2 pr-8 py-2 border-gray-300 rounded-lg shadow-sm bg-white">
+                {% for y in years %}<option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>{% endfor %}
             </select>
             <div class="flex flex-wrap items-center gap-1.5 sm:ml-2">
-                <span class="text-gray-400"
-                    title="Se marca 'Revisar' cuando una categoría cambia al menos esta cantidad Y este porcentaje respecto al mes anterior (o cuando antes era 0).">Revisar
-                    si cambia ≥ $</span>
-                <input type="number" name="umbral" value="{{ umbral|floatformat:0 }}" step="50" min="0"
-                    class="w-20 sm:w-24 px-2 py-2 border-gray-300 rounded-lg shadow-sm">
+                <span class="text-gray-400" title="Se marca 'Revisar' cuando una categoría cambia al menos esta cantidad Y este porcentaje respecto al mes anterior (o cuando antes era 0).">Revisar si cambia ≥ $</span>
+                <input type="number" name="umbral" value="{{ umbral|floatformat:0 }}" step="50" min="0" class="w-20 sm:w-24 px-2 py-2 border-gray-300 rounded-lg shadow-sm">
                 <span class="text-gray-400">y ≥</span>
-                <input type="number" name="pct" value="{{ umbral_pct|floatformat:0 }}" step="5" min="0"
-                    class="w-16 sm:w-20 px-2 py-2 border-gray-300 rounded-lg shadow-sm">
+                <input type="number" name="pct" value="{{ umbral_pct|floatformat:0 }}" step="5" min="0" class="w-16 sm:w-20 px-2 py-2 border-gray-300 rounded-lg shadow-sm">
                 <span class="text-gray-400">%</span>
-                <button type="submit"
-                    class="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold">Aplicar</button>
+                <button type="submit" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold">Aplicar</button>
             </div>
         </form>
     </div>
@@ -46,9 +35,7 @@
     {% if messages %}
     <div class="mb-6 space-y-2">
         {% for message in messages %}
-        <div
-            class="px-4 py-3 rounded-xl text-sm {% if message.tags == 'error' %}bg-red-50 text-red-700{% elif message.tags == 'info' %}bg-blue-50 text-blue-700{% else %}bg-green-50 text-green-700{% endif %}">
-            {{ message }}</div>
+        <div class="px-4 py-3 rounded-xl text-sm {% if message.tags == 'error' %}bg-red-50 text-red-700{% elif message.tags == 'info' %}bg-blue-50 text-blue-700{% else %}bg-green-50 text-green-700{% endif %}">{{ message }}</div>
         {% endfor %}
     </div>
     {% endif %}
@@ -57,32 +44,24 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Ingresos</p>
-            <p class="text-xl sm:text-2xl font-bold text-gray-900 mt-1 break-words">${{
-                bal.ingresos|floatformat:2|intcomma }}</p>
-            <p class="text-[11px] text-gray-400 mt-1">{{ nombre_mes_prev }}: ${{
-                bal_prev.ingresos|floatformat:2|intcomma }}</p>
+            <p class="text-xl sm:text-2xl font-bold text-gray-900 mt-1 break-words">${{ bal.ingresos|floatformat:2|intcomma }}</p>
+            <p class="text-[11px] text-gray-400 mt-1">{{ nombre_mes_prev }}: ${{ bal_prev.ingresos|floatformat:2|intcomma }}</p>
         </div>
         <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Gastos</p>
-            <p class="text-xl sm:text-2xl font-bold text-gray-900 mt-1 break-words">${{
-                bal.gastos|floatformat:2|intcomma }}</p>
-            <p class="text-[11px] text-gray-400 mt-1">{% if pct_gastado is not None %}{{ pct_gastado|floatformat:0 }}%
-                de los ingresos{% else %}sin ingresos registrados{% endif %}</p>
+            <p class="text-xl sm:text-2xl font-bold text-gray-900 mt-1 break-words">${{ bal.gastos|floatformat:2|intcomma }}</p>
+            <p class="text-[11px] text-gray-400 mt-1">{% if pct_gastado is not None %}{{ pct_gastado|floatformat:0 }}% de los ingresos{% else %}sin ingresos registrados{% endif %}</p>
         </div>
         <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Resultado del mes</p>
-            <p
-                class="text-xl sm:text-2xl font-bold mt-1 break-words {% if bal.resultado >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">
-                {{ bal.resultado|dinero }}</p>
+            <p class="text-xl sm:text-2xl font-bold mt-1 break-words {% if bal.resultado >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ bal.resultado|dinero }}</p>
             <p class="text-[11px] text-gray-400 mt-1">ingresos − gastos</p>
         </div>
         <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Patrimonio neto al cierre</p>
             <p class="text-xl sm:text-2xl font-bold text-gray-900 mt-1 break-words">{{ balance.patrimonio|dinero }}</p>
-            <p class="text-[11px] text-gray-400 mt-1">activos {{ balance.activos|dinero }} − deudas {{
-                balance.pasivos|dinero }} · antes {{ balance_prev.patrimonio|dinero }}
-                · <a href="{% url 'balance_general' %}?fecha={{ fin_mes|date:'Y-m-d' }}"
-                    class="text-indigo-600 hover:underline">ver balance general</a></p>
+            <p class="text-[11px] text-gray-400 mt-1">activos {{ balance.activos|dinero }} − deudas {{ balance.pasivos|dinero }} · antes {{ balance_prev.patrimonio|dinero }}
+                · <a href="{% url 'balance_general' %}?fecha={{ fin_mes|date:'Y-m-d' }}" class="text-indigo-600 hover:underline">ver balance general</a></p>
         </div>
     </div>
 
@@ -90,25 +69,20 @@
     <div style="background:#fffbeb" class="rounded-[1.5rem] border border-amber-100 p-4 sm:p-6 mb-8">
         <h3 class="font-bold text-lg text-gray-900 mb-3">Qué cambió y qué revisar</h3>
         <ul class="space-y-2 text-sm text-gray-700">
-            {% for n in notas %}<li class="flex gap-2"><span class="text-amber-500">•</span><span>{{ n }}</span></li>{%
-            endfor %}
+            {% for n in notas %}<li class="flex gap-2"><span class="text-amber-500">•</span><span>{{ n }}</span></li>{% endfor %}
         </ul>
     </div>
 
     {# --- 1. Estado de resultados --- #}
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
         <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
-            <h3 class="font-bold text-lg text-gray-800">1. Estado de resultados: {{ nombre_mes }} contra {{
-                nombre_mes_prev }}</h3>
-            <p class="text-xs text-gray-500 mt-1">Gastos = todo lo que pagaste con débito, efectivo o tarjeta, más
-                intereses de deuda. Pagar la tarjeta, abonar a un préstamo o ahorrar no aparece aquí porque no es gasto.
-            </p>
+            <h3 class="font-bold text-lg text-gray-800">1. Estado de resultados: {{ nombre_mes }} contra {{ nombre_mes_prev }}</h3>
+            <p class="text-xs text-gray-500 mt-1">Gastos = todo lo que pagaste con débito, efectivo o tarjeta, más intereses de deuda. Pagar la tarjeta, abonar a un préstamo o ahorrar no aparece aquí porque no es gasto.</p>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead>
-                    <tr
-                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         <th class="px-6 py-3">Concepto</th>
                         <th class="px-4 py-3 text-right">{{ nombre_mes_prev }}</th>
                         <th class="px-4 py-3 text-right">{{ nombre_mes }}</th>
@@ -118,25 +92,16 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                    <tr class="bg-gray-50/30">
-                        <td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Ingresos</td>
-                    </tr>
+                    <tr class="bg-gray-50/30"><td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Ingresos</td></tr>
                     {% for f in filas_ingresos %}{% include 'partials/_resumen_fila.html' %}{% endfor %}
-                    <tr class="bg-gray-50/30">
-                        <td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Gastos por categoría
-                        </td>
-                    </tr>
+                    <tr class="bg-gray-50/30"><td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Gastos por categoría</td></tr>
                     {% for f in filas_gastos %}{% include 'partials/_resumen_fila.html' %}{% endfor %}
-                    <tr class="bg-gray-50/30">
-                        <td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Resultado</td>
-                    </tr>
+                    <tr class="bg-gray-50/30"><td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-600 uppercase">Resultado</td></tr>
                     {% with f=fila_resultado %}{% include 'partials/_resumen_fila.html' %}{% endwith %}
                     <tr>
                         <td class="px-6 py-3 text-gray-600">% de los ingresos que gastaste</td>
-                        <td class="px-4 py-3 text-right text-gray-600">{% if pct_gastado_prev is not None %}{{
-                            pct_gastado_prev|floatformat:1 }}%{% else %}—{% endif %}</td>
-                        <td class="px-4 py-3 text-right font-semibold text-gray-900">{% if pct_gastado is not None %}{{
-                            pct_gastado|floatformat:1 }}%{% else %}—{% endif %}</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{% if pct_gastado_prev is not None %}{{ pct_gastado_prev|floatformat:1 }}%{% else %}—{% endif %}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-gray-900">{% if pct_gastado is not None %}{{ pct_gastado|floatformat:1 }}%{% else %}—{% endif %}</td>
                         <td colspan="3"></td>
                     </tr>
                 </tbody>
@@ -148,15 +113,13 @@
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
         <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
             <h3 class="font-bold text-lg text-gray-800">2. Dinero que pasaste entre tus cuentas (no es gasto)</h3>
-            <p class="text-xs text-gray-500 mt-1">Ahorros, pagos a tarjetas y préstamos, retiros de efectivo y
-                traspasos. Positivo = la cuenta recibió; negativo = envió.</p>
+            <p class="text-xs text-gray-500 mt-1">Ahorros, pagos a tarjetas y préstamos, retiros de efectivo y traspasos. Positivo = la cuenta recibió; negativo = envió.</p>
         </div>
         {% if entre_cuentas %}
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead>
-                    <tr
-                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         <th class="px-6 py-3">Cuenta</th>
                         <th class="px-4 py-3 text-right">{{ nombre_mes_prev }}</th>
                         <th class="px-4 py-3 text-right">{{ nombre_mes }}</th>
@@ -167,12 +130,9 @@
                 <tbody class="divide-y divide-gray-100">
                     {% for e in entre_cuentas %}
                     <tr>
-                        <td class="px-6 py-3 font-medium text-gray-900">{{ e.cuenta.nombre }} <span
-                                class="text-[11px] text-gray-400">· {{ e.cuenta.get_tipo_display }}</span></td>
+                        <td class="px-6 py-3 font-medium text-gray-900">{{ e.cuenta.nombre }} <span class="text-[11px] text-gray-400">· {{ e.cuenta.get_tipo_display }}</span></td>
                         <td class="px-4 py-3 text-right text-gray-600">{{ e.anterior|dinero }}</td>
-                        <td
-                            class="px-4 py-3 text-right font-semibold {% if e.actual >= 0 %}text-gray-900{% else %}text-red-600{% endif %}">
-                            {{ e.actual|dinero }}</td>
+                        <td class="px-4 py-3 text-right font-semibold {% if e.actual >= 0 %}text-gray-900{% else %}text-red-600{% endif %}">{{ e.actual|dinero }}</td>
                         <td class="px-4 py-3 text-right text-gray-600">{{ e.dif|dinero_signo }}</td>
                         <td class="px-6 py-3 text-xs text-gray-500">{{ e.que_es }}</td>
                     </tr>
@@ -188,16 +148,13 @@
     {# --- 3. Cuadre por cuenta --- #}
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
         <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
-            <h3 class="font-bold text-lg text-gray-800">3. Cuadre de {{ nombre_mes }}: saldo inicial + entradas −
-                salidas = saldo final</h3>
-            <p class="text-xs text-gray-500 mt-1">Así se mueve cada cuenta según tu registro. En tarjetas y préstamos el
-                saldo es lo que debes (las compras son "salidas" que lo suben; los pagos, "entradas" que lo bajan).</p>
+            <h3 class="font-bold text-lg text-gray-800">3. Cuadre de {{ nombre_mes }}: saldo inicial + entradas − salidas = saldo final</h3>
+            <p class="text-xs text-gray-500 mt-1">Así se mueve cada cuenta según tu registro. En tarjetas y préstamos el saldo es lo que debes (las compras son "salidas" que lo suben; los pagos, "entradas" que lo bajan).</p>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead>
-                    <tr
-                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         <th class="px-6 py-3">Cuenta</th>
                         <th class="px-4 py-3 text-right">Saldo inicial</th>
                         <th class="px-4 py-3 text-right">+ Entradas</th>
@@ -208,9 +165,7 @@
                 <tbody class="divide-y divide-gray-100">
                     {% for q in cuadre %}
                     <tr>
-                        <td class="px-6 py-3 font-medium text-gray-900">{{ q.cuenta.nombre }} <span
-                                class="text-[11px] text-gray-400">· {{ q.cuenta.get_tipo_display }}{% if
-                                q.cuenta.es_pasivo %} (debes){% endif %}</span></td>
+                        <td class="px-6 py-3 font-medium text-gray-900">{{ q.cuenta.nombre }} <span class="text-[11px] text-gray-400">· {{ q.cuenta.get_tipo_display }}{% if q.cuenta.es_pasivo %} (debes){% endif %}</span></td>
                         <td class="px-4 py-3 text-right text-gray-600">{{ q.inicial|dinero }}</td>
                         <td class="px-4 py-3 text-right text-emerald-700">{{ q.entradas|dinero }}</td>
                         <td class="px-4 py-3 text-right text-red-600">{{ q.salidas|dinero }}</td>
@@ -228,19 +183,15 @@
         <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
             <h3 class="font-bold text-lg text-gray-800">4. Conciliación con el banco al {{ fin_mes|date:"d/m/Y" }}</h3>
             <p class="text-xs text-gray-500 mt-1">
-                Escribe el saldo final que aparece en cada estado de cuenta (en tarjetas y préstamos, lo que debes). Si
-                la diferencia es 0, no se te escapó ningún movimiento.
-                Si el mes anterior cuadraba y este no, la diferencia son movimientos de este mes que faltan (o sobran)
-                en tu registro.
-                La primera vez que concilias una cuenta puedes marcar "fijar saldo inicial" para que el libro arranque
-                desde el saldo del banco.
+                Escribe el saldo final que aparece en cada estado de cuenta (en tarjetas y préstamos, lo que debes). Si la diferencia es 0, no se te escapó ningún movimiento.
+                Si el mes anterior cuadraba y este no, la diferencia son movimientos de este mes que faltan (o sobran) en tu registro.
+                La primera vez que concilias una cuenta puedes marcar "fijar saldo inicial" para que el libro arranque desde el saldo del banco.
             </p>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead>
-                    <tr
-                        class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <tr class="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         <th class="px-6 py-3">Cuenta</th>
                         <th class="px-4 py-3 text-right">Según tu registro</th>
                         <th class="px-4 py-3 text-right">Según el banco</th>
@@ -251,38 +202,27 @@
                 <tbody class="divide-y divide-gray-100">
                     {% for c in conciliacion %}
                     <tr>
-                        <td class="px-6 py-3 font-medium text-gray-900">{{ c.cuenta.nombre }} <span
-                                class="text-[11px] text-gray-400">· {{ c.cuenta.get_tipo_display }}</span>
+                        <td class="px-6 py-3 font-medium text-gray-900">{{ c.cuenta.nombre }} <span class="text-[11px] text-gray-400">· {{ c.cuenta.get_tipo_display }}</span>
                             <a href="{% if c.cuenta.tipo == 'PRESTAMO' and c.cuenta.deuda %}{% url 'editar_deuda' c.cuenta.deuda.id %}{% else %}{% url 'editar_cuenta' c.cuenta.id %}{% endif %}"
-                                class="block text-[11px] text-indigo-600 hover:underline mt-0.5">ajustar saldo inicial
-                                (hoy: {{ c.cuenta.saldo_inicial|dinero }})</a>
+                               class="block text-[11px] text-indigo-600 hover:underline mt-0.5">ajustar saldo inicial (hoy: {{ c.cuenta.saldo_inicial|dinero }})</a>
                         </td>
-                        <td class="px-4 py-3 text-right text-gray-700">{{ c.registro|dinero }}{% if c.fecha_saldo
-                            %}<span class="block text-[10px] text-gray-400">al {{ c.fecha_saldo|date:"d/m" }} (fecha de
-                                tu captura)</span>{% endif %}</td>
+                        <td class="px-4 py-3 text-right text-gray-700">{{ c.registro|dinero }}{% if c.fecha_saldo %}<span class="block text-[10px] text-gray-400">al {{ c.fecha_saldo|date:"d/m" }} (fecha de tu captura)</span>{% endif %}</td>
                         <td class="px-4 py-3 text-right">
                             <input type="text" inputmode="decimal" name="saldo_banco_{{ c.cuenta.id }}"
-                                value="{% if c.saldo_banco is not None %}{{ c.saldo_banco|floatformat:2 }}{% endif %}"
-                                placeholder="saldo del banco" style="background:#fefce8"
-                                class="w-36 sm:w-44 text-right px-2 py-1.5 border-gray-300 rounded-lg shadow-sm">
+                                   value="{% if c.saldo_banco is not None %}{{ c.saldo_banco|floatformat:2 }}{% endif %}"
+                                   placeholder="saldo del banco"
+                                   style="background:#fefce8" class="w-36 sm:w-44 text-right px-2 py-1.5 border-gray-300 rounded-lg shadow-sm">
                             {% if c.puede_fijar_inicial %}
-                            <label class="block text-[10px] text-gray-400 mt-1"><input type="checkbox"
-                                    name="fijar_inicial_{{ c.cuenta.id }}" value="1" class="h-3 w-3"> fijar saldo
-                                inicial con este valor</label>
+                            <label class="block text-[10px] text-gray-400 mt-1"><input type="checkbox" name="fijar_inicial_{{ c.cuenta.id }}" value="1" class="h-3 w-3"> fijar saldo inicial con este valor</label>
                             {% endif %}
                         </td>
-                        <td
-                            class="px-4 py-3 text-right {% if c.diferencia is None %}text-gray-300{% elif c.cuadra %}text-emerald-700{% else %}text-red-600 font-semibold{% endif %}">
+                        <td class="px-4 py-3 text-right {% if c.diferencia is None %}text-gray-300{% elif c.cuadra %}text-emerald-700{% else %}text-red-600 font-semibold{% endif %}">
                             {% if c.diferencia is not None %}{{ c.diferencia|dinero_signo }}{% else %}—{% endif %}
                         </td>
                         <td class="px-4 py-3 text-center">
                             {% if c.diferencia is None %}<span class="text-xs text-gray-400">sin dato</span>
-                            {% elif c.cuadra %}<span
-                                class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800">CUADRA
-                                ✓</span>
-                            {% else %}<span
-                                class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">Diferencia</span>{%
-                            endif %}
+                            {% elif c.cuadra %}<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800">CUADRA ✓</span>
+                            {% else %}<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">Diferencia</span>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -290,35 +230,25 @@
             </table>
         </div>
         <div class="p-4 border-t border-gray-100 flex justify-end">
-            <button type="submit"
-                class="w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">Guardar
-                saldos del banco</button>
+            <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">Guardar saldos del banco</button>
         </div>
     </form>
 
     {# --- 4b. Conciliar movimiento por movimiento con el archivo del banco --- #}
-    <form method="POST" action="{% url 'conciliar_csv' %}" enctype="multipart/form-data"
-        class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-6 mb-8">
+    <form method="POST" action="{% url 'conciliar_csv' %}" enctype="multipart/form-data" class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-6 mb-8">
         {% csrf_token %}
-        <h3 class="font-bold text-lg text-gray-800">¿No cuadra? Sube el estado de cuenta y te digo qué sobra y qué falta
-        </h3>
+        <h3 class="font-bold text-lg text-gray-800">¿No cuadra? Sube el estado de cuenta y te digo qué sobra y qué falta</h3>
         <p class="text-xs text-gray-500 mt-1 mb-4">
-            Exporta los movimientos de tu banco (el mismo CSV que subes en Transacciones, con la columna SALDO). Comparo
-            movimiento por movimiento
-            y te muestro los que están en la app y no en el banco (duplicados), los que faltan, y si la diferencia viene
-            de antes del periodo.
+            Exporta los movimientos de tu banco (el mismo CSV que subes en Transacciones, con la columna SALDO). Comparo movimiento por movimiento
+            y te muestro los que están en la app y no en el banco (duplicados), los que faltan, y si la diferencia viene de antes del periodo.
             No se guarda nada hasta que tú lo decidas.
         </p>
         <div class="flex flex-wrap items-center gap-3 text-sm">
             <select name="cuenta" class="w-full sm:w-auto px-3 py-2 border-gray-300 rounded-lg shadow-sm">
-                {% for c in cuentas_banco %}<option value="{{ c.id }}" {% if c.es_principal %}selected{% endif %}>{{
-                    c.nombre }}</option>{% endfor %}
+                {% for c in cuentas_banco %}<option value="{{ c.id }}" {% if c.es_principal %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
             </select>
-            <input type="file" name="archivo" accept=".csv,text/csv" required
-                class="w-full sm:w-auto max-w-full text-xs sm:text-sm text-gray-600">
-            <button type="submit"
-                class="w-full sm:w-auto px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800">Conciliar
-                con el banco</button>
+            <input type="file" name="archivo" accept=".csv,text/csv" required class="w-full sm:w-auto max-w-full text-xs sm:text-sm text-gray-600">
+            <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800">Conciliar con el banco</button>
         </div>
     </form>
 

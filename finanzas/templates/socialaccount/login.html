@@ -5,15 +5,14 @@
 <div class="max-w-md mx-auto mt-6 sm:mt-10 mb-8">
     <div class="bg-white p-5 sm:p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
         <h1 class="text-2xl font-bold mb-4 text-gray-800">Casi listo...</h1>
-
+        
         <p class="text-gray-600 mb-6">
             Estás a punto de conectar tu cuenta de Google.
         </p>
-
+        
         <form method="post">
             {% csrf_token %}
-            <button type="submit"
-                class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+            <button type="submit" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105">
                 Continuar a Google
             </button>
         </form>

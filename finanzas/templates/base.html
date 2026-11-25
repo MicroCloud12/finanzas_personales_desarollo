@@ -12,13 +12,10 @@
   <!-- Google Fonts: Outfit (solo los pesos usados; carga sin bloquear el render) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
-    rel="stylesheet" media="print" onload="this.media='all'">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"
+    media="print" onload="this.media='all'">
   <noscript>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
-      rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   </noscript>
 
   <link rel="shortcut icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}" />
@@ -46,7 +43,8 @@
       {% endblock header %}
 
       {# --- Content Scrollable Area --- #}
-      <main class="{% block main_classes %}flex-1 min-w-0 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 sm:p-6{% endblock %}">
+      <main
+        class="{% block main_classes %}flex-1 min-w-0 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 sm:p-6{% endblock %}">
         {% block content %}
         {% endblock content %}
 
@@ -61,7 +59,8 @@
 
       {# --- Global Toast Notifications --- #}
       {% if messages %}
-      <div id="toast-container" class="fixed top-16 sm:top-20 left-4 right-4 sm:left-auto sm:right-5 z-50 flex flex-col items-end gap-3 pointer-events-none">
+      <div id="toast-container"
+        class="fixed top-16 sm:top-20 left-4 right-4 sm:left-auto sm:right-5 z-50 flex flex-col items-end gap-3 pointer-events-none">
         {% for message in messages %}
         <div
           class="toast-message pointer-events-auto transform transition-all duration-300 ease-out translate-x-full opacity-0 flex items-center w-full max-w-md p-4 space-x-3 text-gray-500 bg-white/95 backdrop-blur-md divide-x divide-gray-200 rounded-lg shadow-2xl border-l-4 {% if message.tags == 'success' %}border-green-500 text-green-700{% elif message.tags == 'error' %}border-red-500 text-red-700{% elif message.tags == 'warning' %}border-yellow-500 text-yellow-700{% else %}border-blue-500 text-blue-700{% endif %}"
