@@ -56,15 +56,34 @@ function initScrollAnimations() {
 
 function setupMobileMenu() {
     const menuButton = document.getElementById('mobile-menu-button');
-    const mobileMenu = document.getElementById('mobile-menu');
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const closeBtn = document.getElementById('close-sidebar-btn');
 
-    if (menuButton && mobileMenu) {
-        menuButton.addEventListener('click', () => {
-            const expanded = menuButton.getAttribute('aria-expanded') === 'true';
-            menuButton.setAttribute('aria-expanded', (!expanded).toString());
-            mobileMenu.classList.toggle('hidden');
-        });
-    }
+    if (!menuButton || !sidebar) return;
+
+    const abrir = () => {
+        sidebar.classList.remove('-translate-x-full');
+        if (backdrop) backdrop.classList.remove('hidden');
+        menuButton.setAttribute('aria-expanded', 'true');
+    };
+
+    const cerrar = () => {
+        sidebar.classList.add('-translate-x-full');
+        if (backdrop) backdrop.classList.add('hidden');
+        menuButton.setAttribute('aria-expanded', 'false');
+    };
+
+    menuButton.addEventListener('click', () => {
+        const abierto = !sidebar.classList.contains('-translate-x-full');
+        abierto ? cerrar() : abrir();
+    });
+
+    if (backdrop) backdrop.addEventListener('click', cerrar);
+    if (closeBtn) closeBtn.addEventListener('click', cerrar);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') cerrar();
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

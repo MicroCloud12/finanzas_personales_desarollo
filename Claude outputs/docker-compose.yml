@@ -1,0 +1,83 @@
+# Corre la imagen tal como se construye (sin montar el código local).
+# Los secretos salen de .env; aquí solo van los valores propios de Docker.
+# En el VPS, Caddy recibe el tráfico (80/443) con HTTPS automático y se lo pasa a web:8000.
+
+x-app: &app
+  build: .
+  image: finanzas-calidad
+  env_file: .env
+  environment:
+    DEBUG: "False"
+    DB_HOST: db
+    DB_PORT: "3306"
+    CELERY_BROKER_URL: redis://redis:6379/0
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_started
+  restart: unless-stopped
+
+services:
+  db:
+    image: mysql:8.4.3
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Falta MYSQL_ROOT_PASSWORD en .env}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Un .sql aquí se carga automáticamente SOLO la primera vez (volumen vacío)
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:3306:3306"
+    healthcheck:
+      # Pasa solo cuando MySQL terminó de cargar el dump y acepta conexiones TCP
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+
+  web:
+    <<: *app
+    # Aplica las migraciones (ver docker/migrate.sh) y luego arranca gunicorn
+    command:
+      - sh
+      - -c
+      - sh docker/migrate.sh && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 -k gevent --timeout 60 --access-logfile -
+    ports:
+      # Solo desde el propio servidor (para pruebas); internet entra por Caddy.
+      - "127.0.0.1:8000:8000"
+
+  celery:
+    <<: *app
+    # 4 procesos bastan para un VPS de 1 vCPU / 4 GB; las tareas esperan a Gemini y Drive.
+    command: celery -A config worker -l info --concurrency=4
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Dominio o subdominio apuntado al VPS, sin https:// (p. ej. finanzas.tudominio.com)
+      DOMAIN: ${DOMAIN:?Falta DOMAIN en .env}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:

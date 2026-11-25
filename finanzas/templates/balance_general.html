@@ -7,7 +7,7 @@
     {# --- Encabezado y selector de fecha --- #}
     <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900 font-display">Balance general al {{ fecha|date:"d/m/Y" }}</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 font-display">Balance general al {{ fecha|date:"d/m/Y" }}</h1>
             <p class="mt-1 text-sm text-gray-500">
                 Lo que tienes (activos) menos lo que debes (pasivos) es tu capital. Es una foto a una fecha,
                 comparada con el cierre del mes anterior y con el cierre de {{ anio|add:"-1" }}.
@@ -21,31 +21,31 @@
     </div>
 
     {# --- Tarjetas --- #}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Activos</p>
-            <p class="text-2xl font-bold text-gray-900 mt-1">{{ grupos.total_activos.valores|last|dinero }}</p>
+            <p class="text-xl sm:text-2xl font-bold text-gray-900 mt-1 break-words">{{ grupos.total_activos.valores|last|dinero }}</p>
             <p class="text-[11px] text-gray-400 mt-1">en el año {{ grupos.total_activos.dif_anio|dinero_signo }}</p>
         </div>
-        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Pasivos</p>
-            <p class="text-2xl font-bold text-gray-900 mt-1">{{ grupos.total_pasivos.valores|last|dinero }}</p>
+            <p class="text-xl sm:text-2xl font-bold text-gray-900 mt-1 break-words">{{ grupos.total_pasivos.valores|last|dinero }}</p>
             <p class="text-[11px] text-gray-400 mt-1">en el año {{ grupos.total_pasivos.dif_anio|dinero_signo }}</p>
         </div>
-        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Capital (patrimonio neto)</p>
-            <p class="text-2xl font-bold mt-1 {% if capital_hoy >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ capital_hoy|dinero }}</p>
+            <p class="text-xl sm:text-2xl font-bold mt-1 break-words {% if capital_hoy >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ capital_hoy|dinero }}</p>
             <p class="text-[11px] text-gray-400 mt-1">activos − pasivos</p>
         </div>
-        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-5">
+        <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-4 sm:p-5">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Cambio en {{ anio }}</p>
-            <p class="text-2xl font-bold mt-1 {% if grupos.patrimonio.dif_anio >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ grupos.patrimonio.dif_anio|dinero_signo }}</p>
+            <p class="text-xl sm:text-2xl font-bold mt-1 break-words {% if grupos.patrimonio.dif_anio >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">{{ grupos.patrimonio.dif_anio|dinero_signo }}</p>
             <p class="text-[11px] text-gray-400 mt-1">desde el cierre de {{ anio|add:"-1" }} ({{ capital_ini|dinero }})</p>
         </div>
     </div>
 
     {# --- Comprobación del año --- #}
-    <div style="background:{% if cuadra %}#ecfdf5{% else %}#fffbeb{% endif %}" class="rounded-[1.5rem] border {% if cuadra %}border-emerald-100{% else %}border-amber-100{% endif %} p-6 mb-8 text-sm text-gray-700">
+    <div style="background:{% if cuadra %}#ecfdf5{% else %}#fffbeb{% endif %}" class="rounded-[1.5rem] border {% if cuadra %}border-emerald-100{% else %}border-amber-100{% endif %} p-4 sm:p-6 mb-8 text-sm text-gray-700">
         <h3 class="font-bold text-lg text-gray-900 mb-2">Comprobación del año {% if cuadra %}✓{% endif %}</h3>
         <p>
             Capital al cierre de {{ anio|add:"-1" }} <strong>{{ capital_ini|dinero }}</strong>
@@ -59,7 +59,7 @@
 
     {# --- Balance comparativo --- #}
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
-        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+        <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
             <h3 class="font-bold text-lg text-gray-800">Activos, pasivos y capital</h3>
             <p class="text-xs text-gray-500 mt-1">En tarjetas y préstamos el saldo es lo que debes. El sueldo no está aquí: explica por qué subió el activo; el activo es el dinero que quedó.</p>
         </div>
@@ -92,11 +92,11 @@
 
     {# --- Patrimonio mes a mes --- #}
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
-        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+        <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
             <h3 class="font-bold text-lg text-gray-800">Patrimonio al cierre de cada mes de {{ anio }}</h3>
             <p class="text-xs text-gray-500 mt-1">Cada mes tu patrimonio debería cambiar exactamente lo que fue el resultado del mes. Si la última columna no es cero, ese mes tiene algo que revisar.</p>
         </div>
-        <div class="p-6" style="height:260px">
+        <div class="p-4 sm:p-6 h-56 sm:h-64">
             <canvas id="grafica-patrimonio"></canvas>
         </div>
         <div class="overflow-x-auto">

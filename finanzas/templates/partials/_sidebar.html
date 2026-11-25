@@ -1,10 +1,20 @@
 {% load static %}
-<aside
-    class="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 h-screen fixed left-0 top-0 overflow-y-auto z-50 transition-all duration-300">
-    <div class="flex items-center justify-center h-20 border-b border-gray-50">
+<div id="sidebar-backdrop" class="fixed inset-0 bg-gray-900/50 z-40 hidden md:hidden transition-opacity"
+    aria-hidden="true"></div>
+<aside id="app-sidebar"
+    class="flex flex-col w-64 max-w-[82vw] bg-white border-r border-gray-100 h-dvh fixed left-0 top-0 overflow-y-auto z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+    <div class="flex items-center justify-between md:justify-center px-4 h-16 md:h-20 border-b border-gray-50 shrink-0">
         <a href="{% url 'dashboard' %}" class="flex items-center gap-2">
-            <img src="{% static 'img/Prisma.svg' %}" alt="Prisma Logo" class="h-10 w-auto" width="150" height="40">
+            <img src="{% static 'img/Prisma.svg' %}" alt="Prisma Logo" class="h-9 md:h-10 w-auto" width="150"
+                height="40">
         </a>
+        <button type="button" id="close-sidebar-btn"
+            class="md:hidden p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
+            aria-label="Cerrar menú">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
 
     <nav class="flex-1 px-4 py-6 space-y-2">
@@ -135,10 +145,11 @@
         </a>
     </nav>
 
-    <div class="p-4 border-t border-gray-50">
+    <div class="p-4 border-t border-gray-50 shrink-0 space-y-2">
         <a href="{% url 'mi_perfil' %}"
             class="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 rounded-lg transition-colors">
-            <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+            <div
+                class="h-8 w-8 shrink-0 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
                 {{ user.username|make_list|first|upper }}
             </div>
             <div class="flex-1 min-w-0">
@@ -146,5 +157,16 @@
                 <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
             </div>
         </a>
+        <form action="{% url 'logout' %}" method="post" class="md:hidden">
+            {% csrf_token %}
+            <button type="submit"
+                class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Cerrar Sesión
+            </button>
+        </form>
     </div>
 </aside>

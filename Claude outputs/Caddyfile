@@ -1,0 +1,6 @@
+# Caddy saca y renueva solo el certificado HTTPS (Let's Encrypt) para DOMAIN
+# y reenvía las visitas al contenedor web (gunicorn en el puerto 8000).
+{$DOMAIN} {
+    encode gzip
+    reverse_proxy web:8000
+}

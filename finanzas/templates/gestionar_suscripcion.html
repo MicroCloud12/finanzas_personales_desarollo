@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto mt-10 p-5">
-    <div class="bg-white p-8 rounded-lg shadow-md border border-gray-200">
-        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Mi Suscripción Premium</h1>
+<div class="max-w-2xl mx-auto mt-2 sm:mt-8 mb-8">
+    <div class="bg-white p-5 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
+        <h1 class="text-xl sm:text-2xl font-bold mb-6 text-center text-gray-800 font-display">Mi Suscripción Premium</h1>
         
         {% if suscripcion.is_active and suscripcion.esta_cancelada %}
             <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded mb-6" role="alert">
@@ -13,7 +13,7 @@
             </div>
             {% if link_pago %}
                 <div class="text-center mt-6">
-                    <a href="{{ link_pago }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-lg">
+                    <a href="{{ link_pago }}" class="inline-block w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition duration-300 shadow-lg">
                         Reactivar con MercadoPago
                     </a>
                 </div>
@@ -43,7 +43,7 @@
             </div>
             {% if link_pago %}
                 <div class="text-center mt-6">
-                    <a href="{{ link_pago }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-lg">
+                    <a href="{{ link_pago }}" class="inline-block w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition duration-300 shadow-lg">
                         Pagar con MercadoPago
                     </a>
                 </div>

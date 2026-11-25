@@ -30,15 +30,15 @@
 
 <body class="bg-gray-50 font-sans antialiased text-gray-900">
 
-  <div class="flex h-screen overflow-hidden">
-    {# --- Sidebar for Desktop --- #}
+  <div class="flex h-dvh overflow-hidden">
+    {# --- Sidebar (Fixed on Desktop, Slide-over Drawer on Mobile) --- #}
     {% if user.is_authenticated %}
     {% include 'partials/_sidebar.html' %}
     {% endif %}
 
     {# --- Main Content Wrapper --- #}
     <div
-      class="flex-1 flex flex-col h-screen overflow-hidden {% if user.is_authenticated %}md:ml-64{% endif %} transition-all duration-300 relative">
+      class="flex-1 min-w-0 flex flex-col h-dvh overflow-hidden {% if user.is_authenticated %}md:ml-64{% endif %} transition-all duration-300 relative">
 
       {# --- Top Bar / Header --- #}
       {% block header %}
@@ -46,12 +46,12 @@
       {% endblock header %}
 
       {# --- Content Scrollable Area --- #}
-      <main class="{% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6{% endblock %}">
+      <main class="{% block main_classes %}flex-1 min-w-0 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 sm:p-6{% endblock %}">
         {% block content %}
         {% endblock content %}
 
         {% block footer %}
-        <footer class="bg-transparent text-gray-400 text-center py-6 mt-auto">
+        <footer class="bg-transparent text-gray-400 text-center py-6 mt-auto px-4">
           <p class="text-xs">&copy; {% now "Y" %} Prisma Vault. All rights reserved.</p>
           <a class="text-xs hover:text-indigo-500 transition-colors" href="{% url 'privacy_policy' %}">Política de
             Privacidad</a>
@@ -61,10 +61,10 @@
 
       {# --- Global Toast Notifications --- #}
       {% if messages %}
-      <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col gap-3 pointer-events-none">
+      <div id="toast-container" class="fixed top-16 sm:top-20 left-4 right-4 sm:left-auto sm:right-5 z-50 flex flex-col items-end gap-3 pointer-events-none">
         {% for message in messages %}
         <div
-          class="toast-message pointer-events-auto transform transition-all duration-300 ease-out translate-x-full opacity-0 flex items-center w-full max-w-md p-4 space-x-3 text-gray-500 bg-white/90 backdrop-blur-md divide-x divide-gray-200 rounded-lg shadow-2xl border-l-4 {% if message.tags == 'success' %}border-green-500 text-green-700{% elif message.tags == 'error' %}border-red-500 text-red-700{% elif message.tags == 'warning' %}border-yellow-500 text-yellow-700{% else %}border-blue-500 text-blue-700{% endif %}"
+          class="toast-message pointer-events-auto transform transition-all duration-300 ease-out translate-x-full opacity-0 flex items-center w-full max-w-md p-4 space-x-3 text-gray-500 bg-white/95 backdrop-blur-md divide-x divide-gray-200 rounded-lg shadow-2xl border-l-4 {% if message.tags == 'success' %}border-green-500 text-green-700{% elif message.tags == 'error' %}border-red-500 text-red-700{% elif message.tags == 'warning' %}border-yellow-500 text-yellow-700{% else %}border-blue-500 text-blue-700{% endif %}"
           role="alert">
           {% if message.tags == 'success' %}
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

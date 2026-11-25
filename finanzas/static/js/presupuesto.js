@@ -4,7 +4,7 @@ function showToast(message, type = 'info', duracion = 5000) {
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.className = 'fixed top-20 right-5 z-50 flex flex-col gap-3 pointer-events-none';
+        container.className = 'fixed top-16 sm:top-20 left-4 right-4 sm:left-auto sm:right-5 z-50 flex flex-col items-end gap-3 pointer-events-none';
         document.body.appendChild(container);
     }
     const colors = { success: 'border-green-500 text-green-700', error: 'border-red-500 text-red-700', warning: 'border-yellow-500 text-yellow-700', info: 'border-blue-500 text-blue-700' };

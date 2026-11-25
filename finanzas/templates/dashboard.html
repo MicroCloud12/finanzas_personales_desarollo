@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
 {% load humanize static dinero %}
 {% block title %}Dashboard de Finanzas Personales | Tu Resumen Financiero{% endblock %}
-{% block main_classes %}flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-5 md:p-8 lg:p-10{% endblock %}
+{% block main_classes %}flex-1 min-w-0 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 sm:p-6 md:p-8 lg:p-10{% endblock %}
 
 {% block content %}
 
 {# Contenedor Principal Unificado #}
 <div class="w-full max-w-[90rem] mx-auto">
 
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 font-display">Dashboard</h1>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 sm:mb-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 font-display">Dashboard</h1>
 
         {# --- Filtros Minimalistas --- #}
-        <div class="mt-4 sm:mt-0 bg-white rounded-xl shadow-sm p-1 inline-flex items-center">
+        <div class="self-start sm:self-auto bg-white rounded-xl shadow-sm p-1 inline-flex items-center">
             <form method="GET" action="" class="flex items-center gap-2">
                 <select name="month" onchange="this.form.submit()"
                     class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
@@ -32,18 +32,18 @@
     </div>
 
     {# --- Top Cards Row (3 Cards) --- #}
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6">
 
         <!-- Balance Card (Styled as requested) -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
-            <div class="flex justify-between items-center mb-4">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-5 sm:p-7 lg:p-8 min-h-[220px] sm:min-h-[280px] flex flex-col justify-between">
+            <div class="flex justify-between items-center mb-3 sm:mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Balance del Mes</h3>
             </div>
 
             <div class="mb-4">
-                <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
-                    $<span id="balanceTotalAmount">{{ balance|floatformat:0|intcomma }}</span><span class="text-gray-300 text-3xl font-bold">.<span id="balanceDecimalAmount">00</span></span>
+                <h2 class="text-3xl sm:text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex flex-wrap items-baseline gap-0.5">
+                    $<span id="balanceTotalAmount">{{ balance|floatformat:0|intcomma }}</span><span class="text-gray-300 text-xl sm:text-3xl font-bold">.<span id="balanceDecimalAmount">00</span></span>
                 </h2>
                 <p class="text-[11px] text-gray-400 font-medium mt-2 leading-snug">
                     Ingresos − gastos del mes.
@@ -99,14 +99,14 @@
 
         <!-- Income Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
-            <div class="flex justify-between items-center mb-4">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-5 sm:p-7 lg:p-8 min-h-[220px] sm:min-h-[280px] flex flex-col justify-between">
+            <div class="flex justify-between items-center mb-3 sm:mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Ingresos</h3>
             </div>
 
             <div class="mb-4">
-                <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
-                    $<span id="incomeTotalAmount">{{ ingresos|floatformat:0|intcomma }}</span><span class="text-gray-300 text-3xl font-bold">.<span id="incomeDecimalAmount">00</span></span>
+                <h2 class="text-3xl sm:text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex flex-wrap items-baseline gap-0.5">
+                    $<span id="incomeTotalAmount">{{ ingresos|floatformat:0|intcomma }}</span><span class="text-gray-300 text-xl sm:text-3xl font-bold">.<span id="incomeDecimalAmount">00</span></span>
                 </h2>
             </div>
 
@@ -156,14 +156,14 @@
 
         <!-- Expenses Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
-            <div class="flex justify-between items-center mb-4">
+            class="sm:col-span-2 xl:col-span-1 bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-5 sm:p-7 lg:p-8 min-h-[220px] sm:min-h-[280px] flex flex-col justify-between">
+            <div class="flex justify-between items-center mb-3 sm:mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Gastos</h3>
             </div>
 
             <div class="mb-4">
-                <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
-                    $<span id="expenseTotalAmount">{{ gastos|floatformat:0|intcomma }}</span><span class="text-gray-300 text-3xl font-bold">.<span id="expenseDecimalAmount">00</span></span>
+                <h2 class="text-3xl sm:text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex flex-wrap items-baseline gap-0.5">
+                    $<span id="expenseTotalAmount">{{ gastos|floatformat:0|intcomma }}</span><span class="text-gray-300 text-xl sm:text-3xl font-bold">.<span id="expenseDecimalAmount">00</span></span>
                 </h2>
                 <p class="text-[11px] text-gray-400 font-medium mt-2 leading-snug">
                     Incluye <span class="font-bold text-gray-700">${{ gastos_tarjeta|floatformat:2|intcomma }}</span> pagados con tarjeta de crédito
@@ -218,19 +218,19 @@
 
     </div>
 
-    {# --- Bottom Cards Row (2 Cards) --- #}
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-10">
+    {# --- Bottom Cards Row (3 Cards) --- #}
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
 
         <!-- Savings Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
-            <div class="flex justify-between items-center mb-4">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-5 sm:p-7 lg:p-8 min-h-[220px] sm:min-h-[280px] flex flex-col justify-between">
+            <div class="flex justify-between items-center mb-3 sm:mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Ahorros</h3>
             </div>
 
             <div class="mb-4">
-                <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
-                    ${{ ahorro|floatformat:0|intcomma }}<span class="text-gray-300 text-3xl font-bold">.00</span>
+                <h2 class="text-3xl sm:text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex flex-wrap items-baseline gap-0.5">
+                    ${{ ahorro|floatformat:0|intcomma }}<span class="text-gray-300 text-xl sm:text-3xl font-bold">.00</span>
                 </h2>
             </div>
 
@@ -270,14 +270,14 @@
 
         <!-- Debt Card -->
         <div
-            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-8 min-h-[280px] flex flex-col justify-between">
-            <div class="flex justify-between items-center mb-4">
+            class="bg-white rounded-[1.5rem] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 p-5 sm:p-7 lg:p-8 min-h-[220px] sm:min-h-[280px] flex flex-col justify-between">
+            <div class="flex justify-between items-center mb-3 sm:mb-4">
                 <h3 class="text-gray-900 font-bold text-lg">Deuda Total</h3>
             </div>
 
             <div class="mb-4">
-                <h2 class="text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex items-baseline gap-1">
-                    ${{ deuda_total|floatformat:0|intcomma }}<span class="text-gray-300 text-3xl font-bold">.00</span>
+                <h2 class="text-3xl sm:text-[2.5rem] leading-none font-bold text-gray-900 tracking-tight flex flex-wrap items-baseline gap-0.5">
+                    ${{ deuda_total|floatformat:0|intcomma }}<span class="text-gray-300 text-xl sm:text-3xl font-bold">.00</span>
                 </h2>
             </div>
 
@@ -341,7 +341,7 @@
         </div>
 
         <!-- My Cards Interactive Widget -->
-        <div class="relative rounded-[1.2rem] shadow-xl p-7 min-h-[260px] flex flex-col justify-between overflow-hidden transition-all duration-300 group border border-gray-700/50 bg-[linear-gradient(135deg,#1a1c29_0%,#2a2d3e_50%,#11121a_100%)]" id="myCardsWidget">
+        <div class="sm:col-span-2 xl:col-span-1 relative rounded-[1.2rem] shadow-xl p-5 sm:p-7 min-h-[220px] sm:min-h-[260px] flex flex-col justify-between overflow-hidden transition-all duration-300 group border border-gray-700/50 bg-[linear-gradient(135deg,#1a1c29_0%,#2a2d3e_50%,#11121a_100%)]" id="myCardsWidget">
             
             <!-- Texture Overlay for realistic plastic/metal feel -->
             <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
@@ -384,7 +384,7 @@
                 
                 <!-- Number -->
                 <div>
-                    <h4 class="text-xl sm:text-[1.65rem] tracking-[0.2em] font-mono leading-none text-gray-100 flex items-center shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]" id="visualCardNumber"><span class="inline-block transform -translate-y-0.5 opacity-70">•••• •••• ••••</span> <span class="ml-4 opacity-90 font-medium">{{ tarjetas_list.0.terminacion }}</span></h4>
+                    <h4 class="text-base sm:text-xl lg:text-[1.5rem] tracking-[0.12em] sm:tracking-[0.2em] font-mono leading-none text-gray-100 flex items-center shadow-black/50 [text-shadow:1px_1px_2px_rgba(0,0,0,0.8)]" id="visualCardNumber"><span class="inline-block transform -translate-y-0.5 opacity-70">•••• •••• ••••</span> <span class="ml-2 sm:ml-4 opacity-90 font-medium">{{ tarjetas_list.0.terminacion }}</span></h4>
                 </div>
 
                 <!-- Footer details -->
@@ -418,16 +418,16 @@
     </div>
 
     {# --- Main Charts Section (Restructured) --- #}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
 
         {# Left Column (2/3 width): Growth Plan & Budget vs Actual #}
-        <div class="lg:col-span-2 flex flex-col gap-8 h-full">
+        <div class="lg:col-span-2 flex flex-col gap-6 lg:gap-8 h-full min-w-0">
 
             {# Growth Plan Chart (styled as Total balance overview) #}
-            <div class="card-premium p-6">
-                <div class="flex justify-between items-center mb-6">
+            <div class="card-premium p-5 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
                     <h3 class="font-bold text-lg text-gray-900">Ahorro</h3>
-                    <div class="flex items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
                             <span class="text-[11px] text-gray-600 font-bold">Este mes</span>
@@ -443,16 +443,16 @@
                         </div>
                     </div>
                 </div>
-                <div class="relative h-96 w-full">
+                <div class="relative h-64 sm:h-80 lg:h-96 w-full">
                     <canvas id="savingsGrowthChart"></canvas>
                 </div>
             </div>
 
             {# Budget vs Actual Chart (styled as Comparing of budget and expence) #}
-            <div class="card-premium p-6 flex flex-col flex-grow">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-lg text-gray-900">Comparing of budget and expence</h3>
-                    <div class="flex items-center gap-4">
+            <div class="card-premium p-5 sm:p-6 flex flex-col flex-grow">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+                    <h3 class="font-bold text-lg text-gray-900">Presupuesto vs Gasto</h3>
+                    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
                             <span class="text-[11px] text-gray-600 font-bold">Expense</span>
@@ -467,7 +467,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="relative w-full flex-grow min-h-[24rem]">
+                <div class="relative w-full flex-grow min-h-[18rem] sm:min-h-[24rem]">
                     <canvas id="budgetVsActualChart" data-url="{% url 'api_datos_presupuesto' %}"></canvas>
                 </div>
             </div>
@@ -475,10 +475,10 @@
         </div>
 
         {# Right Column (1/3 width): All Expenses Donut Chart (styled as Statistics) #}
-        <div class="lg:col-span-1 card-premium p-6 flex flex-col h-full">
-            <div class="flex justify-between items-center mb-2">
+        <div class="lg:col-span-1 card-premium p-5 sm:p-6 flex flex-col h-full min-w-0">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
                 <h3 class="font-bold text-lg text-gray-900">Estadísticas</h3>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <select id="gastosTipoFilter"
                         class="bg-gray-50 border border-gray-100 text-gray-700 text-[10px] font-bold rounded-full px-3 py-1 cursor-pointer outline-none">
                         <option value="GASTO">Gastos</option>
@@ -504,13 +504,13 @@
                 Tienes un incremento de gastos en varias categorías este mes
             </p>
 
-            <div class="relative flex-grow min-h-[24rem]">
+            <div class="relative flex-grow min-h-[18rem] sm:min-h-[24rem]">
                 <canvas id="gastosPorCategoriaChart"
                     data-url="{% url 'api_datos_gastos' %}?year={{ selected_year }}&month={{ selected_month }}"></canvas>
             </div>
 
             <div class="mt-auto pt-6">
-                <div id="gastosLegend" class="grid grid-cols-2 gap-x-2 gap-y-3 justify-start">
+                <div id="gastosLegend" class="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-3 justify-start">
                     <!-- Legend gets injected here by JS -->
                 </div>
             </div>

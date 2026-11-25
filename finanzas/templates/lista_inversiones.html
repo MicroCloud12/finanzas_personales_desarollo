@@ -48,8 +48,8 @@
     </div>
 
 
-    {# --- Content Card --- #}
-    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
+    {# --- Content Card (Desktop) --- #}
+    <div class="hidden md:block bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
 
         {# --- Card Header --- #}
         <div class="p-6 border-b border-gray-100 bg-gray-50/50">
@@ -103,7 +103,8 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 bg-white text-sm text-right">
-                            <div class="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+                            <div
+                                class="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex justify-end gap-2">
                                 <a href="{% url 'editar_inversion' inv.id %}"
                                     class="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

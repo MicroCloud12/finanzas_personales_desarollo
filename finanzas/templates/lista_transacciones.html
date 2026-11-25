@@ -21,10 +21,10 @@
         Nueva Transacción
       </a>
 
-      <form method="POST" action="{% url 'subir_csv' %}" enctype="multipart/form-data" class="inline-flex">
+      <form method="POST" action="{% url 'subir_csv' %}" enctype="multipart/form-data" class="inline-flex w-full sm:w-auto">
         {% csrf_token %}
         <label title="Sube el archivo que exporta Santander (MOVIMIENTOS_CUENTA_xxxx.csv) o un CSV con columnas Fecha, Descripcion, Categoria, Monto, Tipo, Cuenta de origen, Cuenta de destino. Si ya subiste un archivo, volverlo a subir no duplica nada."
-          class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors">
+          class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
           </svg>
@@ -60,45 +60,47 @@
   <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
 
     {# --- Filter Bar (Integrated into Card Header) --- #}
-    <div class="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center bg-gray-50/50">
+    <div class="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row justify-between lg:items-center gap-3 bg-gray-50/50">
       <h3 class="font-bold text-lg text-gray-800">Historial</h3>
 
-      <div class="mt-4 sm:mt-0 bg-white rounded-lg shadow-sm border border-gray-100 p-1 inline-flex items-center">
-        <form method="GET" action="" class="flex items-center gap-2">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <form method="GET" action="" class="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
           <select name="cuenta" onchange="this.form.submit()" title="Solo los movimientos de esta cuenta o tarjeta"
-            class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold {% if cuenta_sel %}text-indigo-600{% else %}text-gray-600{% endif %} focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
+            class="flex-1 sm:flex-none min-w-0 pl-2.5 pr-7 py-1.5 bg-transparent border-none text-sm font-semibold {% if cuenta_sel %}text-indigo-600{% else %}text-gray-600{% endif %} focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
             <option value="">Todas las cuentas</option>
             {% for c in cuentas %}
             <option value="{{ c.id }}" {% if cuenta_sel and c.id == cuenta_sel.id %}selected{% endif %}>{{ c.nombre }}</option>
             {% endfor %}
           </select>
-          <span class="text-gray-300">|</span>
+          <span class="hidden sm:inline text-gray-300">|</span>
           <select name="month" onchange="this.form.submit()"
-            class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
+            class="pl-2.5 pr-7 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
             {% for m in months %}
             <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
             {% endfor %}
           </select>
           <span class="text-gray-300">|</span>
           <select name="year" onchange="this.form.submit()"
-            class="pl-3 pr-8 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
+            class="pl-2.5 pr-7 py-1.5 bg-transparent border-none text-sm font-semibold text-gray-600 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors">
             {% for y in years %}
             <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
             {% endfor %}
           </select>
         </form>
-        <span class="text-gray-300">|</span>
-        <a href="{% url 'descargar_csv' %}?year={{ selected_year }}&month={{ selected_month }}{% if cuenta_sel %}&cuenta={{ cuenta_sel.id }}{% endif %}"
-          title="Descarga lo que ves (mes y cuenta elegidos) en CSV, el mismo formato que acepta Subir CSV"
-          class="pl-3 pr-1 py-1.5 text-sm font-semibold text-gray-600 hover:text-indigo-600 whitespace-nowrap">Descargar CSV</a>
-        <a href="{% url 'descargar_csv' %}?todo=1{% if cuenta_sel %}&cuenta={{ cuenta_sel.id }}{% endif %}"
-          title="Descarga todos los meses{% if cuenta_sel %} de {{ cuenta_sel.nombre }}{% endif %} en un solo CSV"
-          class="pr-3 py-1.5 text-xs text-gray-400 hover:text-indigo-600 whitespace-nowrap" style="margin-left:.35rem">(todo)</a>
+        <span class="hidden sm:inline text-gray-300">|</span>
+        <div class="flex items-center gap-1 pl-2 sm:pl-1">
+          <a href="{% url 'descargar_csv' %}?year={{ selected_year }}&month={{ selected_month }}{% if cuenta_sel %}&cuenta={{ cuenta_sel.id }}{% endif %}"
+            title="Descarga lo que ves (mes y cuenta elegidos) en CSV, el mismo formato que acepta Subir CSV"
+            class="py-1 text-xs sm:text-sm font-semibold text-gray-600 hover:text-indigo-600 whitespace-nowrap">Descargar CSV</a>
+          <a href="{% url 'descargar_csv' %}?todo=1{% if cuenta_sel %}&cuenta={{ cuenta_sel.id }}{% endif %}"
+            title="Descarga todos los meses{% if cuenta_sel %} de {{ cuenta_sel.nombre }}{% endif %} en un solo CSV"
+            class="pr-2 py-1 text-xs text-gray-400 hover:text-indigo-600 whitespace-nowrap">(todo)</a>
+        </div>
       </div>
     </div>
 
-    {# --- Table --- #}
-    <div class="overflow-x-auto">
+    {# --- Desktop Table --- #}
+    <div class="hidden md:block overflow-x-auto">
       <table class="min-w-full leading-normal">
         <thead>
           <tr
@@ -167,7 +169,7 @@
             <td class="px-6 py-4 bg-white text-sm text-gray-600">{{ transaccion.categoria }}</td>
             <td class="px-6 py-4 bg-white text-sm text-gray-500">{{ transaccion.fecha|date:"d M, Y" }}</td>
             <td class="px-6 py-4 bg-white text-sm text-right">
-              <div class="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <div class="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex justify-end gap-2">
                 <a href="{% url 'editar_transaccion' transaccion.id %}"
                   class="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
