@@ -31,3 +31,4 @@ Claude outputs/estado_resultados.png
 
 # Estados de cuenta y CSVs que Claude deja en la carpeta (datos bancarios: nunca al repo)
 Claude outputs/*.csv
+pruebas_resultado.txt

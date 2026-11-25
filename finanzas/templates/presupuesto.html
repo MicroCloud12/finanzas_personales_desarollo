@@ -30,7 +30,7 @@
   </div>
 
   {# --- Plan de la quincena --- #}
-  <div class="mb-8" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem">
+  <div class="mb-8" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem">
     <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6">
       <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Aparta cada quincena</p>
       <p class="text-3xl font-bold text-indigo-600 mt-1">${{ total_quincena|floatformat:2|intcomma }}</p>
@@ -41,6 +41,11 @@
       <p class="text-3xl font-bold {% if vence_antes %}text-amber-600{% else %}text-gray-400{% endif %} mt-1">${{ vence_antes|floatformat:2|intcomma }}</p>
       <p class="text-xs text-gray-500 mt-1">{% if n_vencen %}{{ n_vencen }} pago{{ n_vencen|pluralize }} (marcado{{ n_vencen|pluralize }} en ámbar abajo) que sale{{ n_vencen|pluralize }} del dinero que ya tienes.{% else %}Nada vence antes de la próxima nómina.{% endif %}</p>
     </div>
+    <div class="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Previsto para {{ mes_siguiente }}</p>
+      <p class="text-3xl font-bold text-purple-600 mt-1">${{ total_proximo_mes|floatformat:2|intcomma }}</p>
+      <p class="text-xs text-gray-500 mt-1">Suma de la columna "Próximo mes": montos fijos más los recibos que toca pagar en {{ mes_siguiente }}.{% if n_sin_datos %} {{ n_sin_datos }} concepto{{ n_sin_datos|pluralize }} sin datos para predecir.{% endif %}</p>
+    </div>
   </div>
 
   {# --- Content Card --- #}
@@ -49,7 +54,7 @@
     {# --- Card Header --- #}
     <div class="p-6 border-b border-gray-100 bg-gray-50/50">
       <h3 class="font-bold text-lg text-gray-800">Gastos fijos</h3>
-      <p class="text-xs text-gray-500 mt-1">Monto fijo: ponle su día de pago. Recibo variable (luz, agua, gas, internet): deja el día vacío, guarda los recibos en Drive en <span class="font-mono">Recibos/&lt;nombre del concepto&gt;</span> y usa los botones de procesar y predecir.</p>
+      <p class="text-xs text-gray-500 mt-1">Monto fijo: ponle su día de pago. Recibo variable (luz, agua, gas, internet): deja el día vacío, guarda los recibos en Drive en <span class="font-mono">Recibos/&lt;nombre del concepto&gt;</span> y usa los botones de procesar y predecir. La columna "Próximo mes" es lo que toca pagar el mes que entra; "Estimado" es el siguiente pago, caiga cuando caiga.</p>
     </div>
 
     {# --- Table --- #}
@@ -61,6 +66,7 @@
             <th class="px-6 py-4">Estimado</th>
             <th class="px-6 py-4">Último real</th>
             <th class="px-6 py-4">Próximo pago</th>
+            <th class="px-6 py-4">Próximo mes ({{ mes_siguiente|capfirst }})</th>
             <th class="px-6 py-4">Aparta / quincena</th>
             <th class="px-6 py-4 text-right">Acciones</th>
           </tr>
@@ -90,6 +96,19 @@
             <td class="px-6 py-4 text-sm whitespace-nowrap {% if f.vence_antes %}text-amber-700 font-semibold{% else %}text-gray-700{% endif %}">
               {% if f.proximo %}{{ f.proximo|date:"d M Y" }}{% if f.facturado %}<span class="block text-[10px] font-normal text-gray-500">recibo en mano: monto exacto</span>{% endif %}{% else %}<span class="text-gray-400" title="Procesa recibos y predice, o ponle día de pago">sin fecha</span>{% endif %}
             </td>
+            {% with pm=f.proximo_mes %}
+            <td class="px-6 py-4 text-sm whitespace-nowrap">
+              {% if pm.fuente == 'no_toca' %}
+              <span class="text-gray-400 font-bold">—</span>
+              <span class="block text-[10px] text-gray-500">{{ pm.nota }}</span>
+              {% elif pm.fuente == 'sin_datos' %}
+              <span class="text-gray-400 font-bold" title="Procesa sus recibos de Drive o registra un pago con ese nombre">sin datos</span>
+              {% else %}
+              <span class="font-bold {% if pm.exacto %}text-gray-900{% else %}text-purple-600{% endif %}">{% if not pm.exacto %}~{% endif %}${{ pm.monto|floatformat:2|intcomma }}</span>
+              <span class="block text-[10px] text-gray-500">{% if pm.fecha %}{{ pm.fecha|date:"d M" }} · {% endif %}{{ pm.nota }}</span>
+              {% endif %}
+            </td>
+            {% endwith %}
             <td class="px-6 py-4 text-sm font-bold text-indigo-600">
               ${{ f.por_quincena|floatformat:2|intcomma }}
             </td>
@@ -118,7 +137,7 @@
                   </svg>
                 </button>
                 
-                <button type="button" onclick="predecirRecibo(this)" data-url="{% url 'predecir_recibo_presupuesto' p.id %}" class="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded relative group transition-colors" title="Predecir recibo de este mes">
+                <button type="button" onclick="predecirRecibo(this)" data-url="{% url 'predecir_recibo_presupuesto' p.id %}" class="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded relative group transition-colors" title="Predecir recibo del próximo mes">
                   <svg class="w-4 h-4 icon-magia" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                   </svg>
@@ -147,7 +166,7 @@
           </tr>
           {% endwith %}{% empty %}
           <tr>
-            <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+            <td colspan="7" class="px-6 py-10 text-center text-gray-500">
               No tienes ningún gasto fijo configurado aún. Haz clic en "Agregar Concepto" para comenzar.
             </td>
           </tr>

@@ -10,6 +10,7 @@ CATEGORIAS_BASE = [
     'Servicios', 'Nomina', 'Mascotas', 'Ahorro', 'Suscripciones', 'Salud', 'Educación',
     'Impuestos', 'Inversion', 'Tiendas de conveniencia', 'Ropa', 'Alquiler', 'Pareja',
     'Viajes', 'Regalos', 'Gastos varios', 'Tecnología', 'Deudas', 'Vales de despensa','Otro',
+    'Devoluciones', 'Retiros en Efectivo',
 ]
 CATEGORIA_POR_DEFECTO = 'Otro'
 

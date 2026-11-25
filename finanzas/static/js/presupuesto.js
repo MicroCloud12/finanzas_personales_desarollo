@@ -1,5 +1,5 @@
 // Acciones de la tabla de presupuesto (buscar recibos, procesarlos, predecir) vía fetch + JSON.
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', duracion = 5000) {
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -15,7 +15,7 @@ function showToast(message, type = 'info') {
     texto.textContent = message;  // texto plano: un error del servidor nunca se interpreta como HTML
     toast.appendChild(texto);
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+    setTimeout(() => toast.remove(), duracion);
 }
 
 const getJSON = url => fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } }).then(r => r.json());
@@ -50,12 +50,15 @@ function buscarRecibos(btn) {
     });
 }
 
+// Predice lo que toca pagar el mes que entra; el servidor guarda el siguiente pago en el concepto.
+// El toast se deja leer unos segundos antes de recargar la tabla con la columna "Próximo mes" actualizada.
 function predecirRecibo(btn) {
     conSpinner(btn, '.icon-magia', '.icon-spinner-magia', 'Ocurrió un error al predecir el recibo.', async () => {
         const data = await getJSON(btn.dataset.url);
-        if (data.error) return showToast(data.error, 'error');
+        if (data.error) return showToast(data.error, 'error', 9000);
         if (data.success) {
-            showToast(`Predicción: $${data.monto_predicho}${data.fecha_predicha ? ' · ' + data.fecha_predicha : ''}`, 'success');
+            showToast(data.mensaje || `Predicción: $${data.monto_predicho}${data.fecha_predicha ? ' · ' + data.fecha_predicha : ''}`, 'success', 9000);
+            await dormir(3500);
             window.location.reload();
         }
     });

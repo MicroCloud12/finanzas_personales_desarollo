@@ -11,8 +11,9 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .forms import PresupuestoForm
-from .models import HistorialReciboServicio, Presupuesto
-from .views.presupuesto import estimacion, plan_quincenal, proxima_quincena
+from .models import HistorialReciboServicio, Presupuesto, registro_transacciones
+from .services.prediccion import Recibo, cadencia_dias, estimar_para_fecha, pagos_en_mes, prediccion_variable
+from .views.presupuesto import estimacion, plan_quincenal, prediccion_mes, proxima_quincena, recibos_del_libro
 
 D = Decimal
 HOY = date(2026, 11, 19)
@@ -84,6 +85,83 @@ class PlanQuincenalTest(TestCase):
         self.assertEqual(plan['total_quincena'], round(4888.5 + 500 + 1100 * 15 / 61 + 299.5 + 1000, 2))
 
 
+class ProximoMesTest(TestCase):
+    """Columna 'Próximo mes': lo que toca pagar de cada concepto el mes que entra (HOY es noviembre → diciembre)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user('mau', password='x')
+        crear = lambda **kw: Presupuesto.objects.create(propietario=self.user, **kw)
+        self.renta = crear(categoria='Renta', monto_presupuestado=D('9777'), dia_pago=29)
+        self.luz = crear(categoria='Luz', monto_presupuestado=D('0'))
+        for fecha, monto in [(date(2026, 7, 10), '900'), (date(2026, 9, 9), '1000'), (date(2026, 11, 9), '1100')]:
+            HistorialReciboServicio.objects.create(propietario=self.user, presupuesto=self.luz, fecha_emision=fecha,
+                                                   monto_total=D(monto), archivo_drive_id=f'luz-{fecha}')
+        self.gas = crear(categoria='Gas', monto_presupuestado=D('0'))      # sin recibos: se apoya en los movimientos
+        for fecha, desc, monto in [(date(2026, 9, 3), 'GAS', '560'), (date(2026, 10, 3), 'Gas natural', '580'),
+                                   (date(2026, 11, 3), 'GAS', '598.87'), (date(2026, 11, 5), 'GASOLINA', '450')]:
+            registro_transacciones.objects.create(propietario=self.user, fecha=fecha, descripcion=desc,
+                                                  categoria='Servicios', monto=D(monto), tipo='GASTO')
+        self.agua = crear(categoria='Agua', monto_presupuestado=D('300'))  # sin recibos ni movimientos
+        self.tenencia = crear(categoria='Tenencia', monto_presupuestado=D('3000'), es_recurrente=False, mes=12, anio=2026, dia_pago=20)
+        self.predial = crear(categoria='Predial', monto_presupuestado=D('2000'), es_recurrente=False, mes=2, anio=2027)
+
+    def test_monto_fijo_y_pago_unico(self):
+        renta = prediccion_mes(self.renta, HOY, 2026, 12)
+        self.assertEqual((renta.monto, renta.fecha, renta.fuente, renta.exacto), (9777.0, date(2026, 12, 29), 'fijo', True))
+        self.assertEqual(prediccion_mes(self.renta, HOY, 2027, 2).fecha, date(2027, 2, 28))   # día 29 en febrero
+        self.assertEqual(prediccion_mes(self.tenencia, HOY, 2026, 12).monto, 3000.0)
+        self.assertEqual(prediccion_mes(self.predial, HOY, 2026, 12).fuente, 'no_toca')
+
+    def test_bimestral_no_toca_en_diciembre_y_si_en_enero(self):
+        dic = prediccion_mes(self.luz, HOY, 2026, 12)
+        self.assertEqual((dic.monto, dic.fuente), (0.0, 'no_toca'))
+        self.assertEqual(dic.fecha, date(2027, 1, 21))            # vence 21/11 + 61 días
+        self.assertIn('21 ene', dic.nota)
+        ene = prediccion_mes(self.luz, HOY, 2027, 1)
+        self.assertEqual((ene.monto, ene.fecha, ene.exacto, ene.fuente), (1200.0, date(2027, 1, 21), False, 'recibos'))
+        nov = prediccion_mes(self.luz, HOY, 2026, 11)              # el recibo en mano vence este mes: monto exacto
+        self.assertEqual((nov.monto, nov.exacto, nov.nota), (1100.0, True, 'recibo en mano'))
+
+    def test_sin_recibos_usa_los_movimientos_por_palabra_completa(self):
+        recibos = recibos_del_libro(self.gas, HOY)
+        self.assertEqual([r.monto for r in recibos], [560.0, 580.0, 598.87])   # 'GASOLINA' no cuenta
+        dic = prediccion_mes(self.gas, HOY, 2026, 12)
+        self.assertEqual((dic.fuente, dic.fecha, dic.exacto), ('movimientos', date(2026, 12, 3), False))
+        self.assertAlmostEqual(dic.monto, 618.49, places=2)        # tendencia +19/mes acotada al ±25%
+
+    def test_sin_nada_que_predecir(self):
+        self.assertEqual(prediccion_mes(self.agua, HOY, 2026, 12).fuente, 'sin_datos')
+        self.agua.fecha_proximo_recibo = date(2026, 12, 10)       # lo capturado a mano sí cuenta si cae en el mes
+        cap = prediccion_mes(self.agua, HOY, 2026, 12)
+        self.assertEqual((cap.monto, cap.fuente), (300.0, 'capturado'))
+
+    def test_plan_suma_el_mes_que_entra(self):
+        plan = plan_quincenal(Presupuesto.objects.filter(propietario=self.user).order_by('id'), HOY)
+        self.assertEqual(plan['mes_siguiente'], 'diciembre')
+        self.assertEqual(plan['total_proximo_mes'], round(9777 + 618.49 + 3000, 2))
+        self.assertEqual(plan['n_sin_datos'], 1)
+        por = {f['p'].categoria: f['proximo_mes'] for f in plan['filas']}
+        self.assertEqual(por['Luz'].fuente, 'no_toca')
+
+    def test_estacionalidad_con_un_anio_de_recibos(self):
+        R = lambda f, m: Recibo(f, None, m)
+        hist = [R(date(2025, 7, 10), 1500), R(date(2025, 9, 9), 1400), R(date(2025, 11, 9), 900), R(date(2026, 1, 9), 800),
+                R(date(2026, 3, 10), 850), R(date(2026, 5, 9), 1200), R(date(2026, 7, 10), 1600), R(date(2026, 9, 9), 1500),
+                R(date(2026, 11, 9), 950)]
+        monto, factor = estimar_para_fecha(hist, date(2027, 1, 21))   # enero: época barata → por debajo del promedio
+        self.assertLess(monto, 1000)
+        self.assertLess(factor, 1)
+        monto, factor = estimar_para_fecha(hist, date(2027, 7, 22))   # julio: época cara
+        self.assertGreater(monto, 1400)
+        self.assertIsNone(estimar_para_fecha(hist[:3], date(2027, 1, 21))[1])   # pocos recibos: sin ajuste
+
+    def test_recibos_duplicados_no_inundan_el_mes(self):
+        dup = [Recibo(date(2026, 11, 9), None, 100.0)] * 3
+        self.assertEqual(cadencia_dias([r.emision for r in dup], 'internet'), 30)   # gaps de 0 días no son ciclo
+        self.assertEqual(len(pagos_en_mes(dup, 'internet', 2026, 12, HOY)), 1)
+        self.assertEqual(prediccion_variable([Recibo(None, None, 500.0)], 'agua', 2026, 12, HOY).fuente, 'sin_datos')
+
+
 class PaginaPresupuestoTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user('mau', password='x')
@@ -111,6 +189,27 @@ class PaginaPresupuestoTest(TestCase):
         otro = User.objects.create_user('otro', password='x')
         ajeno = Presupuesto.objects.create(propietario=otro, categoria='Gas')
         self.assertEqual(self.client.post(reverse('eliminar_presupuesto', args=[ajeno.id])).status_code, 404)
+
+    def test_predecir_devuelve_el_mes_que_entra_y_guarda_el_siguiente_pago(self):
+        for fecha, monto in [(date(2026, 9, 9), '1000'), (date(2026, 11, 9), '1100')]:
+            HistorialReciboServicio.objects.create(propietario=self.user, presupuesto=self.luz, fecha_emision=fecha,
+                                                   monto_total=D(monto), archivo_drive_id=f'luz-{fecha}')
+        r = self.client.get(reverse('predecir_recibo_presupuesto', args=[self.luz.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['fuente'], 'recibos')
+        self.assertIn(data['mes'], ('diciembre', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre'))
+        self.assertIn('siguiente_pago', data)
+        self.luz.refresh_from_db()
+        self.assertEqual(str(self.luz.fecha_proximo_recibo), data['siguiente_pago']['fecha'])   # guardó el siguiente pago
+        self.assertGreater(self.luz.monto_presupuestado, 0)
+        self.assertContains(self.client.get(reverse('presupuesto')), 'Previsto para')
+
+    def test_predecir_sin_recibos_ni_movimientos_explica_que_hacer(self):
+        r = self.client.get(reverse('predecir_recibo_presupuesto', args=[self.luz.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('procesa sus recibos', r.json()['error'])
 
     def test_recibos_no_aplican_a_monto_fijo(self):
         r = self.client.get(reverse('predecir_recibo_presupuesto', args=[self.renta.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
