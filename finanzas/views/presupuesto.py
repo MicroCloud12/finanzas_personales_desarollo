@@ -1,4 +1,5 @@
 import calendar
+import json
 import logging
 import re
 import unicodedata
@@ -13,12 +14,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 
 from ..forms import PresupuestoForm
-from ..services import GoogleDriveService
+from ..services import GoogleDriveService, get_gemini_service
 from ..tasks import process_drive_utility_bills, carpeta_recibos
 from ..models import Presupuesto, HistorialReciboServicio, registro_transacciones, proximo_dia_del_mes
 from ..services.prediccion import (Recibo, Prediccion, cadencia_dias, proxima_fecha, estimar_monto,  # noqa: F401
-                                   proximo_pago, prediccion_variable, mes_siguiente, nombre_mes, dia_del_mes,
-                                   DIAS_PARA_PAGAR)
+                                   estimar_estacional_servicio, proximo_pago, prediccion_variable, mes_siguiente,
+                                   nombre_mes, dia_del_mes, DIAS_PARA_PAGAR)
 
 logger = logging.getLogger(__name__)
 DIAS_QUINCENA = (13, 28)   # días en que cae la nómina; el plan de apartado va de una nómina a la siguiente
@@ -37,9 +38,10 @@ def _vence(recibo):
 
 
 def recibos_de(presupuesto):
-    """Historial de recibos procesados como `Recibo`s, del más viejo al más nuevo."""
-    historial = presupuesto.historial_recibos.order_by('fecha_emision', 'id')
-    return [Recibo(h.fecha_emision, _vence(h), float(h.monto_total)) for h in historial]
+    """Historial de recibos procesados como `Recibo`s, ordenados cronológicamente."""
+    recibos = [Recibo(h.fecha_emision, _vence(h), float(h.monto_total))
+               for h in presupuesto.historial_recibos.order_by('id')]
+    return sorted(recibos, key=lambda r: r.emision or (r.vence - timedelta(days=DIAS_PARA_PAGAR) if r.vence else date.min))
 
 
 def _plano(texto):
@@ -72,29 +74,62 @@ def proximo_recibo(historial, categoria, hoy):
     return pago.fecha, pago.monto, paso, pago.exacto
 
 
+def _ultima_fecha_recibo(recibos):
+    fechas = [r.emision or (r.vence - timedelta(days=DIAS_PARA_PAGAR) if r.vence else None) for r in recibos]
+    fechas = [f for f in fechas if f]
+    return max(fechas) if fechas else None
+
+
+def _prediccion_ia_vigente(presupuesto, recibos, categoria, hoy):
+    """Si el usuario ya generó un pronóstico con IA posterior al último recibo y aún vigente, devuelve
+    (fecha, monto, paso_dias). Cuando llega un recibo nuevo en esa fecha o vence, deja de ser vigente."""
+    fecha = presupuesto.fecha_proximo_recibo
+    monto = float(presupuesto.monto_presupuestado or 0)
+    if not fecha or fecha < hoy or monto <= 0:
+        return None
+    ultima = _ultima_fecha_recibo(recibos)
+    if ultima and fecha <= ultima + timedelta(days=5):
+        return None
+    fechas_hist = sorted(
+        f for f in (r.emision or (r.vence - timedelta(days=DIAS_PARA_PAGAR) if r.vence else None) for r in recibos) if f
+    )
+    if ultima and 14 <= (fecha - ultima).days <= 95:
+        paso = (fecha - ultima).days
+    elif len(fechas_hist) >= 2:
+        paso = cadencia_dias(fechas_hist, categoria)
+    else:
+        paso = cadencia_dias([], categoria)
+    return fecha, round(monto, 2), paso
+
+
 def prediccion_mes(presupuesto, hoy, anio, mes):
     """Lo que toca pagar de este concepto en el mes (anio, mes).
 
-    Monto fijo: su monto el día de pago. Pago único: solo si es ese mes. Recibo variable: lo que digan sus
-    recibos; sin recibos, lo que digan tus movimientos; sin nada de eso, la fecha/monto capturados a mano.
+    Monto fijo: su monto el día de pago. Pago único: solo si es ese mes. Recibo variable: el pronóstico IA
+    vigente si ya se generó; si no, la estimación automática por recibos, movimientos o lo capturado a mano.
     """
     monto = float(presupuesto.monto_presupuestado or 0)
     if not presupuesto.es_recurrente and presupuesto.mes and presupuesto.anio:
         if (presupuesto.anio, presupuesto.mes) != (anio, mes):
             return Prediccion(0.0, None, False, 'no_toca', 'no toca')
         return Prediccion(monto, dia_del_mes(anio, mes, presupuesto.dia_pago), True, 'unico', 'pago único')
-    if presupuesto.dia_pago:
-        return Prediccion(monto, dia_del_mes(anio, mes, presupuesto.dia_pago), True, 'fijo', 'monto fijo')
+    if presupuesto.usa_monto_fijo:
+        fecha = dia_del_mes(anio, mes, presupuesto.dia_pago) if presupuesto.dia_pago else None
+        return Prediccion(monto, fecha, True, 'fijo', 'monto fijo')
     categoria = presupuesto.categoria.lower().strip()
     recibos = recibos_de(presupuesto)
+    movimientos = [] if recibos else recibos_del_libro(presupuesto, hoy)
+    base_hist = recibos or movimientos
+    vigente = _prediccion_ia_vigente(presupuesto, base_hist, categoria, hoy)
+    if vigente is not None:
+        f_ia, m_ia, _ = vigente
+        fuente = 'ia' if base_hist else 'capturado'
+        nota = 'pronóstico IA' if base_hist else 'lo que capturaste'
+        return Prediccion(m_ia, f_ia, False, fuente, nota)
     if recibos:
         return prediccion_variable(recibos, categoria, anio, mes, hoy)
-    movimientos = recibos_del_libro(presupuesto, hoy)
     if movimientos:
         return prediccion_variable(movimientos, categoria, anio, mes, hoy, fuente='movimientos')
-    fecha = presupuesto.fecha_proximo_recibo
-    if fecha and (fecha.year, fecha.month) == (anio, mes):
-        return Prediccion(monto, fecha, False, 'capturado', 'lo que capturaste')
     return Prediccion(0.0, None, False, 'sin_datos', 'sin datos: procesa recibos')
 
 
@@ -104,24 +139,32 @@ def proxima_quincena(hoy, dias=DIAS_QUINCENA):
 
 
 def estimacion(presupuesto, hoy):
-    """(próximo pago, monto, días entre pagos, ya_facturado) de un concepto.
+    """(próximo pago, monto pronosticado, días entre pagos, ya_facturado) de un concepto.
 
-    Monto fijo con día de pago: ese día cada mes. Recibo variable: lo que digan sus recibos (misma regla
-    que el botón de predecir, sin guardar nada) o, si aún no hay recibos, lo último que se predijo/capturó.
+    Monto fijo: ese monto cada mes. Recibo variable: el pronóstico IA vigente si existe; si no, la
+    proyección automática a partir de recibos, movimientos o lo capturado.
     """
     monto = float(presupuesto.monto_presupuestado or 0)
     if not presupuesto.es_recurrente and presupuesto.mes and presupuesto.anio:   # un solo pago en ese mes
         ultimo = calendar.monthrange(presupuesto.anio, presupuesto.mes)[1]
         fecha = date(presupuesto.anio, presupuesto.mes, min(presupuesto.dia_pago or ultimo, ultimo))
         return (fecha if fecha >= hoy else None), monto, 30, False
-    if presupuesto.dia_pago:
-        return proximo_dia_del_mes(presupuesto.dia_pago, hoy=hoy), monto, 30, False
+    if presupuesto.usa_monto_fijo:
+        fecha = proximo_dia_del_mes(presupuesto.dia_pago, hoy=hoy) if presupuesto.dia_pago else None
+        return fecha, monto, 30, False
     categoria = presupuesto.categoria.lower().strip()
-    historial = list(presupuesto.historial_recibos.order_by('fecha_emision', 'id'))
-    if not historial:
-        fecha = presupuesto.fecha_proximo_recibo
-        return (fecha if fecha and fecha >= hoy else None), monto, cadencia_dias([], categoria), False
-    return proximo_recibo(historial, categoria, hoy)
+    recibos = recibos_de(presupuesto) or recibos_del_libro(presupuesto, hoy)
+    vigente = _prediccion_ia_vigente(presupuesto, recibos, categoria, hoy)
+    if vigente is not None:
+        f_ia, m_ia, paso_ia = vigente
+        return f_ia, m_ia, paso_ia, False
+    if recibos:
+        pago, paso = proximo_pago(recibos, categoria, hoy)
+        if pago is not None:
+            return pago.fecha, pago.monto, paso, pago.exacto
+        return None, estimar_monto([r.monto for r in recibos]), paso, False
+    fecha = presupuesto.fecha_proximo_recibo
+    return (fecha if fecha and fecha >= hoy else None), monto, cadencia_dias([], categoria), False
 
 
 def plan_quincenal(presupuestos, hoy):
@@ -165,7 +208,7 @@ def crear_presupuesto(request):
         presupuesto.save()
         messages.success(request, 'Concepto de presupuesto guardado exitosamente.')
         return redirect('presupuesto')
-    return render(request, 'form_simple.html', {
+    return render(request, 'form_presupuesto.html', {
         'form': form, 'titulo': 'Añadir Nuevo Concepto', 'boton': 'Guardar Concepto', 'cancel_url': reverse('presupuesto')})
 
 @login_required
@@ -176,7 +219,7 @@ def editar_presupuesto(request, presupuesto_id):
         form.save()
         messages.success(request, 'Concepto de presupuesto actualizado exitosamente.')
         return redirect('presupuesto')
-    return render(request, 'form_simple.html', {
+    return render(request, 'form_presupuesto.html', {
         'form': form, 'titulo': 'Editar Concepto', 'boton': 'Guardar Cambios', 'cancel_url': reverse('presupuesto')})
 
 @require_POST
@@ -202,8 +245,8 @@ def _aviso(request, mensaje, status, nivel=messages.warning):
 def buscar_recibos_presupuesto(request, presupuesto_id):
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
     categoria_lower = presupuesto.categoria.lower().strip()
-    if presupuesto.dia_pago:
-        return _aviso(request, f'{presupuesto.categoria} es de monto fijo (tiene día de pago); los recibos son para los conceptos variables.', 400)
+    if presupuesto.usa_monto_fijo:
+        return _aviso(request, f'{presupuesto.categoria} es de monto fijo; los recibos son para los conceptos variables.', 400)
 
     try:
         archivos = carpeta_recibos(GoogleDriveService(request.user), categoria_lower)
@@ -224,7 +267,7 @@ def procesar_recibos_anteriores_presupuesto(request, presupuesto_id):
 
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
     categoria_lower = presupuesto.categoria.lower().strip()
-    if presupuesto.dia_pago:
+    if presupuesto.usa_monto_fijo:
         return JsonResponse({'error': f'{presupuesto.categoria} es de monto fijo; los recibos son para los conceptos variables.'}, status=400)
 
     try:
@@ -238,19 +281,59 @@ def procesar_recibos_anteriores_presupuesto(request, presupuesto_id):
         logger.exception("Error al encolar process_drive_utility_bills")
         return JsonResponse({'error': f'Ocurrió un error al encolar la tarea: {str(e)}'}, status=500)
 
+def _contexto_historial_ia(presupuesto, recibos, fuente, hoy, anio, mes, siguiente, paso):
+    if fuente == 'recibos':
+        filas = sorted(
+            presupuesto.historial_recibos.order_by('id'),
+            key=lambda h: h.fecha_emision or (_vence(h) - timedelta(days=DIAS_PARA_PAGAR) if _vence(h) else date.min),
+        )
+        items = [
+            {
+                "fecha_emision": h.fecha_emision.strftime('%Y-%m-%d') if h.fecha_emision else None,
+                "fecha_limite_pago": (h.datos_json or {}).get("fecha_limite_pago"),
+                "periodo_facturado": (h.datos_json or {}).get("periodo_facturado") or "No especificado",
+                "consumo": (h.datos_json or {}).get("consumo") or "No especificado",
+                "monto_total": float(h.monto_total),
+            }
+            for h in filas
+        ]
+    else:
+        items = [
+            {"fecha_pago": r.emision.strftime('%Y-%m-%d') if r.emision else None, "monto_total": r.monto}
+            for r in recibos
+        ]
+    return json.dumps({
+        "servicio": presupuesto.categoria,
+        "fecha_actual": hoy.strftime('%Y-%m-%d'),
+        "proximo_mes_calendario": f"{nombre_mes(mes)} {anio}",
+        "fecha_sugerida_proximo_recibo": siguiente.fecha.strftime('%Y-%m-%d'),
+        "cadencia_aproximada_dias": paso,
+        "fuente_historial": fuente,
+        "historial": items,
+    }, ensure_ascii=False)
+
+
+def _fecha_predicha_valida(texto_fecha, hoy, ultima_fecha, respaldo):
+    if texto_fecha:
+        try:
+            f = date.fromisoformat(str(texto_fecha).strip()[:10])
+            if f > hoy and (ultima_fecha is None or f > ultima_fecha + timedelta(days=5)):
+                return f
+        except ValueError:
+            pass
+    return respaldo
+
+
 @login_required
 def predecir_recibo_presupuesto(request, presupuesto_id):
-    """Botón "Predecir recibo del próximo mes": cuánto va a tocar pagar de este concepto el mes que entra.
-
-    Usa los recibos procesados; si no hay, los movimientos que ya registraste con ese nombre. Guarda la
-    predicción del siguiente pago en el concepto (monto y fecha) para que la tabla y el plan la usen.
-    """
+    """Botón "Predecir recibo del próximo mes": usa Gemini IA considerando consumo histórico,
+    periodo facturado y estacionalidad climática (ej. invierno vs verano), sin bloquear por días faltantes."""
     if not _es_ajax(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id, propietario=request.user)
     categoria_lower = presupuesto.categoria.lower().strip()
-    if presupuesto.dia_pago:
+    if presupuesto.usa_monto_fijo:
         return JsonResponse({'error': f'{presupuesto.categoria} es de monto fijo; no hay nada que predecir.'}, status=400)
 
     try:
@@ -264,34 +347,55 @@ def predecir_recibo_presupuesto(request, presupuesto_id):
                                           f'(botón verde) o registra algún pago con "{presupuesto.categoria}" en la descripción.'},
                                 status=400)
 
-        pred = prediccion_variable(recibos, categoria_lower, anio, mes, hoy, fuente)
         siguiente, paso = proximo_pago(recibos, categoria_lower, hoy)
         if siguiente is None:
             return JsonResponse({'error': 'Los recibos no traen fecha de emisión; no puedo proyectar.'}, status=400)
 
-        # Lo que se guarda en el concepto es el siguiente pago (sea del mes que entra o del que sigue).
-        presupuesto.monto_presupuestado = siguiente.monto
-        presupuesto.fecha_proximo_recibo = siguiente.fecha
+        contexto = _contexto_historial_ia(presupuesto, recibos, fuente, hoy, anio, mes, siguiente, paso)
+        respuesta_ia = get_gemini_service().extract_from_text("prediccion_servicio", "", contexto)
+        if isinstance(respuesta_ia, list):
+            respuesta_ia = respuesta_ia[0] if respuesta_ia else {}
+
+        ultima = _ultima_fecha_recibo(recibos)
+        consumo_est = ""
+        fuente_resultado = 'ia'
+
+        if respuesta_ia.get("error"):
+            logger.warning("IA no disponible al predecir recibo (%s); usando estimación estacional.", respuesta_ia.get("error"))
+            monto_ia, razonamiento = estimar_estacional_servicio(recibos, categoria_lower, siguiente.fecha)
+            fecha_ia = siguiente.fecha
+            fuente_resultado = 'estacional'
+        else:
+            try:
+                monto_ia = round(float(respuesta_ia.get("monto_predicho") or 0), 2)
+            except (TypeError, ValueError):
+                monto_ia = 0.0
+            if monto_ia <= 0:
+                monto_ia, _ = estimar_estacional_servicio(recibos, categoria_lower, siguiente.fecha)
+            fecha_ia = _fecha_predicha_valida(respuesta_ia.get("fecha_predicha"), hoy, ultima, siguiente.fecha)
+            razonamiento = (respuesta_ia.get("razonamiento") or "").strip()
+            consumo_est = (respuesta_ia.get("consumo_estimado") or "").strip()
+
+        presupuesto.monto_presupuestado = monto_ia
+        presupuesto.fecha_proximo_recibo = fecha_ia
         presupuesto.save(update_fields=['monto_presupuestado', 'fecha_proximo_recibo'])
 
         nombre = nombre_mes(mes)
-        base = (f'{len(recibos)} recibo(s)' if fuente == 'recibos' else f'{len(recibos)} pago(s) en tus movimientos')
-        if pred.fuente == 'no_toca':
-            mensaje = (f'En {nombre} no toca pagar {presupuesto.categoria} (se cobra cada ~{paso} días); '
-                       f'el siguiente cae el {siguiente.fecha:%d/%m/%Y} por ~${siguiente.monto:,.2f}.')
-        elif pred.exacto:
-            mensaje = f'{nombre.capitalize()}: ${pred.monto:,.2f} el {pred.fecha:%d/%m/%Y} (recibo en mano, monto exacto).'
-        else:
-            mensaje = f'{nombre.capitalize()}: ~${pred.monto:,.2f} el {pred.fecha:%d/%m/%Y} (estimado con {base}, cada ~{paso} días).'
+        detalle_consumo = f" ({consumo_est})" if consumo_est and consumo_est.upper() != 'N/A' else ""
+        encabezado = f"{presupuesto.categoria}: ${monto_ia:,.2f}{detalle_consumo} estimado para el {fecha_ia:%d/%m/%Y}."
+        mensaje = f"{encabezado} {razonamiento}".strip() if razonamiento else encabezado
+        messages.success(request, mensaje)
 
         return JsonResponse({
             'success': True,
             'mes': nombre,
-            'monto_predicho': pred.monto,
-            'fecha_predicha': pred.fecha.strftime('%Y-%m-%d') if pred.fecha else None,
-            'exacto': pred.exacto,
-            'fuente': fuente,
-            'siguiente_pago': {'monto': siguiente.monto, 'fecha': siguiente.fecha.strftime('%Y-%m-%d')},
+            'monto_predicho': monto_ia,
+            'fecha_predicha': fecha_ia.strftime('%Y-%m-%d'),
+            'consumo_estimado': consumo_est,
+            'razonamiento': razonamiento,
+            'exacto': False,
+            'fuente': fuente_resultado,
+            'siguiente_pago': {'monto': monto_ia, 'fecha': fecha_ia.strftime('%Y-%m-%d')},
             'mensaje': mensaje,
         })
 

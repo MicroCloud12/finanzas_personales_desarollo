@@ -924,17 +924,28 @@ class Presupuesto(models.Model):
     mes = models.IntegerField(null=True, blank=True, help_text="Mes específico (1-12) si no es recurrente")
     anio = models.IntegerField(null=True, blank=True, help_text="Año específico si no es recurrente")
     fecha_proximo_recibo = models.DateField(null=True, blank=True, help_text="Fecha estimada del próximo recibo (generada por IA)")
-    # Gasto de monto fijo (renta, mensualidad, suscripción): se paga este día cada mes y no lleva recibos.
-    # Sin día de pago, el concepto es de recibo variable (luz, agua, gas...) y la fecha sale de los recibos.
+    es_fijo = models.BooleanField(
+        default=False,
+        help_text="Actívalo si pagas un monto fijo cada mes (renta, muchacha, suscripción), aunque no tenga un solo día de pago."
+    )
     dia_pago = models.PositiveIntegerField(
         null=True, blank=True,
-        help_text="Día del mes en que lo pagas (1-31) si es de monto fijo. Déjalo vacío si se estima con recibos."
+        help_text="Día del mes en que lo pagas (1-31), opcional en gastos de monto fijo."
     )
 
     class Meta:
         verbose_name = "Presupuesto"
         verbose_name_plural = "Presupuestos"
         unique_together = ['propietario', 'categoria', 'mes', 'anio']
+
+    @property
+    def usa_monto_fijo(self):
+        return bool(self.es_fijo or self.dia_pago)
+
+    def save(self, *args, **kwargs):
+        if self.dia_pago is not None:
+            self.es_fijo = True
+        super().save(*args, **kwargs)
 
     def __str__(self):
         if self.es_recurrente:

@@ -9,7 +9,7 @@ function showToast(message, type = 'info', duracion = 5000) {
     }
     const colors = { success: 'border-green-500 text-green-700', error: 'border-red-500 text-red-700', warning: 'border-yellow-500 text-yellow-700', info: 'border-blue-500 text-blue-700' };
     const toast = document.createElement('div');
-    toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 bg-white/90 backdrop-blur-md rounded-lg shadow-2xl border-l-4 ${colors[type] || colors.info}`;
+    toast.className = `pointer-events-auto flex items-center w-full max-w-md p-4 bg-white/90 backdrop-blur-md rounded-lg shadow-2xl border-l-4 ${colors[type] || colors.info}`;
     const texto = document.createElement('div');
     texto.className = 'pl-2 text-sm font-semibold';
     texto.textContent = message;  // texto plano: un error del servidor nunca se interpreta como HTML
@@ -18,7 +18,15 @@ function showToast(message, type = 'info', duracion = 5000) {
     setTimeout(() => toast.remove(), duracion);
 }
 
-const getJSON = url => fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } }).then(r => r.json());
+const getJSON = async url => {
+    const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+    const texto = await r.text();
+    try {
+        return JSON.parse(texto);
+    } catch {
+        return { error: `El servidor respondió con código ${r.status}. Reinicia el servidor de Django e intenta de nuevo.` };
+    }
+};
 const dormir = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Muestra el spinner del botón mientras corre `trabajo` y siempre restaura el ícono.
@@ -57,8 +65,6 @@ function predecirRecibo(btn) {
         const data = await getJSON(btn.dataset.url);
         if (data.error) return showToast(data.error, 'error', 9000);
         if (data.success) {
-            showToast(data.mensaje || `Predicción: $${data.monto_predicho}${data.fecha_predicha ? ' · ' + data.fecha_predicha : ''}`, 'success', 9000);
-            await dormir(3500);
             window.location.reload();
         }
     });

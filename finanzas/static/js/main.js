@@ -6,11 +6,11 @@ function fadeFlashMessage() {
             toast.classList.remove('translate-x-full', 'opacity-0');
         }, 100 * (index + 1));
 
-        // Ocultarlos automáticamente después de 5 segundos
+        // Ocultarlos automáticamente después de 8 segundos
         setTimeout(() => {
             toast.classList.add('translate-x-full', 'opacity-0');
             setTimeout(() => toast.remove(), 300); // Dar tiempo a la animación para terminar
-        }, 5000);
+        }, 8000);
     });
 }
 

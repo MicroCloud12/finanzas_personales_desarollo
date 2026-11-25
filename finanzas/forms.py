@@ -236,24 +236,48 @@ class PagoAmortizacionForm(forms.ModelForm):
 class PresupuestoForm(forms.ModelForm):
     class Meta:
         model = Presupuesto
-        fields = ['categoria', 'monto_presupuestado', 'monto_real', 'dia_pago', 'es_recurrente', 'mes', 'anio']
+        fields = ['categoria', 'es_fijo', 'monto_presupuestado', 'monto_real', 'dia_pago', 'es_recurrente', 'mes', 'anio']
+        labels = {
+            'categoria': 'Concepto / Categoría',
+            'es_fijo': 'Es de monto fijo',
+            'monto_presupuestado': 'Monto presupuestado',
+            'monto_real': 'Último monto real pagado',
+            'dia_pago': 'Día de pago del mes (opcional)',
+            'es_recurrente': 'Se repite cada mes (recurrente)',
+            'mes': 'Mes',
+            'anio': 'Año',
+        }
         help_texts = {
-            'categoria': "Ej. Renta, Luz, Agua, Internet. Si lleva recibos en Drive, usa el nombre de la carpeta (Recibos/luz).",
-            'monto_presupuestado': "Lo que planeas pagar. En los de recibo variable lo actualiza la predicción.",
+            'categoria': "Ej. Renta, Muchacha, Luz, Agua, Internet. Si lleva recibos en Drive, usa el nombre de la carpeta (Recibos/luz).",
+            'es_fijo': "Para gastos como renta, muchacha o suscripciones donde tú defines cuánto pagas al mes.",
+            'monto_presupuestado': "Lo que planeas pagar al mes. En los de recibo variable se actualiza al predecir.",
             'monto_real': "Monto realmente gastado o facturado en este periodo.",
-            'dia_pago': "Solo gastos de monto fijo (renta, mensualidad, suscripción): día del mes en que lo pagas. "
-                        "Déjalo vacío si se estima con recibos (luz, agua, gas...).",
-            'es_recurrente': "Si está activo, este presupuesto se aplicará todos los meses.",
-            'mes': "Solo si NO es recurrente. (1-12)",
-            'anio': "Solo si NO es recurrente. Ej. 2026",
+            'dia_pago': "Ej. 29 si lo pagas un día exacto del mes, o déjalo vacío si lo pagas por semana o quincena.",
+            'es_recurrente': "Desactívalo solo si es un pago único en el año (ej. Tenencia o Predial).",
+            'mes': "Solo para pagos únicos (1-12).",
+            'anio': "Solo para pagos únicos (ej. 2026).",
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _aplicar_estilos(self)
+        if self.instance and self.instance.pk and self.instance.usa_monto_fijo:
+            self.fields['es_fijo'].initial = True
 
     def clean_dia_pago(self):
         dia = self.cleaned_data.get('dia_pago')
         if dia is not None and not 1 <= dia <= 31:
             raise forms.ValidationError("El día de pago debe estar entre 1 y 31.")
         return dia
+
+    def clean(self):
+        cleaned = super().clean()
+        usa_selector_ui = self.data.get('modo_selector') == '1'
+        if usa_selector_ui and not cleaned.get('es_fijo'):
+            cleaned['dia_pago'] = None
+        elif cleaned.get('dia_pago') is not None:
+            cleaned['es_fijo'] = True
+        if cleaned.get('es_recurrente'):
+            cleaned['mes'] = None
+            cleaned['anio'] = None
+        return cleaned

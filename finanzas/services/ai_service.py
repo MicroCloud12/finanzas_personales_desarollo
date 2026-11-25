@@ -40,7 +40,10 @@ class GeminiService:
 
     @classmethod
     def es_transitorio(cls, error) -> bool:
-        return any(t.lower() in str(error).lower() for t in cls.ERRORES_TRANSITORIOS)
+        texto = str(error).lower()
+        if any(permanente in texto for permanente in ('depleted', 'billing', 'api_key_invalid', 'not found')):
+            return False
+        return any(t.lower() in texto for t in cls.ERRORES_TRANSITORIOS)
 
     @staticmethod
     def _espera_sugerida(error):
@@ -122,21 +125,32 @@ class MistralService:
             if "error" in ocr:
                 return ocr
             prompt, content = f"{prompt}\n\nTexto del documento (OCR):\n{ocr['text_content']}", None
-        partes = [{"type": "text", "text": prompt}]
         if content:
             b64 = base64.b64encode(content["data"]).decode("utf-8")
-            partes.append({"type": "image_url", "image_url": f"data:{content['mime_type']};base64,{b64}"})
-        try:
-            r = self.client.chat.complete(
-                model=self.MODELO, temperature=0.0, timeout_ms=60_000,
-                messages=[{"role": "system", "content": "Extract financial data. Output JSON strictly. No extra text."},
-                          {"role": "user", "content": partes}],
-                response_format={"type": "json_object"},
-            )
-            return json.loads(r.choices[0].message.content)
-        except Exception as e:
-            logger.error(f"Mistral API Error: {e}")
-            return {"error": str(e)}
+            user_content = [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": f"data:{content['mime_type']};base64,{b64}"},
+            ]
+        else:
+            user_content = prompt
+        ultimo_error = None
+        for intento in range(2):
+            try:
+                r = self.client.chat.complete(
+                    model=self.MODELO, temperature=0.0, timeout_ms=45_000,
+                    messages=[{"role": "system", "content": "Extract financial data. Output JSON strictly. No extra text."},
+                              {"role": "user", "content": user_content}],
+                    response_format={"type": "json_object"},
+                )
+                return json.loads(r.choices[0].message.content)
+            except Exception as e:
+                ultimo_error = e
+                if intento == 0 and "429" in str(e):
+                    time.sleep(2)
+                    continue
+                break
+        logger.error(f"Mistral API Error: {ultimo_error}")
+        return {"error": str(ultimo_error)}
 
 
 @lru_cache(maxsize=1)

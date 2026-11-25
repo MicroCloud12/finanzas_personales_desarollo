@@ -1,9 +1,11 @@
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from PIL import Image
 from io import BytesIO
 from decimal import Decimal, InvalidOperation
+from dateutil.parser import parse as dateutil_parse, ParserError
+from django.db.models import F
 from .utils import parse_date_safely
 from celery import shared_task, group
 from celery.exceptions import Retry
@@ -385,14 +387,27 @@ def process_drive_for_invoices(user_id: int):
     except Exception as e:
         return {'status': 'ERROR', 'message': str(e)}
 
-def _parse_utility_bill_data(datos: dict) -> tuple:
-    fecha_emision = datos.get('fecha_emision')
-    fecha_obj = None
-    if fecha_emision:
+def _parse_optional_date(valor) -> date | None:
+    if not valor or not isinstance(valor, str):
+        return None
+    texto = valor.strip()
+    if not texto or texto.lower() == 'null':
+        return None
+    try:
+        return date.fromisoformat(texto[:10])
+    except ValueError:
         try:
-            fecha_obj = datetime.strptime(fecha_emision, '%Y-%m-%d').date()
-        except ValueError:
-            pass
+            return dateutil_parse(texto, dayfirst=True).date()
+        except (ParserError, ValueError, OverflowError):
+            return None
+
+
+def _parse_utility_bill_data(datos: dict) -> tuple:
+    fecha_obj = _parse_optional_date(datos.get('fecha_emision'))
+    if fecha_obj is None:
+        limite = _parse_optional_date(datos.get('fecha_limite_pago'))
+        if limite is not None:
+            fecha_obj = limite - timedelta(days=12)
 
     try:
         monto = float(datos.get('monto_total', 0))
@@ -436,7 +451,7 @@ def process_single_utility_bill(self, user_id: int, presupuesto_id: int, file_id
         # ponytail: gana el de fecha_emision más nueva, no el último del lote.
         ultimo = (HistorialReciboServicio.objects
                   .filter(presupuesto=presupuesto)
-                  .order_by('-fecha_emision', '-id').first())
+                  .order_by(F('fecha_emision').desc(nulls_last=True), '-id').first())
         if ultimo:
             presupuesto.monto_real = ultimo.monto_total
             presupuesto.save(update_fields=['monto_real'])

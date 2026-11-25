@@ -68,19 +68,27 @@ def dia_del_mes(anio, mes, dia):
 # ---------- cadencia y montos ----------
 
 def cadencia_dias(fechas, categoria):
-    """Días típicos entre recibos: mediana de los últimos gaps; default por categoría con <2 fechas."""
+    """Días típicos entre recibos: mediana de los últimos gaps reales (>=10 días); default por categoría con <2 fechas."""
     gaps = [(fechas[i] - fechas[i - 1]).days for i in range(1, len(fechas))]
-    gaps = [g for g in gaps if g > 0]   # dos recibos del mismo día (duplicado, reproceso) no son un ciclo
+    gaps = [g for g in gaps if g >= 10]   # recibos del mismo ciclo (duplicado o corrección) no definen cadencia
     if gaps:
         return int(round(median(gaps[-6:])))
-    return 61 if categoria in ('agua', 'luz') else 30  # ponytail: agua/luz suelen ser bimestrales; el resto mensual
+    return 61 if categoria in ('agua', 'luz') else 30
+
+
+def _sumar_paso(f, paso):
+    """Avanza un ciclo: un mes calendario si la cadencia es mensual (~26-35 días), o `paso` días."""
+    if 26 <= paso <= 35:
+        y, m = mes_siguiente(f)
+        return dia_del_mes(y, m, f.day)
+    return f + timedelta(days=max(paso, 1))
 
 
 def proxima_fecha(base, paso, hoy):
-    """Primera fecha de facturación estrictamente posterior a hoy, anclada al último recibo."""
-    f = base + timedelta(days=paso)
+    """Siguiente fecha de ciclo estrictamente posterior al último recibo (`base`) y a `hoy`."""
+    f = _sumar_paso(base, paso)
     while f <= hoy:
-        f += timedelta(days=paso)
+        f = _sumar_paso(f, paso)
     return f
 
 
@@ -99,25 +107,74 @@ def estimar_monto(montos):
     return round(min(max(pred, my * 0.75), my * 1.25), 2)
 
 
+def _fecha_ref(r):
+    """Fecha de referencia del recibo: emisión o, si falta, vencimiento menos DIAS_PARA_PAGAR."""
+    return r.emision or (r.vence - timedelta(days=DIAS_PARA_PAGAR) if r.vence else None)
+
+
+def estimar_estacional_servicio(recibos, categoria, fecha_objetivo):
+    """Estimación local consciente de época del año (invierno/verano) y resistente a picos aislados.
+    Se usa como respaldo cuando la API de IA no está disponible (ej. límite de cuota)."""
+    monto_anual, factor_anual = estimar_para_fecha(recibos, fecha_objetivo)
+    if factor_anual is not None:
+        return monto_anual, f"Ajustado con tu consumo de la misma época del año pasado (factor {factor_anual}x)."
+
+    ordenados = sorted(recibos, key=lambda r: _fecha_ref(r) or date.min)
+    montos = [r.monto for r in ordenados if r.monto > 0]
+    if not montos:
+        return 0.0, ""
+    ultimos = montos[-6:]
+    ultimo = ultimos[-1]
+    med = median(ultimos)
+    mes = fecha_objetivo.month
+    cat = (categoria or '').lower().strip()
+
+    if mes in (12, 1, 2):       # Invierno
+        epoca = "invierno"
+        factor = 0.88 if 'agua' in cat else (0.90 if 'luz' in cat else (1.12 if 'gas' in cat else 1.0))
+    elif mes in (5, 6, 7, 8):   # Verano / calor
+        epoca = "verano"
+        factor = 1.12 if 'agua' in cat else (1.20 if 'luz' in cat else (0.88 if 'gas' in cat else 1.0))
+    else:
+        epoca = "temporada templada"
+        factor = 1.0
+
+    # Si hubo cambio fuerte de estación (ej. luz bajó de verano $1,800 a otoño $426), anclar al nivel actual;
+    # si el último recibo fue un pico aislado sobre una base estable (ej. agua $1,029 vs mediana $680), amortiguarlo.
+    if 'luz' in cat and mes in (11, 12, 1, 2) and ultimo < med * 0.75:
+        base = ultimo
+    elif 'gas' in cat and mes in (11, 12, 1, 2) and ultimo > med * 1.15:
+        base = ultimo
+    elif len(ultimos) >= 2 and ultimo > med * 1.25:
+        base = 0.65 * med + 0.35 * ultimo
+    else:
+        base = 0.5 * med + 0.5 * ultimo
+
+    estimado = round(base * factor, 2)
+    razon = f"Estimado considerando {epoca} y amortiguando picos atípicos sobre {len(montos)} recibo(s)."
+    return estimado, razon
+
+
 def estimar_para_fecha(recibos, fecha_objetivo):
-    """Monto esperado de un recibo que vence en `fecha_objetivo`.
+    """Monto esperado de un recibo proyectado en `fecha_objetivo`.
 
     Parte de la tendencia reciente (`estimar_monto`). Si hay un recibo de la misma época del año pasado
     y suficientes vecinos para compararlo, lo ajusta por estacionalidad: el promedio reciente multiplicado
     por (lo que pagaste esa época / lo que pagabas en promedio por entonces). Así la luz de verano no se
     estima con el promedio de todo el año. Devuelve (monto, factor_estacional o None).
     """
-    montos = [r.monto for r in recibos]
+    ordenados = sorted(recibos, key=lambda r: _fecha_ref(r) or date.min)
+    montos = [r.monto for r in ordenados]
     tendencia = estimar_monto(montos)
-    con_fecha = [r for r in recibos if r.emision]
+    con_fecha = [(r, _fecha_ref(r)) for r in ordenados if _fecha_ref(r)]
     if len(con_fecha) < 4:
         return tendencia, None
     hace_un_anio = fecha_objetivo - timedelta(days=365)
-    mismo = min(con_fecha, key=lambda r: abs((r.emision - hace_un_anio).days))
-    if abs((mismo.emision - hace_un_anio).days) > 25:
+    mismo, f_mismo = min(con_fecha, key=lambda par: abs((par[1] - hace_un_anio).days))
+    if abs((f_mismo - hace_un_anio).days) > 25:
         return tendencia, None
-    ventana = [r.monto for r in con_fecha
-               if hace_un_anio - timedelta(days=200) <= r.emision <= hace_un_anio + timedelta(days=200)]
+    ventana = [r.monto for r, f in con_fecha
+               if hace_un_anio - timedelta(days=200) <= f <= hace_un_anio + timedelta(days=200)]
     if len(ventana) < 3 or sum(ventana) <= 0:
         return tendencia, None
     factor = min(max(mismo.monto / (sum(ventana) / len(ventana)), 0.5), 2.0)
@@ -128,60 +185,50 @@ def estimar_para_fecha(recibos, fecha_objetivo):
 # ---------- proyección ----------
 
 def _ancla(recibos):
-    """(fechas de emisión ordenadas, vencimiento del último recibo o None)."""
-    fechas = sorted(r.emision for r in recibos if r.emision)
-    ultimo = recibos[-1]
-    vence = ultimo.vence or (ultimo.emision + timedelta(days=DIAS_PARA_PAGAR) if ultimo.emision else None)
-    return fechas, vence
+    """(fechas de referencia ordenadas, última fecha conocida o None)."""
+    fechas = sorted(f for f in (_fecha_ref(r) for r in recibos) if f)
+    return fechas, (fechas[-1] if fechas else None)
 
 
 def proximo_pago(recibos, categoria, hoy):
-    """(Pago, días entre recibos) del siguiente pago a partir de hoy, o (None, paso) si no se puede proyectar.
-    Si el último recibo todavía no vence, ESE es el próximo pago (monto exacto); si ya venció, el siguiente
-    ciclo: su vencimiento más la cadencia real, con el monto estimado."""
+    """(Pago pronosticado del próximo recibo, días entre recibos) a partir del historial.
+    Siempre proyecta el siguiente ciclo después del último recibo recibido, sin importar cuántos días falten."""
     if not recibos:
         return None, cadencia_dias([], categoria)
-    fechas, vence = _ancla(recibos)
+    fechas, base = _ancla(recibos)
     paso = cadencia_dias(fechas, categoria)
-    if vence is None:
+    if base is None:
         return None, paso
-    if vence >= hoy:
-        return Pago(vence, round(recibos[-1].monto, 2), True), paso
-    fecha = proxima_fecha(vence, paso, hoy)
+    fecha = proxima_fecha(base, max(paso, 14), hoy)
     return Pago(fecha, estimar_para_fecha(recibos, fecha)[0], False), paso
 
 
 def pagos_en_mes(recibos, categoria, anio, mes, hoy):
-    """Pagos de un concepto que caen en el mes (anio, mes) según sus recibos: el recibo en mano si vence ahí,
-    y los ciclos siguientes proyectados con la cadencia. Normalmente es uno o ninguno (bimestrales)."""
+    """Pagos proyectados de un concepto que caen en el mes (anio, mes) según su cadencia."""
     if not recibos:
         return []
     ini, fin = rango_mes(anio, mes)
-    fechas, vence = _ancla(recibos)
-    if vence is None:
+    fechas, base = _ancla(recibos)
+    if base is None:
         return []
-    paso = max(cadencia_dias(fechas, categoria), 14)   # nada se cobra más seguido que cada dos semanas
+    paso = max(cadencia_dias(fechas, categoria), 14)
     pagos = []
-    if vence >= hoy and ini <= vence <= fin:
-        pagos.append(Pago(vence, round(recibos[-1].monto, 2), True))
-    f = proxima_fecha(vence, paso, hoy)
+    f = proxima_fecha(base, paso, hoy)
     while f <= fin:
         if f >= ini:
             pagos.append(Pago(f, estimar_para_fecha(recibos, f)[0], False))
-        f += timedelta(days=paso)
+        f = _sumar_paso(f, paso)
     return pagos
 
 
 def prediccion_variable(recibos, categoria, anio, mes, hoy, fuente='recibos'):
-    """Prediccion del mes para un concepto de recibo variable, a partir de su historial."""
+    """Pronóstico para (anio, mes) a partir del historial; aunque falten más días y el siguiente recibo
+    caiga después del mes, siempre devuelve el monto pronosticado del próximo recibo."""
+    etiqueta = 'según tus movimientos' if fuente == 'movimientos' else 'estimado'
     pagos = pagos_en_mes(recibos, categoria, anio, mes, hoy)
     if pagos:
-        etiqueta = 'según tus movimientos' if fuente == 'movimientos' else ('recibo en mano' if pagos[0].exacto else 'estimado')
-        return Prediccion(round(sum(p.monto for p in pagos), 2), pagos[0].fecha, pagos[0].exacto, fuente, etiqueta, pagos)
-    siguiente, paso = proximo_pago(recibos, categoria, hoy)
+        return Prediccion(round(sum(p.monto for p in pagos), 2), pagos[0].fecha, False, fuente, etiqueta, pagos)
+    siguiente, _ = proximo_pago(recibos, categoria, hoy)
     if siguiente is None:
         return Prediccion(fuente='sin_datos', nota='los recibos no traen fecha')
-    # el siguiente pago cae fuera del mes: buscamos el primero después del mes para decir cuándo toca
-    fin = rango_mes(anio, mes)[1]
-    fecha = siguiente.fecha if siguiente.fecha > fin else proxima_fecha(siguiente.fecha, max(paso, 14), fin)
-    return Prediccion(0.0, fecha, False, 'no_toca', f'no toca · siguiente {fecha_corta(fecha)}', [])
+    return Prediccion(siguiente.monto, siguiente.fecha, False, fuente, etiqueta, [siguiente])

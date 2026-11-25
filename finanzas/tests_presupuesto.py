@@ -44,25 +44,23 @@ class PlanQuincenalTest(TestCase):
         fecha, monto, paso, facturado = estimacion(self.renta, HOY)
         self.assertEqual((fecha, monto, paso, facturado), (date(2026, 11, 29), 9777.0, 30, False))
 
-    def test_recibo_en_mano_es_el_proximo_pago(self):
-        # El último recibo (9/11) aún no vence: sin fecha límite leída se asume emisión + 12 días.
+    def test_recibo_reciente_igual_proyecta_el_siguiente_ciclo(self):
+        # Aunque el recibo de noviembre acabe de llegar y aún no venza, Estimado proyecta el siguiente recibo.
         fecha, monto, paso, facturado = estimacion(self.luz, HOY)
-        self.assertEqual((fecha, monto, paso, facturado), (date(2026, 11, 21), 1100.0, 61, True))
+        self.assertEqual((fecha, monto, paso, facturado), (date(2027, 1, 9), 1200.0, 61, False))
         self.luz.refresh_from_db()
         self.assertEqual(self.luz.monto_presupuestado, D('0'))      # no toca lo guardado (eso lo hace Predecir)
 
-    def test_fecha_limite_leida_del_recibo_manda(self):
+    def test_recibo_sin_emision_usa_fecha_limite_como_respaldo(self):
         ultimo = self.luz.historial_recibos.order_by('-fecha_emision').first()
-        ultimo.datos_json = {'fecha_limite_pago': '2026-11-30'}
+        ultimo.fecha_emision = None
+        ultimo.datos_json = {'fecha_limite_pago': '2026-11-21'}
         ultimo.save()
-        self.assertEqual(estimacion(self.luz, HOY)[:2], (date(2026, 11, 30), 1100.0))
-        ultimo.datos_json = {'fecha_limite_pago': 'no dice'}        # basura de la IA: cae al +12 días
-        ultimo.save()
-        self.assertEqual(estimacion(self.luz, HOY)[0], date(2026, 11, 21))
+        self.assertEqual(estimacion(self.luz, HOY)[:2], (date(2027, 1, 9), 1200.0))
 
     def test_recibo_ya_vencido_proyecta_el_siguiente_ciclo(self):
         fecha, monto, paso, facturado = estimacion(self.luz, date(2026, 12, 15))
-        self.assertEqual((fecha, paso, facturado), (date(2027, 1, 21), 61, False))   # vence 21/11 + 61
+        self.assertEqual((fecha, paso, facturado), (date(2027, 1, 9), 61, False))
         self.assertAlmostEqual(monto, 1200.0)                       # tendencia +100 por recibo
 
     def test_variable_sin_recibos_usa_lo_capturado(self):
@@ -74,15 +72,15 @@ class PlanQuincenalTest(TestCase):
         plan = plan_quincenal(Presupuesto.objects.filter(propietario=self.user).order_by('id'), HOY)
         por = {f['p'].categoria: f for f in plan['filas']}
         self.assertEqual(por['Renta']['por_quincena'], 4888.5)             # mensual: mitad y mitad
-        self.assertEqual(por['Luz']['por_quincena'], round(1100 * 15 / 61, 2))   # bimestral: en ~4 quincenas
+        self.assertEqual(por['Luz']['por_quincena'], round(1200 * 15 / 61, 2))   # bimestral: sobre el próximo estimado
         self.assertEqual(por['Internet']['por_quincena'], 299.5)
         self.assertEqual(por['Tenencia']['por_quincena'], 1000.0)          # 3,000 el 20/12: quedan 3 quincenas
         self.assertEqual(plan['proxima_nomina'], date(2026, 11, 28))
         self.assertTrue(por['Muchacha']['vence_antes'])                    # 25/11 cae antes de la nómina del 28
-        self.assertTrue(por['Luz']['vence_antes'])                         # el recibo en mano vence el 21/11
+        self.assertFalse(por['Luz']['vence_antes'])                        # el próximo recibo cae en enero
         self.assertFalse(por['Renta']['vence_antes'])                      # 29/11 ya es con la siguiente
-        self.assertEqual((plan['vence_antes'], plan['n_vencen']), (2100.0, 2))
-        self.assertEqual(plan['total_quincena'], round(4888.5 + 500 + 1100 * 15 / 61 + 299.5 + 1000, 2))
+        self.assertEqual((plan['vence_antes'], plan['n_vencen']), (1000.0, 1))
+        self.assertEqual(plan['total_quincena'], round(4888.5 + 500 + 1200 * 15 / 61 + 299.5 + 1000, 2))
 
 
 class ProximoMesTest(TestCase):
@@ -112,15 +110,27 @@ class ProximoMesTest(TestCase):
         self.assertEqual(prediccion_mes(self.tenencia, HOY, 2026, 12).monto, 3000.0)
         self.assertEqual(prediccion_mes(self.predial, HOY, 2026, 12).fuente, 'no_toca')
 
-    def test_bimestral_no_toca_en_diciembre_y_si_en_enero(self):
+    def test_bimestral_pronostica_proximo_recibo_sin_importar_dias_faltantes(self):
         dic = prediccion_mes(self.luz, HOY, 2026, 12)
-        self.assertEqual((dic.monto, dic.fuente), (0.0, 'no_toca'))
-        self.assertEqual(dic.fecha, date(2027, 1, 21))            # vence 21/11 + 61 días
-        self.assertIn('21 ene', dic.nota)
+        self.assertEqual((dic.monto, dic.fecha, dic.exacto, dic.fuente), (1200.0, date(2027, 1, 9), False, 'recibos'))
         ene = prediccion_mes(self.luz, HOY, 2027, 1)
-        self.assertEqual((ene.monto, ene.fecha, ene.exacto, ene.fuente), (1200.0, date(2027, 1, 21), False, 'recibos'))
-        nov = prediccion_mes(self.luz, HOY, 2026, 11)              # el recibo en mano vence este mes: monto exacto
-        self.assertEqual((nov.monto, nov.exacto, nov.nota), (1100.0, True, 'recibo en mano'))
+        self.assertEqual((ene.monto, ene.fecha, ene.exacto, ene.fuente), (1200.0, date(2027, 1, 9), False, 'recibos'))
+
+    def test_recibo_mensual_recien_llegado_en_noviembre_pronostica_diciembre(self):
+        hoy_nov = date(2026, 11, 25)
+        telmex = Presupuesto.objects.create(propietario=self.user, categoria='Telmex', monto_presupuestado=D('0'))
+        for fecha, limite, monto in [
+            (date(2026, 9, 20), '2026-10-02', '500'),
+            (date(2026, 10, 18), '2026-10-30', '550'),
+            (date(2026, 11, 20), '2026-12-04', '600'),  # acaba de llegar y vence en dic: igual debe pronosticar el de dic
+        ]:
+            HistorialReciboServicio.objects.create(
+                propietario=self.user, presupuesto=telmex, fecha_emision=fecha,
+                monto_total=D(monto), datos_json={'fecha_limite_pago': limite}, archivo_drive_id=f'tel-{fecha}'
+            )
+        dic = prediccion_mes(telmex, hoy_nov, 2026, 12)
+        self.assertEqual((dic.fecha, dic.exacto, dic.fuente), (date(2026, 12, 20), False, 'recibos'))
+        self.assertAlmostEqual(dic.monto, 650.0)
 
     def test_sin_recibos_usa_los_movimientos_por_palabra_completa(self):
         recibos = recibos_del_libro(self.gas, HOY)
@@ -131,17 +141,17 @@ class ProximoMesTest(TestCase):
 
     def test_sin_nada_que_predecir(self):
         self.assertEqual(prediccion_mes(self.agua, HOY, 2026, 12).fuente, 'sin_datos')
-        self.agua.fecha_proximo_recibo = date(2026, 12, 10)       # lo capturado a mano sí cuenta si cae en el mes
+        self.agua.fecha_proximo_recibo = date(2026, 12, 10)       # lo capturado a mano sí cuenta
         cap = prediccion_mes(self.agua, HOY, 2026, 12)
         self.assertEqual((cap.monto, cap.fuente), (300.0, 'capturado'))
 
     def test_plan_suma_el_mes_que_entra(self):
         plan = plan_quincenal(Presupuesto.objects.filter(propietario=self.user).order_by('id'), HOY)
         self.assertEqual(plan['mes_siguiente'], 'diciembre')
-        self.assertEqual(plan['total_proximo_mes'], round(9777 + 618.49 + 3000, 2))
+        self.assertEqual(plan['total_proximo_mes'], round(9777 + 1200 + 618.49 + 3000, 2))
         self.assertEqual(plan['n_sin_datos'], 1)
         por = {f['p'].categoria: f['proximo_mes'] for f in plan['filas']}
-        self.assertEqual(por['Luz'].fuente, 'no_toca')
+        self.assertEqual((por['Luz'].fuente, por['Luz'].monto), ('recibos', 1200.0))
 
     def test_estacionalidad_con_un_anio_de_recibos(self):
         R = lambda f, m: Recibo(f, None, m)
@@ -190,21 +200,64 @@ class PaginaPresupuestoTest(TestCase):
         ajeno = Presupuesto.objects.create(propietario=otro, categoria='Gas')
         self.assertEqual(self.client.post(reverse('eliminar_presupuesto', args=[ajeno.id])).status_code, 404)
 
-    def test_predecir_devuelve_el_mes_que_entra_y_guarda_el_siguiente_pago(self):
-        for fecha, monto in [(date(2026, 9, 9), '1000'), (date(2026, 11, 9), '1100')]:
-            HistorialReciboServicio.objects.create(propietario=self.user, presupuesto=self.luz, fecha_emision=fecha,
-                                                   monto_total=D(monto), archivo_drive_id=f'luz-{fecha}')
-        r = self.client.get(reverse('predecir_recibo_presupuesto', args=[self.luz.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+    def test_predecir_usa_ia_con_consumo_estacionalidad_y_se_refleja_en_la_tabla(self):
+        from unittest.mock import Mock, patch
+        agua = Presupuesto.objects.create(propietario=self.user, categoria='Agua', monto_presupuestado=D('0'))
+        for fecha, monto, consumo, periodo in [
+            (date(2026, 9, 8), '680', '22 m3', '08 AGO - 07 SEP'),
+            (date(2026, 11, 8), '1029', '36 m3', '08 OCT - 07 NOV'),
+        ]:
+            HistorialReciboServicio.objects.create(
+                propietario=self.user, presupuesto=agua, fecha_emision=fecha, monto_total=D(monto),
+                datos_json={'consumo': consumo, 'periodo_facturado': periodo, 'fecha_limite_pago': '2026-11-28'},
+                archivo_drive_id=f'agua-{fecha}',
+            )
+        ia_mock = Mock()
+        ia_mock.extract_from_text.return_value = {
+            'monto_predicho': 710.0,
+            'fecha_predicha': '2026-12-08',
+            'consumo_estimado': '21 m3',
+            'frecuencia_dias': 30,
+            'razonamiento': 'En diciembre baja el consumo de agua por invierno respecto al pico de $1,029.',
+        }
+        with patch('finanzas.views.presupuesto.get_gemini_service', return_value=ia_mock):
+            r = self.client.get(reverse('predecir_recibo_presupuesto', args=[agua.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 200)
+        prompt_name, _, ctx_json = ia_mock.extract_from_text.call_args[0]
+        self.assertEqual(prompt_name, 'prediccion_servicio')
+        self.assertIn('36 m3', ctx_json)
+        self.assertIn('08 OCT - 07 NOV', ctx_json)
+        data = r.json()
+        self.assertTrue(data['success'])
+        self.assertEqual((data['fuente'], data['monto_predicho'], data['fecha_predicha']), ('ia', 710.0, '2026-12-08'))
+        self.assertIn('invierno', data['mensaje'])
+
+        agua.refresh_from_db()
+        self.assertEqual((agua.monto_presupuestado, agua.fecha_proximo_recibo), (D('710.00'), date(2026, 12, 8)))
+
+        # Al recargar la tabla debe respetarse el pronóstico IA ($710.00, 30 días), no pisarlo con la regresión lineal
+        pagina = self.client.get(reverse('presupuesto'))
+        self.assertContains(pagina, '710.00')
+        self.assertContains(pagina, 'pronóstico IA')
+        fila_agua = next(f for f in pagina.context['filas'] if f['p'].id == agua.id)
+        self.assertEqual((fila_agua['estimado'], fila_agua['cada_dias'], fila_agua['proximo_mes'].monto), (710.0, 30, 710.0))
+
+    def test_predecir_respalda_con_ajuste_estacional_si_la_api_de_ia_agota_cuota(self):
+        from unittest.mock import Mock, patch
+        agua = Presupuesto.objects.create(propietario=self.user, categoria='Agua', monto_presupuestado=D('0'))
+        for fecha, monto in [(date(2026, 7, 8), '680'), (date(2026, 9, 8), '700'), (date(2026, 11, 8), '1029')]:
+            HistorialReciboServicio.objects.create(
+                propietario=self.user, presupuesto=agua, fecha_emision=fecha, monto_total=D(monto), archivo_drive_id=f'a-{fecha}'
+            )
+        ia_caida = Mock()
+        ia_caida.extract_from_text.return_value = {'error': '429 Your prepayment credits are depleted'}
+        with patch('finanzas.views.presupuesto.get_gemini_service', return_value=ia_caida):
+            r = self.client.get(reverse('predecir_recibo_presupuesto', args=[agua.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(r.status_code, 200)
         data = r.json()
         self.assertTrue(data['success'])
-        self.assertEqual(data['fuente'], 'recibos')
-        self.assertIn(data['mes'], ('diciembre', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre'))
-        self.assertIn('siguiente_pago', data)
-        self.luz.refresh_from_db()
-        self.assertEqual(str(self.luz.fecha_proximo_recibo), data['siguiente_pago']['fecha'])   # guardó el siguiente pago
-        self.assertGreater(self.luz.monto_presupuestado, 0)
-        self.assertContains(self.client.get(reverse('presupuesto')), 'Previsto para')
+        self.assertEqual(data['fuente'], 'estacional')
+        self.assertLess(data['monto_predicho'], 800.0)   # invierno + amortiguación del pico de $1,029
 
     def test_predecir_sin_recibos_ni_movimientos_explica_que_hacer(self):
         r = self.client.get(reverse('predecir_recibo_presupuesto', args=[self.luz.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
@@ -222,6 +275,44 @@ class PaginaPresupuestoTest(TestCase):
         self.assertFalse(PresupuestoForm({**base, 'dia_pago': '0'}).is_valid())
         self.assertTrue(PresupuestoForm({**base, 'dia_pago': '29'}).is_valid())
         self.assertTrue(PresupuestoForm({**base, 'dia_pago': ''}).is_valid())
+
+    def test_editar_como_monto_fijo_sin_dia_de_pago(self):
+        muchacha = Presupuesto.objects.create(propietario=self.user, categoria='Muchacha', monto_presupuestado=D('2000'))
+        r_get = self.client.get(reverse('editar_presupuesto', args=[muchacha.id]))
+        self.assertEqual(r_get.status_code, 200)
+        self.assertContains(r_get, 'btn-modo-fijo')
+        self.assertContains(r_get, 'Monto fijo')
+
+        r_post = self.client.post(reverse('editar_presupuesto', args=[muchacha.id]), {
+            'modo_selector': '1',
+            'categoria': 'Muchacha',
+            'es_fijo': 'on',
+            'monto_presupuestado': '2000',
+            'monto_real': '0',
+            'dia_pago': '',
+            'es_recurrente': 'on',
+        }, follow=True)
+        self.assertRedirects(r_post, reverse('presupuesto'))
+        muchacha.refresh_from_db()
+        self.assertTrue(muchacha.es_fijo)
+        self.assertTrue(muchacha.usa_monto_fijo)
+        self.assertIsNone(muchacha.dia_pago)
+        self.assertContains(r_post, 'Monto fijo · mensual')
+        self.assertContains(r_post, 'Cada mes')
+        self.assertNotContains(r_post, reverse('predecir_recibo_presupuesto', args=[muchacha.id]))
+
+        # Si luego lo cambia a recibo variable desde el selector, limpia es_fijo y dia_pago
+        self.client.post(reverse('editar_presupuesto', args=[ self.renta.id ]), {
+            'modo_selector': '1',
+            'categoria': 'Renta',
+            'monto_presupuestado': '9777',
+            'monto_real': '0',
+            'dia_pago': '29',
+            'es_recurrente': 'on',
+        })
+        self.renta.refresh_from_db()
+        self.assertFalse(self.renta.es_fijo)
+        self.assertIsNone(self.renta.dia_pago)
 
 
 class LoteDeRecibosTest(TestCase):

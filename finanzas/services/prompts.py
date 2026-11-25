@@ -142,4 +142,35 @@ Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
   "consumo": "string"
 }}
 """,
+    "prediccion_servicio": """
+Role: Eres un Analista Financiero y de Servicios Residenciales en México experto en pronóstico de consumo estacional (agua, luz CFE, gas, internet y servicios del hogar).
+
+Task: Pronostica cuánto pagará el usuario en su PRÓXIMO recibo (posterior al último registrado) y su fecha estimada de emisión, sin importar cuántos días falten para que llegue.
+
+Approach step-by-step:
+1. Frecuencia real del servicio: Revisa `periodo_facturado` y las fechas del historial. Si el periodo facturado cubre ~1 mes (ej. "08 OCT - 07 NOV"), el servicio es MENSUAL (~30 días) aunque falten recibos intermedios en el historial; si cubre ~2 meses (ej. "SEP - NOV"), es BIMESTRAL (~60 días). Calcula `fecha_predicha` estrictamente posterior a `fecha_actual` y al último recibo.
+2. Consumo físico y recibos atípicos: Analiza `consumo` (m³, kWh, litros) junto con `monto_total` para identificar el consumo habitual y el costo implícito por unidad. NO copies ni extrapoles linealmente el último recibo si presenta un pico inusual, recargo o salto aislado respecto al historial; pondera el comportamiento normal del hogar.
+3. Estacionalidad climática según los meses que cubrirá el próximo recibo:
+   - Invierno (noviembre, diciembre, enero, febrero):
+     * Agua: menor calor, riego y uso de agua fría -> el consumo suele bajar (típicamente 10%-25% respecto a meses cálidos o picos previos).
+     * Luz (CFE): sin aire acondicionado ni ventiladores -> el consumo baja notablemente frente a verano/otoño (salvo evidencia clara de calefacción eléctrica en invierno previo).
+     * Gas: el agua fría de red exige más gas en el boiler/calentador -> el consumo suele subir moderadamente (10%-25%).
+   - Primavera / Verano (abril a septiembre): sube el consumo de Agua y Luz por calor/aire acondicionado; baja el de Gas.
+   - Internet / Telefonía: monto estable salvo cambio de tarifa visible en los últimos recibos.
+   - Si hay recibos de la misma época del año anterior, úsalos como referencia principal.
+4. Estima el consumo esperado para la temporada entrante y conviértelo en `monto_predicho` con base en la tarifa implícita reciente.
+
+Datos del servicio e historial:
+{context_str}
+{text_content}
+
+Format: Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
+{{
+  "razonamiento": "string - Explicación clara y concisa en español (1-2 oraciones) indicando cómo influyeron el consumo histórico y la época del año (ej. invierno en diciembre/enero).",
+  "consumo_estimado": "string - Consumo físico esperado con su unidad (ej. '18 m3', '240 kWh' o 'N/A')",
+  "frecuencia_dias": int,
+  "fecha_predicha": "YYYY-MM-DD",
+  "monto_predicho": float
+}}
+""",
 }
