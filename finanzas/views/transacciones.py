@@ -30,6 +30,7 @@ from ..models import (
     registro_transacciones, Suscripcion, TransaccionPendiente, 
     PendingInvestment, AmortizacionPendiente, Factura, Cuenta
 )
+from .. import planes
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +104,7 @@ def crear_transacciones(request):
 
 @login_required
 def lista_transacciones(request):
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    es_usuario_premium = suscripcion.is_active()
+    es_usuario_premium = planes.puede_procesar(request.user)   # le quedan documentos con IA este mes
     current_year = datetime.now().year
     current_month = datetime.now().month
     year = int(request.GET.get('year', current_year))

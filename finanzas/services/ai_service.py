@@ -7,7 +7,10 @@ import logging
 import base64
 from functools import lru_cache
 import google.generativeai as genai
-from mistralai import Mistral
+try:
+    from mistralai import Mistral
+except ImportError:  # pragma: no cover
+    Mistral = None
 from django.conf import settings
 from .prompts import PROMPTS
 

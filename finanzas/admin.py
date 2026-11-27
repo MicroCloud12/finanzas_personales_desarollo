@@ -1,12 +1,25 @@
 from django.contrib import admin
-from .models import registro_transacciones, TransaccionPendiente, inversiones, Suscripcion, PendingInvestment, Presupuesto, Cuenta, Deuda
+from .models import Suscripcion, TiendaFacturacion, UsoIA
 
-# Registramos los modelos para que aparezcan en el panel de admin
-admin.site.register(registro_transacciones)
-admin.site.register(TransaccionPendiente)
-admin.site.register(inversiones)
-admin.site.register(Suscripcion)
-admin.site.register(PendingInvestment)
-admin.site.register(Presupuesto)
-admin.site.register(Cuenta)
-admin.site.register(Deuda)
+
+# Por privacidad (Nivel 2), los modelos financieros personales (transacciones, cuentas,
+# saldos, deudas, inversiones, presupuestos y facturas) NO se exponen en /admin/.
+@admin.register(Suscripcion)
+class SuscripcionAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'plan', 'periodo', 'estado', 'fecha_inicio', 'fecha_fin')
+    list_filter = ('plan', 'periodo', 'estado')
+    search_fields = ('usuario__username', 'usuario__email', 'id_suscripcion_mercadopago')
+
+
+@admin.register(UsoIA)
+class UsoIAAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'anio', 'mes', 'documentos')
+    list_filter = ('anio', 'mes')
+    search_fields = ('usuario__username', 'usuario__email')
+
+
+@admin.register(TiendaFacturacion)
+class TiendaFacturacionAdmin(admin.ModelAdmin):
+    list_display = ('tienda', 'url_portal', 'configuracion_finalizada')
+    list_filter = ('configuracion_finalizada',)
+    search_fields = ('tienda',)

@@ -104,8 +104,9 @@ function initTaskProcessor() {
             if (data.status === 'SUCCESS') {
                 const result = data.result;
                 if (result.status === 'STARTED') return result.task_group_id;
-                if (result.status === 'NO_FILES') throw new Error("No se encontraron nuevos tickets.");
-                throw new Error("Respuesta inesperada de la tarea inicial.");
+                if (result.status === 'NO_FILES') throw new Error(result.message || "No se encontraron archivos nuevos.");
+                // SIN_CUOTA (se acabaron los documentos del plan) o ERROR: la tarea manda el texto
+                throw new Error(result.message || "Respuesta inesperada de la tarea inicial.");
             } else if (data.status === 'FAILURE') {
                 throw new Error(`Tarea inicial falló: ${data.info}`);
             }

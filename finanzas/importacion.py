@@ -384,12 +384,19 @@ def importar(usuario, filas):
         return cuenta
 
     with transaction.atomic():
+        conteo_bd = {}
+        if filas:
+            fechas_csv = [f["fecha"] for f in filas]
+            for t in registro_transacciones.objects.filter(
+                propietario=usuario, fecha__range=(min(fechas_csv), max(fechas_csv))
+            ).only("fecha", "monto", "tipo", "descripcion"):
+                k = (t.fecha, t.monto, t.tipo, (t.descripcion or "").lower())
+                conteo_bd[k] = conteo_bd.get(k, 0) + 1
+
         for f in filas:
             clave = (f["fecha"], f["monto"], f["tipo"], f["descripcion"].lower())
             vistos[clave] = vistos.get(clave, 0) + 1
-            existentes = registro_transacciones.objects.filter(
-                propietario=usuario, fecha=f["fecha"], monto=f["monto"], tipo=f["tipo"],
-                descripcion__iexact=f["descripcion"]).count()
+            existentes = conteo_bd.get(clave, 0)
             if vistos[clave] <= existentes:
                 omitidos += 1
                 continue

@@ -54,15 +54,18 @@ def ligar_deudas_a_cuentas(apps, reporte):
             deuda.save(update_fields=['cuenta'])
 
     # Tarjetas de crédito dadas de alta como Cuenta pero sin su Deuda (detalle).
+    deudas_por_nombre = {(d.propietario_id, _normaliza(d.nombre)) for d in Deuda.objects.all()}
     for cuenta in Cuenta.objects.filter(tipo__in=('CREDITO', 'PRESTAMO')):
         if not Deuda.objects.filter(cuenta_id=cuenta.id).exists():
-            if Deuda.objects.filter(propietario_id=cuenta.propietario_id, nombre=cuenta.nombre).exists():
+            clave = (cuenta.propietario_id, _normaliza(cuenta.nombre))
+            if clave in deudas_por_nombre:
                 continue
             Deuda.objects.create(
                 propietario_id=cuenta.propietario_id, nombre=cuenta.nombre, cuenta_id=cuenta.id,
                 tipo_deuda='TARJETA_CREDITO' if cuenta.tipo == 'CREDITO' else 'PRESTAMO',
                 monto_total=CERO, tasa_interes=CERO, plazo_meses=1,
                 requiere_configuracion_adicional=True)
+            deudas_por_nombre.add(clave)
             reporte['deudas_creadas'] += 1
     return indice
 
@@ -165,12 +168,19 @@ def conciliar_saldos_de_deudas(apps, reporte):
             deuda_real = (deuda.monto_total or CERO) - deuda.saldo_legado
         else:
             deuda_real = deuda.saldo_legado
-        entradas = Tx.objects.filter(destino_id=deuda.cuenta_id).aggregate(
-            t=Sum(F('monto') - F('monto_interes')))['t'] or CERO
-        salidas = Tx.objects.filter(origen_id=deuda.cuenta_id).aggregate(t=Sum('monto'))['t'] or CERO
+        entradas = sum(
+            ((t.monto or CERO) - (t.monto_interes or CERO) for t in Tx.objects.filter(destino_id=deuda.cuenta_id)),
+            CERO,
+        )
+        salidas = sum(
+            ((t.monto or CERO) for t in Tx.objects.filter(origen_id=deuda.cuenta_id)),
+            CERO,
+        )
         neto = entradas - salidas
         saldo_inicial = deuda_real + neto
-        Cuenta.objects.filter(id=deuda.cuenta_id).update(saldo_inicial=saldo_inicial)
+        cuenta_pasivo = Cuenta.objects.get(id=deuda.cuenta_id)
+        cuenta_pasivo.saldo_inicial = saldo_inicial
+        cuenta_pasivo.save(update_fields=['saldo_inicial'])
         reporte['deudas_conciliadas'] += 1
         if saldo_inicial != 0:
             reporte['ajustes_saldo_inicial'][deuda.nombre] = saldo_inicial
@@ -216,29 +226,37 @@ def revertir(apps, schema_editor=None):
 # hacia la cuenta de tipo AHORRO del usuario (se crea si no existe).
 # ---------------------------------------------------------------------------
 def migrar_ahorros(apps, schema_editor=None, verbose=True):
-    from django.db.models import Q
     Cuenta = apps.get_model('finanzas', 'Cuenta')
     Tx = apps.get_model('finanzas', 'registro_transacciones')
 
-    filtro_ahorro = (Q(categoria__iexact='Ahorro') | Q(cuenta_destino__iexact='Cuenta Ahorro')
-                     | Q(cuenta_destino__icontains='ahorro'))
-    candidatos = Tx.objects.filter(filtro_ahorro, tipo__in=('GASTO', 'TRANSFERENCIA')).exclude(destino__tipo='AHORRO')
-    usuarios = candidatos.values_list('propietario_id', flat=True).distinct()
+    por_usuario = defaultdict(list)
+    for mov in Tx.objects.filter(tipo__in=('GASTO', 'TRANSFERENCIA')).exclude(destino__tipo='AHORRO'):
+        cat_low = (mov.categoria or '').strip().lower()
+        dest_low = (mov.cuenta_destino or '').strip().lower()
+        if cat_low == 'ahorro' or 'ahorro' in dest_low:
+            por_usuario[mov.propietario_id].append(mov)
 
     resumen = []
-    for propietario_id in usuarios:
+    for propietario_id, movs in por_usuario.items():
         ahorro = Cuenta.objects.filter(propietario_id=propietario_id, tipo='AHORRO').order_by('id').first()
         if ahorro is None:
-            ahorro = Cuenta.objects.filter(propietario_id=propietario_id, nombre__icontains='ahorro').order_by('id').first()
+            ahorro = next(
+                (c for c in Cuenta.objects.filter(propietario_id=propietario_id).order_by('id')
+                 if 'ahorro' in (c.nombre or '').lower()),
+                None,
+            )
             if ahorro is not None:
                 ahorro.tipo = 'AHORRO'
                 ahorro.save(update_fields=['tipo'])
             else:
                 ahorro = Cuenta.objects.create(propietario_id=propietario_id, nombre='Cuenta Ahorro', tipo='AHORRO')
-        qs = candidatos.filter(propietario_id=propietario_id)
-        sin_origen = qs.filter(origen__isnull=True).count()
-        n = qs.update(destino_id=ahorro.id, tipo='TRANSFERENCIA', monto_interes=CERO)
-        resumen.append((propietario_id, ahorro.nombre, n, sin_origen))
+        sin_origen = sum(1 for m in movs if m.origen_id is None)
+        for m in movs:
+            m.destino_id = ahorro.id
+            m.tipo = 'TRANSFERENCIA'
+            m.monto_interes = CERO
+            m.save(update_fields=['destino', 'tipo', 'monto_interes'])
+        resumen.append((propietario_id, ahorro.nombre, len(movs), sin_origen))
 
     if verbose and resumen:
         print("\n[libro mayor] Ahorros reclasificados como transferencias a la cuenta de ahorro:")

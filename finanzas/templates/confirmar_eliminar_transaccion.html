@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-xl font-semibold mb-4">¿Eliminar transacción?</h2>
+        <p class="mb-4">{{ transaccion.descripcion }} - ${{ transaccion.monto }}</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded mr-2">Eliminar</button>
+            <a href="{% url 'lista_transacciones' %}" class="bg-gray-300 px-4 py-2 rounded">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

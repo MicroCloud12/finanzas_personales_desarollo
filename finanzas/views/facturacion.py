@@ -20,6 +20,7 @@ from ..services import (
 from ..models import (
     Suscripcion, Factura, TiendaFacturacion
 )
+from .. import planes
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,13 @@ def facturacion(request):
     """
     Muestra el historial de facturas registradas.
     """
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     facturas = Factura.objects.filter(propietario=request.user, estado='facturado').order_by('-fecha_emision')
 
     context = {
         'facturas': facturas,
-        'es_usuario_premium': suscripcion.is_active()
+        # Facturar (CFDI) es solo del plan Pro, y además necesita documentos con IA disponibles
+        'es_usuario_premium': planes.puede_facturar(request.user) and planes.puede_procesar(request.user),
+        'plan_actual': planes.plan_de(request.user),
     }
     return render(request, 'lista_facturacion.html', context)
 

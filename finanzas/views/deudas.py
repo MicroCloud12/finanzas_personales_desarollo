@@ -21,6 +21,7 @@ from ..models import (
     Suscripcion, Deuda, PagoAmortizacion, 
     AmortizacionPendiente, Cuenta
 )
+from .. import planes
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,7 @@ def lista_deudas(request):
     """
     Muestra una lista de todas las deudas (préstamos y tarjetas) del usuario.
     """
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    es_usuario_premium = suscripcion.is_active()
+    es_usuario_premium = planes.puede_procesar(request.user)   # le quedan documentos con IA este mes
     deudas = list(Deuda.objects.filter(propietario=request.user).select_related('cuenta').order_by('fecha_adquisicion'))
     # Un solo cálculo de saldos del libro mayor para todas las deudas
     saldos = Cuenta.objects.saldos(request.user)

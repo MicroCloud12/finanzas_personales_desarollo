@@ -340,19 +340,21 @@ class LoteDeRecibosTest(TestCase):
     def test_relanza_si_el_lote_anterior_vencio(self):
         from unittest.mock import Mock, patch
         from . import tasks
+        from django.contrib.auth.models import User
+        usuario = User.objects.create_user('lote', password='x')   # la cuota del plan se consulta por usuario
         tarea = Mock(); tarea.name = 'finanzas.tasks.process_single_utility_bill'; tarea.app.backend = self.Backend()
         viejo = Mock(); viejo.ready.return_value = False; viejo.__len__ = Mock(return_value=12)
-        nuevo = Mock(id='finanzas.tasks.process_single_utility_bill-2')
+        nuevo = Mock(id=f'finanzas.tasks.process_single_utility_bill-{usuario.id}')
         archivos = [{'id': 'a', 'name': 'a.pdf', 'mimeType': 'application/pdf'}]
         with patch.object(tasks.GroupResult, 'restore', return_value=viejo), \
              patch.object(tasks, 'group') as grupo:
             grupo.return_value.apply_async.return_value = nuevo
-            r = tasks._lanzar_grupo(tarea, archivos, 2, 7)
+            r = tasks._lanzar_grupo(tarea, archivos, usuario.id, 7)
             self.assertEqual(r['total_tasks'], 1)                     # lote nuevo, no el viejo de 12
-            grupo.return_value.apply_async.assert_called_once_with(task_id='finanzas.tasks.process_single_utility_bill-2')
+            grupo.return_value.apply_async.assert_called_once_with(task_id=nuevo.id)
             nuevo.save.assert_called_once()
             # ahora sí hay un lote vigente: el segundo clic se pega a él
-            r2 = tasks._lanzar_grupo(tarea, archivos, 2, 7)
+            r2 = tasks._lanzar_grupo(tarea, archivos, usuario.id, 7)
             self.assertEqual(r2['total_tasks'], 12)
             grupo.return_value.apply_async.assert_called_once()
         tarea.app.backend.delete(tasks._clave_lote(nuevo.id))

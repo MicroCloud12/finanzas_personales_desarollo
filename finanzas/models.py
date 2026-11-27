@@ -1,5 +1,5 @@
 """
-Núcleo contable de Finanzas Personales: el "libro mayor".
+Núcleo contable de Finanzas Personales: el "libro mayor" (con cifrado Nivel 2 por usuario).
 
 Principios (partida doble simplificada para finanzas personales):
 
@@ -27,20 +27,86 @@ Convenciones por tipo de movimiento::
     PAGO_CAPITAL     -> igual que mensualidad, pero todo es capital
 """
 import calendar
+from collections import defaultdict
 from datetime import date
 from decimal import Decimal
 
-from django.db import models
-from django.db.models import F, Q, Sum
-from django.db.models.functions import TruncMonth
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.signals import setting_changed
+from django.db import models
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
+from .crypto import blind_index, clear_key_cache, global_blind_index
+from .fields import (
+    EncryptedCharField,
+    EncryptedDecimalField,
+    EncryptedJSONField,
+    EncryptedQuerySet,
+)
 
 CERO = Decimal('0.00')
 
 TIPOS_PAGO_DEUDA = ('PAGO_MENSUALIDAD', 'PAGO_CAPITAL')
+
+_EncryptedManagerBase = models.Manager.from_queryset(EncryptedQuerySet)
+
+
+class LlaveUsuario(models.Model):
+    """Llave de cifrado de datos (DEK) única por usuario, envuelta con DATA_ENCRYPTION_KEY."""
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='llave_cifrado')
+    dek_cifrada = models.CharField(max_length=255)
+    creada = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Llave de cifrado de usuario #{self.usuario_id}"
+
+
+@receiver(post_save, sender=User)
+def _limpiar_cache_llave_al_crear_usuario(sender, instance, created, **kwargs):
+    if created and instance.pk:
+        clear_key_cache(instance.pk)
+
+
+@receiver(post_delete, sender=User)
+def _limpiar_cache_llave_al_borrar_usuario(sender, instance, **kwargs):
+    if instance.pk:
+        clear_key_cache(instance.pk)
+
+
+@receiver(setting_changed)
+def _limpiar_cache_al_cambiar_setting(sender, setting, **kwargs):
+    if setting == 'DATA_ENCRYPTION_KEY':
+        clear_key_cache()
+
+
+def _sync_blind_hashes(instance, kwargs_save: dict) -> None:
+    """Calcula las columnas `*_hash` declaradas en `BLIND_INDEX_FIELDS` y las añade a `update_fields` si aplica."""
+    blind_map = getattr(instance.__class__, 'BLIND_INDEX_FIELDS', None)
+    if not blind_map:
+        return
+    uid = getattr(instance, 'propietario_id', None) or getattr(instance, 'usuario_id', None)
+    update_fields = kwargs_save.get('update_fields')
+    extra_fields = set(update_fields) if update_fields is not None else None
+
+    for src_field, (hash_field, mode) in blind_map.items():
+        if extra_fields is not None and src_field not in extra_fields and hash_field not in extra_fields:
+            continue
+        val = getattr(instance, src_field, None)
+        if mode == 'global':
+            nuevo_hash = None if (val is None and instance._meta.get_field(hash_field).null) else global_blind_index(val)
+        elif uid:
+            nuevo_hash = blind_index(uid, val)
+        else:
+            nuevo_hash = ''
+        setattr(instance, hash_field, nuevo_hash)
+        if extra_fields is not None:
+            extra_fields.add(hash_field)
+
+    if extra_fields is not None:
+        kwargs_save['update_fields'] = list(extra_fields)
 
 
 def _entradas_salidas(tx):
@@ -49,12 +115,13 @@ def _entradas_salidas(tx):
     entradas = sum(monto - monto_interes) con destino=cuenta; salidas = sum(monto) con origen=cuenta.
     """
     res = {}
-    for cuenta_id, total in tx.filter(destino__isnull=False).values('destino').annotate(
-            t=Sum(F('monto') - F('monto_interes'))).values_list('destino', 't'):
-        res.setdefault(cuenta_id, [CERO, CERO])[0] += total or CERO
-    for cuenta_id, total in tx.filter(origen__isnull=False).values('origen').annotate(
-            t=Sum('monto')).values_list('origen', 't'):
-        res.setdefault(cuenta_id, [CERO, CERO])[1] += total or CERO
+    for mov in tx.only('origen_id', 'destino_id', 'monto', 'monto_interes'):
+        monto = mov.monto or CERO
+        if mov.destino_id is not None:
+            interes = mov.monto_interes or CERO
+            res.setdefault(mov.destino_id, [CERO, CERO])[0] += monto - interes
+        if mov.origen_id is not None:
+            res.setdefault(mov.origen_id, [CERO, CERO])[1] += monto
     return res
 
 
@@ -67,7 +134,14 @@ def _rango(usuario, desde=None, hasta=None):
     return tx
 
 
-class CuentaManager(models.Manager):
+class CuentaManager(_EncryptedManagerBase):
+
+    def por_nombre(self, usuario, nombre):
+        nombre = (nombre or '').strip()
+        if not nombre:
+            return None
+        uid = usuario.pk if hasattr(usuario, 'pk') else int(usuario)
+        return self.filter(propietario_id=uid, nombre_hash=blind_index(uid, nombre)).first()
 
     def flujos_netos(self, usuario, hasta=None, desde=None):
         """{cuenta_id: neto} donde neto = entradas - salidas del libro."""
@@ -126,13 +200,15 @@ class Cuenta(models.Model):
     TIPOS_ACTIVO = ('EFECTIVO', 'DEBITO', 'AHORRO', 'INVERSION')
     TIPOS_PASIVO = ('CREDITO', 'PRESTAMO')
     TIPOS_LIQUIDOS = ('EFECTIVO', 'DEBITO')
+    BLIND_INDEX_FIELDS = {'nombre': ('nombre_hash', 'user')}
 
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    nombre = models.CharField(max_length=50, help_text="Ej. Tarjeta Banamex, Efectivo Quincena, NuBank")
-    terminacion = models.CharField(max_length=4, blank=True, null=True, help_text="Últimos 4 dígitos de la tarjeta (opcional)")
+    nombre = EncryptedCharField(max_length=50, help_text="Ej. Tarjeta Banamex, Efectivo Quincena, NuBank")
+    nombre_hash = models.CharField(max_length=64, editable=False, default='', db_index=True)
+    terminacion = EncryptedCharField(max_length=4, blank=True, null=True, help_text="Últimos 4 dígitos de la tarjeta (opcional)")
     tipo = models.CharField(max_length=15, choices=TIPO_CUENTA, default='DEBITO')
     es_principal = models.BooleanField(default=False, help_text="Marcar como tarjeta principal o preferida")
-    saldo_inicial = models.DecimalField(
+    saldo_inicial = EncryptedDecimalField(
         max_digits=20, decimal_places=2, default=CERO,
         help_text="Activos: dinero que había antes del primer movimiento registrado. "
                   "Pasivos: deuda que había antes del primer movimiento registrado.")
@@ -143,14 +219,13 @@ class Cuenta(models.Model):
     objects = CuentaManager()
 
     class Meta:
-        unique_together = ['propietario', 'nombre']
+        unique_together = ['propietario', 'nombre_hash']
 
     def __str__(self):
         if self.terminacion:
             return f"{self.nombre} (**{self.terminacion})"
         return self.nombre
 
-    # ----- naturaleza -----
     @property
     def es_pasivo(self):
         return self.tipo in self.TIPOS_PASIVO
@@ -159,7 +234,6 @@ class Cuenta(models.Model):
     def es_activo(self):
         return not self.es_pasivo
 
-    # ----- saldos derivados del libro -----
     def saldo_desde_neto(self, neto):
         neto = neto or CERO
         inicial = self.saldo_inicial or CERO
@@ -192,14 +266,21 @@ class Cuenta(models.Model):
                 self.saldo_calculado = saldo_real
         return diferencia
 
+    def validate_unique(self, exclude=None):
+        if self.propietario_id:
+            self.nombre_hash = blind_index(self.propietario_id, self.nombre)
+        super().validate_unique(exclude=exclude)
+
     def save(self, *args, **kwargs):
+        _sync_blind_hashes(self, kwargs)
         if self.es_principal:
             Cuenta.objects.filter(propietario=self.propietario).exclude(pk=self.pk).update(es_principal=False)
         super().save(*args, **kwargs)
         # Mantener sincronizado el nombre de la deuda ligada (si existe)
         deuda = getattr(self, 'deuda', None)
         if deuda is not None and deuda.nombre != self.nombre:
-            Deuda.objects.filter(pk=deuda.pk).update(nombre=self.nombre)
+            deuda.nombre = self.nombre
+            deuda.save(update_fields=['nombre', 'nombre_hash'])
 
 
 class SaldoEstadoCuenta(models.Model):
@@ -211,12 +292,12 @@ class SaldoEstadoCuenta(models.Model):
     cuenta = models.ForeignKey(Cuenta, on_delete=models.CASCADE, related_name='saldos_banco')
     anio = models.PositiveIntegerField()
     mes = models.PositiveSmallIntegerField()
-    saldo_banco = models.DecimalField(max_digits=20, decimal_places=2)
-    # Fecha exacta a la que corresponde el saldo (si viene de una captura a mitad de mes).
-    # Si es None se asume el cierre del mes.
+    saldo_banco = EncryptedDecimalField(max_digits=20, decimal_places=2)
     fecha = models.DateField(null=True, blank=True)
-    nota = models.CharField(max_length=200, blank=True, default='')
+    nota = EncryptedCharField(max_length=200, blank=True, default='')
     actualizado = models.DateTimeField(auto_now=True)
+
+    objects = _EncryptedManagerBase()
 
     class Meta:
         unique_together = ['cuenta', 'anio', 'mes']
@@ -226,8 +307,8 @@ class SaldoEstadoCuenta(models.Model):
         return f"{self.cuenta.nombre} {self.anio}-{self.mes:02d}: {self.saldo_banco}"
 
 
-class TransaccionManager(models.Manager):
-    """Consultas agregadas sobre el libro diario (dashboard, reportes)."""
+class TransaccionManager(_EncryptedManagerBase):
+    """Consultas agregadas sobre el libro diario (dashboard, reportes), calculadas en Python sobre datos descifrados."""
 
     def del_mes(self, usuario, year=None, month=None):
         now = timezone.now()
@@ -242,24 +323,64 @@ class TransaccionManager(models.Manager):
         pagos a deuda, abonos a capital, ahorro neto y transferencias.
         """
         pasivos = Cuenta.TIPOS_PASIVO
-        es_pago_deuda = Q(tipo__in=TIPOS_PAGO_DEUDA) | Q(tipo='TRANSFERENCIA', destino__tipo__in=pasivos)
-        agregados = qs.aggregate(
-            ingresos=Sum('monto', filter=Q(tipo='INGRESO') & ~Q(destino__tipo__in=pasivos)),
-            reembolsos=Sum('monto', filter=Q(tipo='INGRESO', destino__tipo__in=pasivos)),
-            gastos_consumo=Sum('monto', filter=Q(tipo='GASTO')),
-            gastos_tarjeta=Sum('monto', filter=Q(tipo='GASTO', origen__tipo='CREDITO')),
-            intereses=Sum('monto_interes', filter=Q(tipo__in=TIPOS_PAGO_DEUDA)),
-            pagos_deuda=Sum('monto', filter=es_pago_deuda),
-            abonos_capital=Sum(F('monto') - F('monto_interes'), filter=es_pago_deuda),
-            ahorro_entradas=Sum('monto', filter=Q(destino__tipo='AHORRO') & ~Q(origen__tipo='AHORRO')),
-            ahorro_salidas=Sum('monto', filter=Q(origen__tipo='AHORRO') & ~Q(destino__tipo='AHORRO')),
-            transferencias=Sum('monto', filter=Q(tipo='TRANSFERENCIA')),
-        )
-        r = {k: (v or CERO) for k, v in agregados.items()}
-        r['gastos'] = r['gastos_consumo'] + r['intereses']
-        r['resultado'] = r['ingresos'] - r['gastos']
-        r['ahorro_neto'] = r['ahorro_entradas'] - r['ahorro_salidas']
-        return r
+        ingresos = CERO
+        reembolsos = CERO
+        gastos_consumo = CERO
+        gastos_tarjeta = CERO
+        intereses = CERO
+        pagos_deuda = CERO
+        abonos_capital = CERO
+        ahorro_entradas = CERO
+        ahorro_salidas = CERO
+        transferencias = CERO
+
+        for mov in qs.select_related('origen', 'destino'):
+            monto = mov.monto or CERO
+            interes = mov.monto_interes or CERO
+            origen_tipo = mov.origen.tipo if mov.origen_id and mov.origen else None
+            destino_tipo = mov.destino.tipo if mov.destino_id and mov.destino else None
+
+            if mov.tipo == 'INGRESO':
+                if destino_tipo in pasivos:
+                    reembolsos += monto
+                else:
+                    ingresos += monto
+            elif mov.tipo == 'GASTO':
+                gastos_consumo += monto
+                if origen_tipo == 'CREDITO':
+                    gastos_tarjeta += monto
+            elif mov.tipo == 'TRANSFERENCIA':
+                transferencias += monto
+
+            if mov.tipo in TIPOS_PAGO_DEUDA:
+                intereses += interes
+
+            es_pago_deuda = (mov.tipo in TIPOS_PAGO_DEUDA) or (mov.tipo == 'TRANSFERENCIA' and destino_tipo in pasivos)
+            if es_pago_deuda:
+                pagos_deuda += monto
+                abonos_capital += monto - interes
+
+            if destino_tipo == 'AHORRO' and origen_tipo != 'AHORRO':
+                ahorro_entradas += monto
+            if origen_tipo == 'AHORRO' and destino_tipo != 'AHORRO':
+                ahorro_salidas += monto
+
+        gastos = gastos_consumo + intereses
+        return {
+            'ingresos': ingresos,
+            'reembolsos': reembolsos,
+            'gastos_consumo': gastos_consumo,
+            'gastos_tarjeta': gastos_tarjeta,
+            'intereses': intereses,
+            'pagos_deuda': pagos_deuda,
+            'abonos_capital': abonos_capital,
+            'ahorro_entradas': ahorro_entradas,
+            'ahorro_salidas': ahorro_salidas,
+            'transferencias': transferencias,
+            'gastos': gastos,
+            'resultado': ingresos - gastos,
+            'ahorro_neto': ahorro_entradas - ahorro_salidas,
+        }
 
     def balance_dashboard(self, usuario, year=None, month=None):
         return self.resultado(self.del_mes(usuario, year, month))
@@ -267,32 +388,40 @@ class TransaccionManager(models.Manager):
     def gastos_por_categoria(self, usuario, year, month):
         """[{'categoria': X, 'total': N}, ...] incluyendo intereses de deuda como categoría."""
         qs = self.del_mes(usuario, year, month)
-        filas = list(qs.filter(tipo='GASTO').values('categoria').annotate(total=Sum('monto')))
-        intereses = qs.filter(tipo__in=TIPOS_PAGO_DEUDA).aggregate(t=Sum('monto_interes'))['t'] or CERO
+        totales = defaultdict(lambda: CERO)
+        intereses = CERO
+        for mov in qs.only('tipo', 'categoria', 'monto', 'monto_interes'):
+            if mov.tipo == 'GASTO':
+                totales[mov.categoria] += mov.monto or CERO
+            elif mov.tipo in TIPOS_PAGO_DEUDA:
+                intereses += mov.monto_interes or CERO
+        filas = [{'categoria': cat, 'total': tot} for cat, tot in totales.items()]
         if intereses:
             filas.append({'categoria': 'Intereses de deuda', 'total': intereses})
         return sorted(filas, key=lambda f: f['total'], reverse=True)
 
     def ingresos_por_categoria(self, usuario, year, month):
-        return list(self.del_mes(usuario, year, month)
-                    .filter(tipo='INGRESO').exclude(destino__tipo__in=Cuenta.TIPOS_PASIVO)
-                    .values('categoria').annotate(total=Sum('monto')).order_by('-total'))
+        qs = self.del_mes(usuario, year, month).filter(tipo='INGRESO').exclude(destino__tipo__in=Cuenta.TIPOS_PASIVO)
+        totales = defaultdict(lambda: CERO)
+        for mov in qs.only('categoria', 'monto'):
+            totales[mov.categoria] += mov.monto or CERO
+        filas = [{'categoria': cat, 'total': tot} for cat, tot in totales.items()]
+        return sorted(filas, key=lambda f: f['total'], reverse=True)
 
     def ahorro_por_mes(self, usuario, year):
         """Flujo neto mensual hacia cuentas de AHORRO en el año: {'YYYY-MM': neto}."""
-        base = self.filter(propietario=usuario, fecha__year=year)
-        entradas = (base.filter(destino__tipo='AHORRO').exclude(origen__tipo='AHORRO')
-                    .annotate(mes=TruncMonth('fecha')).values('mes')
-                    .annotate(total=Sum(F('monto') - F('monto_interes'))))
-        salidas = (base.filter(origen__tipo='AHORRO').exclude(destino__tipo='AHORRO')
-                   .annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('monto')))
+        base = self.filter(propietario=usuario, fecha__year=year).select_related('origen', 'destino')
         por_mes = {}
-        for fila in entradas:
-            k = fila['mes'].strftime('%Y-%m')
-            por_mes[k] = por_mes.get(k, CERO) + (fila['total'] or CERO)
-        for fila in salidas:
-            k = fila['mes'].strftime('%Y-%m')
-            por_mes[k] = por_mes.get(k, CERO) - (fila['total'] or CERO)
+        for mov in base:
+            origen_tipo = mov.origen.tipo if mov.origen_id and mov.origen else None
+            destino_tipo = mov.destino.tipo if mov.destino_id and mov.destino else None
+            monto = mov.monto or CERO
+            interes = mov.monto_interes or CERO
+            k = mov.fecha.strftime('%Y-%m')
+            if destino_tipo == 'AHORRO' and origen_tipo != 'AHORRO':
+                por_mes[k] = por_mes.get(k, CERO) + (monto - interes)
+            elif origen_tipo == 'AHORRO' and destino_tipo != 'AHORRO':
+                por_mes[k] = por_mes.get(k, CERO) - monto
         return por_mes
 
     def movimientos_entre_cuentas(self, usuario, year, month):
@@ -308,9 +437,9 @@ class TransaccionManager(models.Manager):
 class registro_transacciones(models.Model):
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
     fecha = models.DateField(db_index=True)
-    descripcion = models.CharField(max_length=100)
-    categoria = models.CharField(max_length=100, db_index=True)
-    monto = models.DecimalField(max_digits=20, decimal_places=3)
+    descripcion = EncryptedCharField(max_length=100)
+    categoria = EncryptedCharField(max_length=100)
+    monto = EncryptedDecimalField(max_digits=20, decimal_places=3)
 
     TIPO_CHOICES = [
         ('INGRESO', 'Ingreso'),
@@ -328,17 +457,13 @@ class registro_transacciones(models.Model):
     destino = models.ForeignKey(
         'Cuenta', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='movimientos_entrada', help_text="Cuenta a la que ENTRA el dinero")
-    # Parte del monto que es gasto financiero (interés + IVA) en pagos de préstamo.
-    # El resto (monto - monto_interes) es capital y reduce el pasivo.
-    monto_interes = models.DecimalField(max_digits=20, decimal_places=3, default=CERO)
+    monto_interes = EncryptedDecimalField(max_digits=20, decimal_places=3, default=CERO)
 
-    # Nombres de cuenta tal como se capturaron antes de la migración al libro mayor.
-    # Se conservan solo para auditoría; los reportes usan `origen`/`destino`.
-    cuenta_origen = models.CharField(max_length=100, blank=True, default='', editable=False)
-    cuenta_destino = models.CharField(max_length=100, blank=True, default='', editable=False)
+    cuenta_origen = EncryptedCharField(max_length=100, blank=True, default='', editable=False)
+    cuenta_destino = EncryptedCharField(max_length=100, blank=True, default='', editable=False)
 
     deuda_asociada = models.ForeignKey('Deuda', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
-    datos_extra = models.JSONField(null=True, blank=True)
+    datos_extra = EncryptedJSONField(null=True, blank=True)
 
     objects = TransaccionManager()
 
@@ -348,7 +473,6 @@ class registro_transacciones(models.Model):
     def __str__(self):
         return f"{self.id} - {self.descripcion}"
 
-    # ----- helpers -----
     @property
     def monto_capital(self):
         return (self.monto or CERO) - (self.monto_interes or CERO)
@@ -361,7 +485,6 @@ class registro_transacciones(models.Model):
     def clean(self):
         errores = {}
         if self.tipo == 'INGRESO':
-            # Un ingreso solo tiene cuenta destino. Si llegó en origen, lo movemos.
             if self.origen_id and not self.destino_id:
                 self.destino, self.origen = self.origen, None
             elif self.origen_id:
@@ -408,16 +531,11 @@ class registro_transacciones(models.Model):
         elif self.tipo == 'GASTO':
             self.destino = None
         elif self.tipo == 'TRANSFERENCIA' and self.destino is not None and self.destino.tipo == 'PRESTAMO':
-            # Mandar dinero a un préstamo ES pagar una mensualidad (así se divide en capital/interés).
             self.tipo = 'PAGO_MENSUALIDAD'
         elif self.tipo == 'TRANSFERENCIA' and self.destino is None and self.origen is not None:
-            # Una "transferencia" (SPEI) a alguien que no es una cuenta tuya es dinero que
-            # se va: contablemente es un GASTO (renta, un pago a un tercero, etc.).
             self.tipo = 'GASTO'
         if self.tipo not in TIPOS_PAGO_DEUDA:
             self.monto_interes = CERO
-        # La deuda asociada se deriva de la cuenta destino (pagos a préstamo / tarjeta)
-        # o de la cuenta origen (compras con tarjeta).
         self.deuda_asociada = None
         for cuenta in (self.destino, self.origen):
             if cuenta is not None and cuenta.es_pasivo:
@@ -428,8 +546,6 @@ class registro_transacciones(models.Model):
         is_new = self.pk is None
         self._normalizar()
 
-        # Pago de mensualidad: tomamos la siguiente cuota pendiente de la tabla de
-        # amortización para saber cuánto del pago es interés (+IVA) y cuánto capital.
         cuota = None
         if is_new and self.tipo == 'PAGO_MENSUALIDAD' and self.deuda_asociada_id:
             cuota = PagoAmortizacion.objects.filter(
@@ -446,7 +562,6 @@ class registro_transacciones(models.Model):
             cuota.save(update_fields=['pagado', 'transaccion_pago'])
 
     def delete(self, *args, **kwargs):
-        # Si este movimiento pagaba una cuota, la cuota vuelve a quedar pendiente.
         PagoAmortizacion.objects.filter(transaccion_pago=self).update(pagado=False, transaccion_pago=None)
         super().delete(*args, **kwargs)
 
@@ -457,23 +572,24 @@ class TransaccionPendiente(models.Model):
         ('aprobada', 'Aprobada'),
         ('rechazada', 'Rechazada'),
     )
-    
+
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    datos_json = models.JSONField() # Aquí guardaremos el resultado de Gemini
+    datos_json = EncryptedJSONField()
     estado = models.CharField(max_length=10, choices=ESTADOS, default='pendiente')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
-    
+
+    objects = _EncryptedManagerBase()
+
     def __str__(self):
-        # Intenta mostrar una descripción o el total para que sea fácil de leer en el admin
-        descripcion = self.datos_json.get('descripcion_corta')
+        descripcion = (self.datos_json or {}).get('descripcion_corta')
         return f"Pendiente de {self.propietario.username} - {descripcion}"
-    
+
+
 class inversiones(models.Model):
     """
     Modelo de Inversiones mejorado para soportar acciones fraccionadas y
     diferentes tipos de activos.
     """
-    # --- CAMPO NUEVO PARA CLASIFICAR LA INVERSIÓN ---
     TIPO_INVERSION_CHOICES = [
         ('ACCION', 'Acción'),
         ('CRIPTO', 'Criptomoneda'),
@@ -481,7 +597,6 @@ class inversiones(models.Model):
         ('BONOS', 'Bonos'),
         ('FIBRAS', 'Fibras'),
         ('BIENES_RAICES', 'Bienes Raíces'),
-        # Podemos añadir más en el futuro (Bonos, Fibras, etc.)
     ]
     tipo_inversion = models.CharField(
         max_length=30,
@@ -490,27 +605,20 @@ class inversiones(models.Model):
     )
 
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    
-    # Este campo ahora es opcional. No aplica para Cripto o Fondos.
-    emisora_ticker = models.CharField(max_length=10, blank=True, null=True)
-    
-    # Renombramos este campo para que sea más genérico
-    nombre_activo = models.CharField(max_length=100)
-    
-    # --- CORRECCIÓN PARA ACCIONES FRACCIONADAS ---
-    # Cambiamos de PositiveIntegerField a DecimalField
-    cantidad_titulos = models.DecimalField(max_digits=19, decimal_places=10)
-
+    emisora_ticker = EncryptedCharField(max_length=10, blank=True, null=True)
+    nombre_activo = EncryptedCharField(max_length=100)
+    cantidad_titulos = EncryptedDecimalField(max_digits=19, decimal_places=10)
     fecha_compra = models.DateField()
-    precio_compra_titulo = models.DecimalField(max_digits=19, decimal_places=10)
-    tipo_cambio_compra = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
-    
-    # Campos calculados (no necesitan cambios)
-    costo_total_adquisicion = models.DecimalField(max_digits=20, decimal_places=10)
-    precio_actual_titulo = models.DecimalField(max_digits=19, decimal_places=10)
-    valor_actual_mercado = models.DecimalField(max_digits=20, decimal_places=10)
-    ganancia_perdida_no_realizada = models.DecimalField(max_digits=20, decimal_places=10)
-    ganancia_perdida = models.DecimalField(max_digits=20, decimal_places=10, null=True, blank=True)
+    precio_compra_titulo = EncryptedDecimalField(max_digits=19, decimal_places=10)
+    tipo_cambio_compra = EncryptedDecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+
+    costo_total_adquisicion = EncryptedDecimalField(max_digits=20, decimal_places=10)
+    precio_actual_titulo = EncryptedDecimalField(max_digits=19, decimal_places=10)
+    valor_actual_mercado = EncryptedDecimalField(max_digits=20, decimal_places=10)
+    ganancia_perdida_no_realizada = EncryptedDecimalField(max_digits=20, decimal_places=10)
+    ganancia_perdida = EncryptedDecimalField(max_digits=20, decimal_places=10, null=True, blank=True)
+
+    objects = _EncryptedManagerBase()
 
     def __str__(self):
         return f"{self.get_tipo_inversion_display()} de {self.propietario.username} en {self.nombre_activo}"
@@ -522,11 +630,14 @@ class inversiones(models.Model):
         return 0
 
     def save(self, *args, **kwargs):
-        # La lógica de cálculo sigue funcionando igual
-        self.costo_total_adquisicion = self.cantidad_titulos * self.precio_compra_titulo
-        self.valor_actual_mercado = self.cantidad_titulos * self.precio_actual_titulo
+        cantidad = Decimal(str(self.cantidad_titulos or 0))
+        compra = Decimal(str(self.precio_compra_titulo or 0))
+        actual = Decimal(str(self.precio_actual_titulo or 0))
+        self.costo_total_adquisicion = cantidad * compra
+        self.valor_actual_mercado = cantidad * actual
         self.ganancia_perdida_no_realizada = self.valor_actual_mercado - self.costo_total_adquisicion
         super().save(*args, **kwargs)
+
 
 class Suscripcion(models.Model):
     """
@@ -538,41 +649,31 @@ class Suscripcion(models.Model):
         ('pausada', 'Pausada'),
         ('pendiente', 'Pendiente de Pago'),
     )
-    
+
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='suscripcion')
     estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente')
     fecha_inicio = models.DateTimeField(null=True, blank=True)
     fecha_fin = models.DateTimeField(null=True, blank=True)
-    # Cuándo pidió cancelar (desde su perfil o desde Mercado Pago). Conserva el
-    # acceso hasta ``fecha_fin`` porque ese periodo ya lo pagó.
     fecha_cancelacion = models.DateTimeField(null=True, blank=True)
     id_suscripcion_mercadopago = models.CharField(max_length=100, blank=True, null=True)
+    PLANES = (('gratis', 'Gratis'), ('personal', 'Personal'), ('pro', 'Pro'))
+    plan = models.CharField(max_length=10, choices=PLANES, default='personal')
+    periodo = models.CharField(max_length=7, choices=(('mensual', 'Mensual'), ('anual', 'Anual')), default='mensual')
 
     def is_active(self):
-        """
-        Verifica si la suscripción da acceso Premium hoy.
-        Una suscripción cancelada sigue activa hasta ``fecha_fin`` (periodo ya pagado);
-        una pausada (pago rechazado en Mercado Pago) no da acceso.
-        Compara solo fechas para evitar problemas de zona horaria.
-        """
         if self.estado not in ('activa', 'cancelada') or not self.fecha_fin:
             return False
-
-        # Comparamos si la fecha de fin es hoy o una fecha futura.
         return self.fecha_fin.date() >= timezone.now().date()
 
     @property
     def esta_cancelada(self):
-        """True si ya no se renovará (aunque todavía tenga acceso)."""
         return self.estado == 'cancelada'
 
     @property
     def puede_cancelarse(self):
-        """Solo se puede cancelar una suscripción activa que aún se renueva."""
         return self.estado == 'activa' and self.is_active()
 
     def cancelar(self):
-        """Marca la suscripción como cancelada; el acceso sigue hasta ``fecha_fin``."""
         self.estado = 'cancelada'
         self.fecha_cancelacion = timezone.now()
         self.save(update_fields=['estado', 'fecha_cancelacion'])
@@ -580,20 +681,37 @@ class Suscripcion(models.Model):
     def __str__(self):
         return f"Suscripción de {self.usuario.username} - {self.get_estado_display()}"
 
+
+class UsoIA(models.Model):
+    """Documentos mandados a la IA por usuario y mes (la cuota de cada plan, ver planes.py)."""
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uso_ia')
+    anio = models.PositiveIntegerField()
+    mes = models.PositiveSmallIntegerField()
+    documentos = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ('usuario', 'anio', 'mes')
+
+    def __str__(self):
+        return f"{self.usuario.username} {self.anio}-{self.mes:02d}: {self.documentos} documentos"
+
+
 class PendingInvestment(models.Model):
     ESTADOS = (
         ('pendiente', 'Pendiente'),
         ('aprobada', 'Aprobada'),
         ('rechazada', 'Rechazada'),
     )
-    
+
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    datos_json = models.JSONField()
+    datos_json = EncryptedJSONField()
     estado = models.CharField(max_length=10, choices=ESTADOS, default='pendiente')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
+    objects = _EncryptedManagerBase()
+
     def __str__(self):
-        nombre_activo = self.datos_json.get('nombre_activo', 'N/A')
+        nombre_activo = (self.datos_json or {}).get('nombre_activo', 'N/A')
         return f"Inversión Pendiente de {self.propietario.username} en {nombre_activo}"
 
 
@@ -609,28 +727,28 @@ class Deuda(models.Model):
         ('TARJETA_CREDITO', 'Tarjeta de Crédito'),
     ]
     TIPO_CUENTA_POR_DEUDA = {'PRESTAMO': 'PRESTAMO', 'TARJETA_CREDITO': 'CREDITO'}
+    BLIND_INDEX_FIELDS = {'nombre': ('nombre_hash', 'user')}
 
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    nombre = models.CharField(
+    nombre = EncryptedCharField(
         max_length=100,
         help_text="Un nombre único para identificar esta deuda (ej. 'Préstamo Coche')"
     )
+    nombre_hash = models.CharField(max_length=64, editable=False, default='', db_index=True)
     cuenta = models.OneToOneField(
         'Cuenta', on_delete=models.CASCADE, null=True, blank=True, related_name='deuda',
         help_text="Cuenta de pasivo en el libro mayor donde se lleva el saldo de esta deuda.")
 
     tipo_deuda = models.CharField(max_length=20, choices=TIPO_DEUDA_CHOICES, default='PRESTAMO')
-    monto_total = models.DecimalField(
+    monto_total = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
         help_text="Para préstamos: el monto original. Para tarjetas de crédito: el límite de crédito total."
     )
-    tasa_interes = models.DecimalField(max_digits=5, decimal_places=2, help_text="Tasa de interés anual (%)")
+    tasa_interes = EncryptedDecimalField(max_digits=5, decimal_places=2, help_text="Tasa de interés anual (%)")
     plazo_meses = models.PositiveIntegerField(default=1, help_text="Para tarjetas de crédito, puede ser 1.")
     fecha_adquisicion = models.DateField(default=timezone.now)
-    # Valor que tenía el antiguo campo mutable `saldo_pendiente` antes de migrar al
-    # libro mayor. Solo para auditoría/conciliación; no se usa en cálculos.
-    saldo_legado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, editable=False)
+    saldo_legado = EncryptedDecimalField(max_digits=12, decimal_places=2, null=True, blank=True, editable=False)
     requiere_configuracion_adicional = models.BooleanField(
         default=False,
         help_text="Indica si la deuda se generó automáticamente y necesita que se configuren sus detalles (monto, tasa, etc.)"
@@ -645,13 +763,14 @@ class Deuda(models.Model):
         help_text="Día límite de pago del mes (1-31). Ej: 30"
     )
 
+    objects = _EncryptedManagerBase()
+
     class Meta:
-        unique_together = ['propietario', 'nombre']
+        unique_together = ['propietario', 'nombre_hash']
 
     def __str__(self):
         return self.nombre
 
-    # ----- saldos (derivados del libro vía la cuenta ligada) -----
     @property
     def es_tarjeta(self):
         return self.tipo_deuda == 'TARJETA_CREDITO'
@@ -666,29 +785,27 @@ class Deuda(models.Model):
     @property
     def disponible(self):
         """Tarjetas: crédito disponible = límite - lo que se debe."""
-        return (self.monto_total or CERO) - self.saldo_pendiente
+        return Decimal(str(self.monto_total or CERO)) - self.saldo_pendiente
 
     @property
     def total_gastado(self):
         """Tarjeta: lo usado del límite. Préstamo: capital ya pagado."""
         if self.es_tarjeta:
             return self.saldo_pendiente
-        return (self.monto_total or CERO) - self.saldo_pendiente
+        return Decimal(str(self.monto_total or CERO)) - self.saldo_pendiente
 
     @property
     def valor_barra(self):
-        """Valor para la barra de progreso: tarjeta -> disponible; préstamo -> deuda restante."""
         return self.disponible if self.es_tarjeta else self.saldo_pendiente
 
     @property
     def porcentaje_barra(self):
-        total = self.monto_total or CERO
+        total = Decimal(str(self.monto_total or CERO))
         if total <= 0:
             return 0
         pct = (self.valor_barra / total) * 100
         return max(0, min(100, int(pct)))
 
-    # ----- ciclo de vida -----
     def asegurar_cuenta(self, saldo_inicial=None):
         """Crea o liga la cuenta de pasivo correspondiente en el libro mayor."""
         tipo_cuenta = self.TIPO_CUENTA_POR_DEUDA[self.tipo_deuda]
@@ -703,7 +820,7 @@ class Deuda(models.Model):
             if cambios:
                 self.cuenta.save(update_fields=cambios)
             return self.cuenta
-        cuenta = Cuenta.objects.filter(propietario=self.propietario, nombre=self.nombre).first()
+        cuenta = Cuenta.objects.por_nombre(self.propietario, self.nombre)
         if cuenta is None:
             if saldo_inicial is None:
                 saldo_inicial = self.monto_total if self.tipo_deuda == 'PRESTAMO' else CERO
@@ -716,8 +833,14 @@ class Deuda(models.Model):
         self.cuenta = cuenta
         return cuenta
 
+    def validate_unique(self, exclude=None):
+        if self.propietario_id:
+            self.nombre_hash = blind_index(self.propietario_id, self.nombre)
+        super().validate_unique(exclude=exclude)
+
     def save(self, *args, **kwargs):
         saldo_inicial = kwargs.pop('saldo_inicial', None)
+        _sync_blind_hashes(self, kwargs)
         super().save(*args, **kwargs)
         if not self.cuenta_id or self.cuenta.nombre != self.nombre:
             self.asegurar_cuenta(saldo_inicial=saldo_inicial)
@@ -756,81 +879,76 @@ class PagoAmortizacion(models.Model):
     deuda = models.ForeignKey(Deuda, on_delete=models.CASCADE, related_name='amortizacion')
     numero_cuota = models.PositiveIntegerField()
     fecha_vencimiento = models.DateField()
-    capital = models.DecimalField(max_digits=10, decimal_places=2)
-    interes = models.DecimalField(max_digits=10, decimal_places=2)
-    iva = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="IVA sobre los intereses")
-    saldo_insoluto = models.DecimalField(max_digits=12, decimal_places=2, help_text="Saldo pendiente después de este pago")
-    pago_total = models.DecimalField(max_digits=10, decimal_places=2, help_text="Suma de capital + interés + IVA")
+    capital = EncryptedDecimalField(max_digits=10, decimal_places=2)
+    interes = EncryptedDecimalField(max_digits=10, decimal_places=2)
+    iva = EncryptedDecimalField(max_digits=10, decimal_places=2, default=CERO, help_text="IVA sobre los intereses")
+    saldo_insoluto = EncryptedDecimalField(max_digits=12, decimal_places=2, help_text="Saldo pendiente después de este pago")
+    pago_total = EncryptedDecimalField(max_digits=10, decimal_places=2, help_text="Suma de capital + interés + IVA")
     pagado = models.BooleanField(default=False)
     transaccion_pago = models.OneToOneField(registro_transacciones, on_delete=models.SET_NULL, null=True, blank=True)
+
+    objects = _EncryptedManagerBase()
 
     class Meta:
         ordering = ['numero_cuota']
 
-    # --- MÉTODO SAVE CORREGIDO PARA LA AMORTIZACIÓN ---
     def save(self, *args, **kwargs):
-        # Esta lógica SOLO calcula el pago_total, pero NO el saldo_insoluto.
-        # Esto previene el error de recálculo al simplemente marcar una cuota como pagada.
-        self.pago_total = self.capital + self.interes + self.iva
+        cap = Decimal(str(self.capital or CERO))
+        inte = Decimal(str(self.interes or CERO))
+        iva = Decimal(str(self.iva or CERO))
+        self.pago_total = cap + inte + iva
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Cuota {self.numero_cuota} de {self.deuda.nombre}"
-    
+
+
 class AmortizacionPendiente(models.Model):
     """
     Almacena una tabla de amortización completa extraída por la IA,
     pendiente de la revisión y aprobación del usuario.
     """
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    # A qué deuda se asociará esta tabla de amortización
     deuda = models.ForeignKey(Deuda, on_delete=models.CASCADE, related_name='amortizaciones_pendientes')
-    # Aquí guardaremos la lista completa de cuotas extraídas por Gemini
-    datos_json = models.JSONField()
-    nombre_archivo = models.CharField(max_length=255)
+    datos_json = EncryptedJSONField()
+    nombre_archivo = EncryptedCharField(max_length=255)
     estado = models.CharField(max_length=10, choices=(('pendiente', 'Pendiente'), ('aprobada', 'Aprobada')), default='pendiente')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
+    objects = _EncryptedManagerBase()
+
     def __str__(self):
         return f"Amortización Pendiente para '{self.deuda.nombre}' del archivo '{self.nombre_archivo}'"
-    
+
+
 class TiendaFacturacion(models.Model):
     """
     TABLA 1: CONFIGURACIÓN (El Cerebro)
     Define qué datos necesitamos pedirle a la IA para cada tienda.
-    Ejemplo:
-      - Tienda: "WALMART"
-      - Campos: ["Ticket #", "TR #", "Fecha"]
-      - URL: "https://facturacion.walmartmexico.com.mx/"
     """
     tienda = models.CharField(
-        max_length=150, 
-        unique=True, 
+        max_length=150,
+        unique=True,
         help_text="Nombre normalizado de la tienda (ej. WALMART, OXXO)"
     )
-    
-    # Lista de campos que Gemini debe buscar obligatoriamente
     campos_requeridos = models.JSONField(
-        default=list, 
+        default=list,
         help_text="Lista de llaves que necesitamos extraer (ej. ['Folio', 'RFC', 'Código'])"
     )
-    
-    # Campo NUEVO: Para que el usuario sepa dónde facturar
     url_portal = models.URLField(
-        max_length=500, 
-        blank=True, 
-        null=True, 
+        max_length=500,
+        blank=True,
+        null=True,
         help_text="Link directo al portal de facturación de esta tienda"
     )
-    
-    # Campo NUEVO: Para distinguir borrador de final
     configuracion_finalizada = models.BooleanField(
-        default=False, 
+        default=False,
         help_text="Indica si el usuario ya confirmó que esta configuración es correcta/completa."
     )
 
     def __str__(self):
         return f"Configuración para {self.tienda}"
+
 
 class Factura(models.Model):
     """
@@ -842,52 +960,54 @@ class Factura(models.Model):
         ('facturado', 'Facturado'),
         ('imposible', 'Datos insuficientes/Error'),
     )
-    
+    BLIND_INDEX_FIELDS = {'archivo_drive_id': ('archivo_drive_hash', 'global')}
+
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
-    
-    # Relación opcional con la configuración (si existe)
     configuracion_tienda = models.ForeignKey(
-        TiendaFacturacion, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        TiendaFacturacion,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name='facturas_generadas'
     )
-    
-    tienda = models.CharField(max_length=150, help_text="Nombre extraído del establecimiento", db_index=True)
+
+    tienda = EncryptedCharField(max_length=150, help_text="Nombre extraído del establecimiento")
     fecha_emision = models.DateField(help_text="Fecha detectada en el ticket", null=True, blank=True, db_index=True)
-    total = models.DecimalField(max_digits=12, decimal_places=2, help_text="Monto total del consumo")
-    
-    # Aquí vive la magia: El JSON con los campos específicos que pidió la Tabla 1
-    # Ej: { "folio": "12345", "ticket_id": "ABC", "rfc_tienda": "..." }
-    datos_facturacion = models.JSONField(
-        default=dict, 
+    total = EncryptedDecimalField(max_digits=12, decimal_places=2, help_text="Monto total del consumo")
+    datos_facturacion = EncryptedJSONField(
+        default=dict,
         help_text="Datos técnicos extraídos para el portal de facturación"
     )
-    
-    # Campo NUEVO: Referencia al archivo original en Drive para auditoría
-    archivo_drive_id = models.CharField(
-        max_length=255, 
-        blank=True, 
-        null=True, 
+    archivo_drive_id = EncryptedCharField(
+        max_length=255,
+        blank=True,
+        null=True,
         help_text="ID del archivo en Google Drive para ver la imagen original"
     )
-    
+    archivo_drive_hash = models.CharField(max_length=64, blank=True, null=True, editable=False, db_index=True)
+
     estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
-    
+
+    objects = _EncryptedManagerBase()
+
     class Meta:
         ordering = ['-fecha_emision']
         verbose_name = 'Factura'
         verbose_name_plural = 'Facturas'
-    
+
+    def save(self, *args, **kwargs):
+        _sync_blind_hashes(self, kwargs)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Factura {self.tienda} - ${self.total} ({self.estado})"
 
     @property
     def get_script_id(self):
         return f"factura-json-{self.id}"
+
 
 class PortfolioHistory(models.Model):
     """
@@ -896,16 +1016,12 @@ class PortfolioHistory(models.Model):
     """
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     fecha = models.DateField()
-    
-    # Valor total de mercado de todos los activos ese día
-    valor_total = models.DecimalField(max_digits=20, decimal_places=2)
-    
-    # Capital total invertido (cash flow) hasta ese día
-    capital_invertido = models.DecimalField(max_digits=20, decimal_places=2)
-    
-    # Ganancia no realizada (valor_total - capital_invertido)
-    ganancia_no_realizada = models.DecimalField(max_digits=20, decimal_places=2)
-    
+    valor_total = EncryptedDecimalField(max_digits=20, decimal_places=2)
+    capital_invertido = EncryptedDecimalField(max_digits=20, decimal_places=2)
+    ganancia_no_realizada = EncryptedDecimalField(max_digits=20, decimal_places=2)
+
+    objects = _EncryptedManagerBase()
+
     class Meta:
         unique_together = ['usuario', 'fecha']
         ordering = ['fecha']
@@ -915,11 +1031,14 @@ class PortfolioHistory(models.Model):
 
 
 class Presupuesto(models.Model):
+    BLIND_INDEX_FIELDS = {'categoria': ('categoria_hash', 'user')}
+
     propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='presupuestos')
-    categoria = models.CharField(max_length=100, help_text="Ej. Vivienda, Alimentación, Transporte")
-    monto_presupuestado = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    monto_real = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Monto real gastado o facturado")
-    
+    categoria = EncryptedCharField(max_length=100, help_text="Ej. Vivienda, Alimentación, Transporte")
+    categoria_hash = models.CharField(max_length=64, editable=False, default='', db_index=True)
+    monto_presupuestado = EncryptedDecimalField(max_digits=12, decimal_places=2, default=CERO)
+    monto_real = EncryptedDecimalField(max_digits=12, decimal_places=2, default=CERO, help_text="Monto real gastado o facturado")
+
     es_recurrente = models.BooleanField(default=True, help_text="Si es verdadero, aplica para todos los meses")
     mes = models.IntegerField(null=True, blank=True, help_text="Mes específico (1-12) si no es recurrente")
     anio = models.IntegerField(null=True, blank=True, help_text="Año específico si no es recurrente")
@@ -933,18 +1052,28 @@ class Presupuesto(models.Model):
         help_text="Día del mes en que lo pagas (1-31), opcional en gastos de monto fijo."
     )
 
+    objects = _EncryptedManagerBase()
+
     class Meta:
         verbose_name = "Presupuesto"
         verbose_name_plural = "Presupuestos"
-        unique_together = ['propietario', 'categoria', 'mes', 'anio']
+        unique_together = ['propietario', 'categoria_hash', 'mes', 'anio']
 
     @property
     def usa_monto_fijo(self):
         return bool(self.es_fijo or self.dia_pago)
 
+    def validate_unique(self, exclude=None):
+        if self.propietario_id:
+            self.categoria_hash = blind_index(self.propietario_id, self.categoria)
+        super().validate_unique(exclude=exclude)
+
     def save(self, *args, **kwargs):
         if self.dia_pago is not None:
             self.es_fijo = True
+            if kwargs.get('update_fields') is not None and 'es_fijo' not in kwargs['update_fields']:
+                kwargs['update_fields'] = list(kwargs['update_fields']) + ['es_fijo']
+        _sync_blind_hashes(self, kwargs)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -952,14 +1081,28 @@ class Presupuesto(models.Model):
             return f"{self.categoria} - ${self.monto_presupuestado} (Recurrente)"
         return f"{self.categoria} - ${self.monto_presupuestado} ({self.mes}/{self.anio})"
 
+
 class HistorialReciboServicio(models.Model):
+    BLIND_INDEX_FIELDS = {'archivo_drive_id': ('archivo_drive_hash', 'global')}
+
     propietario = models.ForeignKey(User, on_delete=models.CASCADE)
     presupuesto = models.ForeignKey(Presupuesto, on_delete=models.CASCADE, related_name='historial_recibos')
     fecha_emision = models.DateField(null=True, blank=True)
-    monto_total = models.DecimalField(max_digits=12, decimal_places=2)
-    datos_json = models.JSONField(default=dict)
-    archivo_drive_id = models.CharField(max_length=255, unique=True)
+    monto_total = EncryptedDecimalField(max_digits=12, decimal_places=2)
+    datos_json = EncryptedJSONField(default=dict)
+    archivo_drive_id = EncryptedCharField(max_length=255)
+    archivo_drive_hash = models.CharField(max_length=64, unique=True, editable=False, default='')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    objects = _EncryptedManagerBase()
+
+    def validate_unique(self, exclude=None):
+        self.archivo_drive_hash = global_blind_index(self.archivo_drive_id)
+        super().validate_unique(exclude=exclude)
+
+    def save(self, *args, **kwargs):
+        _sync_blind_hashes(self, kwargs)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Recibo de {self.presupuesto.categoria} - {self.fecha_emision} - ${self.monto_total}"
@@ -968,19 +1111,31 @@ class HistorialReciboServicio(models.Model):
 class AliasComercio(models.Model):
     """
     Cómo quiere el usuario que se llame y se clasifique lo que el banco escribe de cierta forma
-    ("SUPER RIDES" -> "DIDI", Transporte). Se aprende solo: cuando en "Revisar antes de guardar"
-    el usuario corrige la descripción o la categoría de un renglón, se guarda aquí y la próxima
-    vez que suba un archivo con ese texto ya sale con su nombre.
+    ("SUPER RIDES" -> "DIDI", Transporte).
     """
+    BLIND_INDEX_FIELDS = {'texto_banco': ('texto_banco_hash', 'user')}
+
     propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alias_comercios')
-    texto_banco = models.CharField(max_length=100, help_text="Como lo escribe el banco, ej. 'SUPER RIDES'")
-    descripcion = models.CharField(max_length=100, help_text="Como quieres verlo, ej. 'DIDI'")
-    categoria = models.CharField(max_length=100, blank=True)
+    texto_banco = EncryptedCharField(max_length=100, help_text="Como lo escribe el banco, ej. 'SUPER RIDES'")
+    texto_banco_hash = models.CharField(max_length=64, editable=False, default='', db_index=True)
+    descripcion = EncryptedCharField(max_length=100, help_text="Como quieres verlo, ej. 'DIDI'")
+    categoria = EncryptedCharField(max_length=100, blank=True, default='')
+
+    objects = _EncryptedManagerBase()
 
     class Meta:
-        unique_together = ('propietario', 'texto_banco')
+        unique_together = ('propietario', 'texto_banco_hash')
         verbose_name = "Alias de comercio"
         verbose_name_plural = "Alias de comercios"
+
+    def validate_unique(self, exclude=None):
+        if self.propietario_id:
+            self.texto_banco_hash = blind_index(self.propietario_id, self.texto_banco)
+        super().validate_unique(exclude=exclude)
+
+    def save(self, *args, **kwargs):
+        _sync_blind_hashes(self, kwargs)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.texto_banco} -> {self.descripcion}" + (f" ({self.categoria})" if self.categoria else "")

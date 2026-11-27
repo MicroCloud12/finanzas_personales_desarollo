@@ -1,6 +1,8 @@
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 import os
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,6 +13,25 @@ NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
 SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(',')
+
+# Llave maestra para desenvolver las llaves de cifrado por usuario (MultiFernet: soporta rotación con comas).
+_RUNNING_TESTS = "test" in sys.argv
+_BUILD_CMDS = {"collectstatic", "generar_llave_cifrado", "help"}
+DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY", "").strip()
+if not DATA_ENCRYPTION_KEY and _RUNNING_TESTS:
+    # Llave determinista exclusiva para pruebas automatizadas cuando no viene en entorno.
+    DATA_ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+elif not DATA_ENCRYPTION_KEY and not DEBUG and not (_BUILD_CMDS & set(sys.argv[1:])):
+    raise ImproperlyConfigured(
+        "Falta DATA_ENCRYPTION_KEY en las variables de entorno. "
+        "Genera una con: python manage.py generar_llave_cifrado"
+    )
+
+# ngrok (u otro proxy) recibe HTTPS y reenvía en HTTP con X-Forwarded-Proto: https.
+# Sin esto Django cree que la petición es http y allauth manda a Google un
+# redirect_uri "http://..." que no coincide con el registrado (redirect_uri_mismatch).
+# El acceso directo por http://localhost:8000 sigue funcionando igual.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'tailwind',
@@ -24,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'django.contrib.sitemaps',  # plantilla de /sitemap.xml
     'django.contrib.sites', # Requerido por allauth
     'allauth.account',
     'allauth.socialaccount',
@@ -63,16 +85,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv("DB_NAME"),
-        'USER': os.getenv("DB_USER"),
-        'PASSWORD': os.getenv("DB_PASSWORD"),
-        'HOST': os.getenv("DB_HOST"),
-        'PORT': os.getenv("DB_PORT"),
+if _RUNNING_TESTS and os.getenv("USE_SQLITE_TESTS") == "1":
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
     }
-}
+    MIGRATION_MODULES = {'finanzas': None}
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.getenv("DB_NAME"),
+            'USER': os.getenv("DB_USER"),
+            'PASSWORD': os.getenv("DB_PASSWORD"),
+            'HOST': os.getenv("DB_HOST"),
+            'PORT': os.getenv("DB_PORT"),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -101,7 +133,11 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # WhiteNoise: archivos comprimidos y con hash en el nombre (caché larga).
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if _RUNNING_TESTS
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 
@@ -112,8 +148,9 @@ LOGOUT_REDIRECT_URL = 'home'
 TAILWIND_APP_NAME = 'theme'
 
 # --- CELERY ---
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+# En Docker, docker-compose define CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -124,20 +161,26 @@ SITE_ID = 1
 ACCOUNT_EMAIL_VERIFICATION = 'optional' # Puedes cambiarlo a 'mandatory' si quieres verificación de email
 ACCOUNT_LOGOUT_ON_GET = True # Permite el logout con GET para simplificar
 
+# Permiso para leer Drive. Google lo clasifica como "restringido" (verificación con auditoría de
+# seguridad), así que NO va en el login: se pide aparte, solo a quien pulse "Conectar Google Drive"
+# (ver url_conectar_drive en finanzas/templatetags/drive_tags.py y la vista drive_conectado).
+GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
+
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
-        'SCOPE': [
-            'profile',
-            'email',
-            'https://www.googleapis.com/auth/drive.readonly',
-        ],
-        'AUTH_PARAMS': {
-            'access_type': 'offline',  # <-- ESTE ES EL CAMBIO CLAVE
-        },
+        # Solo identidad: no sensible para Google, sin pantalla de "app no verificada".
+        'SCOPE': ['profile', 'email'],
         'OAUTH_PKCE_ENABLED': True,
+        # Si Google confirma (email verificado) un correo que ya pertenece a un
+        # usuario local, inicia sesión en ese usuario en vez de mandar al
+        # formulario de registro. Solo para Google, que verifica los correos.
+        'EMAIL_AUTHENTICATION': True,
     }
 }
 
+# Al entrar por correo, vincula la cuenta de Google al usuario existente para
+# guardar sus tokens (los necesita el acceso a Drive).
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_STORE_TOKENS = True
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

@@ -65,7 +65,7 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------
     def _cuenta(self, user, nombre):
-        cuenta = Cuenta.objects.filter(propietario=user, nombre__iexact=nombre.strip()).first()
+        cuenta = Cuenta.objects.por_nombre(user, nombre.strip())
         if cuenta is None:
             raise CommandError(f"No existe la cuenta {nombre!r} para {user.username}")
         return cuenta
@@ -74,11 +74,20 @@ class Command(BaseCommand):
         if '=' not in par:
             raise CommandError("--ligar espera NOMBRE_VIEJO=CUENTA")
         viejo, nuevo = [x.strip() for x in par.split('=', 1)]
+        viejo_low = viejo.lower()
         cuenta = self._cuenta(user, nuevo)
         qs = registro_transacciones.objects.filter(propietario=user)
-        n_origen = qs.filter(origen__isnull=True, cuenta_origen__iexact=viejo).exclude(tipo='INGRESO').update(origen=cuenta)
-        n_destino = qs.filter(destino__isnull=True).filter(
-            Q(cuenta_destino__iexact=viejo) | Q(tipo='INGRESO', cuenta_origen__iexact=viejo)).update(destino=cuenta)
+        ids_origen = [
+            t.id for t in qs.filter(origen__isnull=True).exclude(tipo='INGRESO')
+            if (t.cuenta_origen or '').strip().lower() == viejo_low
+        ]
+        n_origen = qs.filter(id__in=ids_origen).update(origen=cuenta) if ids_origen else 0
+        ids_destino = [
+            t.id for t in qs.filter(destino__isnull=True)
+            if (t.cuenta_destino or '').strip().lower() == viejo_low
+            or (t.tipo == 'INGRESO' and (t.cuenta_origen or '').strip().lower() == viejo_low)
+        ]
+        n_destino = qs.filter(id__in=ids_destino).update(destino=cuenta) if ids_destino else 0
         self.stdout.write(self.style.SUCCESS(
             f"Ligados a '{cuenta.nombre}': {n_origen} movimientos como origen y {n_destino} como destino."))
 

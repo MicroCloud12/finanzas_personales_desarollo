@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div class="bg-white p-8 rounded-lg shadow-xl border border-gray-200">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900">¿Estás seguro?</h2>
+        <p class="mb-6 text-gray-700">
+            Estás a punto de eliminar permanentemente la deuda: <strong>"{{ deuda.nombre }}"</strong>.
+        </p>
+        <p class="mb-6 text-sm text-red-600 bg-red-50 p-3 rounded-md">
+            <strong>Advertencia:</strong> Esta acción no se puede deshacer. Se eliminarán también todas sus cuotas de amortización asociadas.
+        </p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'lista_deudas' %}" class="bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </a>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg">
+                    Sí, eliminar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

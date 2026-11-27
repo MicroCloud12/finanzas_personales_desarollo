@@ -13,6 +13,7 @@ from django.shortcuts import render, redirect
 
 from ..models import registro_transacciones, Suscripcion, Cuenta, Presupuesto
 from ..templatetags.dinero import dinero
+from .. import planes
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,8 @@ def _metrica(act, prev, transactions, categories):
 
 
 def _conteo(qs):
-    agg = qs.aggregate(n=Count('id'), cats=Count('categoria', distinct=True))
-    return agg['n'], agg['cats']
+    cats = list(qs.values_list('categoria', flat=True))
+    return len(cats), len(set(cats))
 
 @login_required
 def vista_dashboard(request):
@@ -57,8 +58,8 @@ def vista_dashboard(request):
     prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
     fin_mes_prev = date(prev_year, prev_month, calendar.monthrange(prev_year, prev_month)[1])
 
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    es_usuario_premium = suscripcion.is_active()
+    # True mientras le queden documentos con IA este mes (todos los planes tienen cuota)
+    es_usuario_premium = planes.puede_procesar(request.user)
 
     # ===== 1. ESTADO DE RESULTADOS DEL MES (flujos) =====
     # ingresos = lo que entró a cuentas de activo
@@ -189,7 +190,15 @@ def datos_gastos_categoria(request):
             qs = qs.filter(tipo='INGRESO').exclude(destino__tipo__in=Cuenta.TIPOS_PASIVO)
         else:
             qs = qs.filter(tipo='GASTO')
-        resumen = list(qs.values(agrupar).annotate(total=Sum('monto')).order_by('-total'))
+        totales = {}
+        for mov in qs.only('descripcion', 'monto'):
+            clave = mov.descripcion or ''
+            totales[clave] = totales.get(clave, Decimal('0')) + (mov.monto or Decimal('0'))
+        resumen = sorted(
+            [{'descripcion': k, 'total': v} for k, v in totales.items()],
+            key=lambda x: x['total'],
+            reverse=True,
+        )
 
     # Mostramos solo las 9 mayores; el resto se agrupa en "Otros" para que la dona sea legible
     LIMITE = 9

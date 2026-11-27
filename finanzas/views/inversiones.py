@@ -21,6 +21,7 @@ from ..forms import (
 )
 from ..services import StockPriceService
 from ..models import Suscripcion, inversiones, PendingInvestment, PortfolioHistory
+from .. import planes
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +30,15 @@ def vista_portafolio(request):
     """
     Vista dedicada para el Portafolio de Inversiones.
     """
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
-    es_usuario_premium = suscripcion.is_active()
+    es_usuario_premium = planes.puede_procesar(request.user)   # le quedan documentos con IA este mes
 
     # --- LÓGICA DE ACTIVOS ---
-    mis_inversiones = inversiones.objects.filter(propietario=request.user).order_by('-valor_actual_mercado')
+    mis_inversiones = list(inversiones.objects.filter(propietario=request.user).order_by('-valor_actual_mercado'))
     
-    # Totales Generales
-    agregados = mis_inversiones.aggregate(
-        total_invertido=Sum('costo_total_adquisicion'),
-        valor_actual=Sum('valor_actual_mercado')
-    )
-    
-    total_invertido = agregados['total_invertido'] or Decimal('0.00')
-    valor_total = agregados['valor_actual'] or Decimal('0.00')
+    # Totales Generales (calculados en Python porque las columnas están cifradas en BD)
+    cero = Decimal('0.00')
+    total_invertido = sum((i.costo_total_adquisicion or cero for i in mis_inversiones), cero)
+    valor_total = sum((i.valor_actual_mercado or cero for i in mis_inversiones), cero)
     ganancia_total = valor_total - total_invertido
     
     # Porcentaje de ganancia total
@@ -185,9 +181,8 @@ def lista_inversiones(request):
     """
     Muestra todas las inversiones del usuario logueado.
     """
-    suscripcion, created = Suscripcion.objects.get_or_create(usuario=request.user)
     lista = inversiones.objects.filter(propietario=request.user).order_by('-fecha_compra')
-    es_usuario_premium = suscripcion.is_active()
+    es_usuario_premium = planes.puede_procesar(request.user)
     context = {'inversiones': lista, 'es_usuario_premium': es_usuario_premium}
     return render(request, 'lista_inversiones.html', context)
 

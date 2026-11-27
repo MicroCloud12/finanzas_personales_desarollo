@@ -60,6 +60,7 @@ urlpatterns = [
     path('deudas/cuota/<int:cuota_id>/marcar/', views.marcar_cuota, name='marcar_cuota'),
     path('mi_perfil/', views.mi_perfil, name='mi_perfil'),
     path('mi_perfil/eliminar/', views.eliminar_cuenta_usuario, name='eliminar_cuenta_usuario'),
+    path('mi_perfil/drive-conectado/', views.drive_conectado, name='drive_conectado'),
     path('deudas/procesamiento/<int:deuda_id>/', views.vista_procesamiento_deudas, name='procesamiento_deudas'),
     path('deudas/procesar-drive/<int:deuda_id>/', views.iniciar_procesamiento_deudas, name='procesar_drive_deudas'),
     path('deudas/revisar-amortizaciones/<int:deuda_id>/', views.revisar_amortizaciones, name='revisar_amortizaciones'),

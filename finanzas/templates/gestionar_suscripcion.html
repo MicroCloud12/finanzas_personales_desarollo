@@ -1,56 +1,99 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto mt-2 sm:mt-8 mb-8">
-    <div class="bg-white p-5 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
-        <h1 class="text-xl sm:text-2xl font-bold mb-6 text-center text-gray-800 font-display">Mi Suscripción Premium</h1>
-        
-        {% if suscripcion.is_active and suscripcion.esta_cancelada %}
-            <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded mb-6" role="alert">
-                <p class="font-bold">Tu suscripción está cancelada</p>
-                <p>No se harán más cobros. Conservas el acceso Premium hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.
-                   Si cambias de opinión, puedes reactivarla abajo.</p>
-            </div>
-            {% if link_pago %}
-                <div class="text-center mt-6">
-                    <a href="{{ link_pago }}" class="inline-block w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition duration-300 shadow-lg">
-                        Reactivar con MercadoPago
-                    </a>
-                </div>
-            {% endif %}
-        {% elif suscripcion.is_active %}
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded" role="alert">
-                <p class="font-bold">¡Tu suscripción está activa!</p>
-                <p>Disfruta de todas las funcionalidades premium hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.</p>
-            </div>
-            {% if suscripcion.puede_cancelarse %}
-            <div class="mt-8 pt-6 border-t border-gray-100 text-center">
-                <p class="text-sm text-gray-500 mb-3">¿Ya no quieres renovar? Puedes cancelar cuando quieras: no habrá más cobros y conservas Premium hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.</p>
-                <form method="post" action="{% url 'cancelar_suscripcion' %}" class="inline"
-                    onsubmit="return confirm('¿Cancelar tu suscripción Premium?\n\nNo se harán más cobros y conservas el acceso hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.');">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="gestionar_suscripcion">
-                    <button type="submit" class="text-sm font-medium text-gray-500 hover:text-red-600 underline underline-offset-2 transition-colors">
-                        Cancelar suscripción
-                    </button>
-                </form>
-            </div>
-            {% endif %}
-        {% else %}
-            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded mb-6" role="alert">
-                <p class="font-bold">Activa tu plan Premium</p>
-                <p>Desbloquea la sincronización automática y todas las funcionalidades avanzadas por solo $400 MXN al mes.</p>
-            </div>
-            {% if link_pago %}
-                <div class="text-center mt-6">
-                    <a href="{{ link_pago }}" class="inline-block w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition duration-300 shadow-lg">
-                        Pagar con MercadoPago
-                    </a>
-                </div>
-            {% else %}
-                 <p class="text-center text-red-600 font-semibold">Hubo un error al generar el link de pago. Por favor, intenta de nuevo más tarde o contacta a soporte.</p>
-            {% endif %}
-        {% endif %}
+<div class="max-w-4xl mx-auto mt-2 sm:mt-8 mb-8">
+    <div class="text-center mb-6">
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Planes</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            Tu plan actual: <span class="font-semibold text-gray-800">{{ nombre_plan_actual }}</span>
+            · este mes llevas <span class="font-semibold text-gray-800">{{ cuota.usados }} de {{ cuota.tope }}</span> documentos leídos con IA.
+        </p>
     </div>
+
+    {% if suscripcion.is_active and suscripcion.esta_cancelada %}
+    <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded mb-6" role="alert">
+        <p class="font-bold">Tu suscripción está cancelada</p>
+        <p>No se harán más cobros. Conservas el plan {{ nombre_plan_actual }} hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.
+           Si cambias de opinión, vuelve a contratarlo abajo.</p>
+    </div>
+    {% elif suscripcion.estado == 'pausada' %}
+    <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded mb-6" role="alert">
+        <p class="font-bold">Mercado Pago no pudo cobrar tu suscripción</p>
+        <p>Mientras tanto tienes el plan Gratis. Revisa tu método de pago en Mercado Pago o contrata de nuevo abajo.</p>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {% for t in tarjetas %}
+        <div class="bg-white rounded-2xl shadow-sm border {% if t.actual %}border-2 border-indigo-600{% else %}border-gray-100{% endif %} p-5 flex flex-col">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-bold text-gray-900">{{ t.nombre }}</h2>
+                {% if t.actual %}
+                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-50 text-indigo-700">Tu plan</span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-gray-500 mt-1">{{ t.resumen }}</p>
+
+            <div class="mt-4 flex items-baseline gap-1">
+                <span class="text-3xl font-bold text-gray-900">${{ t.mensual }}</span>
+                <span class="text-sm text-gray-500">MXN / mes</span>
+            </div>
+            {% if t.anual %}
+            <p class="text-xs text-gray-500">o ${{ t.anual|intcomma }} al año (sale a ${{ t.anual_por_mes }}/mes)</p>
+            {% else %}
+            <p class="text-xs text-gray-500">para siempre</p>
+            {% endif %}
+
+            <ul class="mt-4 space-y-2 text-sm text-gray-700">
+                <li class="flex items-center"><svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><strong class="mr-1">{{ t.docs_mes }}</strong> documentos con IA al mes</li>
+                <li class="flex items-center"><svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Cuentas, movimientos y CSV sin límite</li>
+                <li class="flex items-center"><svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Presupuesto, deudas e inversiones</li>
+                {% if t.cfdi %}
+                <li class="flex items-center"><svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Facturación CFDI automática de tus tickets</li>
+                {% else %}
+                <li class="flex items-center text-gray-400"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Facturación CFDI</li>
+                {% endif %}
+            </ul>
+
+            <div class="mt-auto pt-4">
+                {% if t.actual %}
+                    {% if suscripcion.puede_cancelarse and t.clave != 'gratis' %}
+                    <p class="text-xs text-gray-500 text-center mb-2">Renueva el {{ suscripcion.fecha_fin|date:"d/m/Y" }}</p>
+                    <form method="post" action="{% url 'cancelar_suscripcion' %}" class="text-center"
+                        onsubmit="return confirm('¿Cancelar tu plan {{ t.nombre }}?\n\nNo habrá más cobros y lo conservas hasta el {{ suscripcion.fecha_fin|date:"d/m/Y" }}.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="gestionar_suscripcion">
+                        <button type="submit" class="text-sm font-medium text-gray-500 hover:text-red-600 underline underline-offset-2 transition-colors">Cancelar suscripción</button>
+                    </form>
+                    {% else %}
+                    <p class="text-xs text-gray-500 text-center">Es el plan que tienes ahora</p>
+                    {% endif %}
+                {% elif t.clave == 'gratis' %}
+                    <p class="text-xs text-gray-500 text-center">Al terminar tu plan de pago vuelves aquí solo</p>
+                {% else %}
+                    {% if t.link_mensual %}
+                    <a href="{{ t.link_mensual }}" class="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-sm">
+                        {% if plan_actual == 'gratis' %}Contratar{% else %}Cambiar a {{ t.nombre }}{% endif %} · ${{ t.mensual }}/mes
+                    </a>
+                    {% endif %}
+                    {% if t.link_anual %}
+                    <a href="{{ t.link_anual }}" class="block w-full text-center mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                        Pagar el año · ${{ t.anual|intcomma }} (2 meses gratis)
+                    </a>
+                    {% endif %}
+                    {% if not t.link_mensual and not t.link_anual %}
+                    <p class="text-xs text-red-600 text-center">Este plan aún no está configurado en Mercado Pago.</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <p class="text-xs text-gray-500 text-center mt-6">
+        El pago se hace en Mercado Pago y se renueva solo; puedes cancelar cuando quieras y conservas el plan hasta el final del periodo pagado.
+        Si cambias de plan, el cobro anterior se cancela automáticamente.
+    </p>
 </div>
 {% endblock %}

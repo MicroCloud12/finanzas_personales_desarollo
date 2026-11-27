@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static planes_tags %}
 {% load humanize %}
 
 {% block content %}
@@ -56,6 +56,7 @@
       <h3 class="font-bold text-lg text-gray-800">Gastos fijos</h3>
       <p class="text-xs text-gray-500 mt-1">Usa "Editar" para elegir si un gasto es de <strong>Monto fijo</strong> (renta, muchacha, suscripción) o de <strong>Recibo variable</strong> (luz, agua, gas, internet en Drive <span class="font-mono">Recibos/&lt;nombre del concepto&gt;</span>).</p>
     </div>
+    <div class="px-6 pt-4">{% cuota_ia %}</div>
 
     {# --- Desktop Table --- #}
     <div class="hidden md:block overflow-x-auto">

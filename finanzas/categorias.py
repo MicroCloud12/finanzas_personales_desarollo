@@ -44,8 +44,7 @@ def cuenta_ahorro_para(user, crear=True):
 def categorias_para(user):
     """Categorías base + las que el usuario ya haya usado en sus movimientos."""
     from .models import registro_transacciones
-    usadas = (registro_transacciones.objects.filter(propietario=user)
-              .exclude(categoria='').values_list('categoria', flat=True).distinct())
+    usadas = registro_transacciones.objects.filter(propietario=user).values_list('categoria', flat=True)
     base_lower = {c.lower() for c in CATEGORIAS_BASE}
     extra = sorted({c for c in usadas if c and c.lower() not in base_lower})
     return CATEGORIAS_BASE + extra
@@ -125,7 +124,11 @@ class Sugeridor:
         self.por_nombre = {c.nombre.strip().upper(): c for c in self.cuentas}
         self.por_terminacion = {c.terminacion.strip()[-4:]: c for c in self.cuentas if c.terminacion and c.terminacion.strip()}
         self.principal = next((c for c in self.cuentas if c.es_principal), None) or (self.cuentas[0] if self.cuentas else None)
-        self._tx = registro_transacciones.objects.filter(propietario=user).select_related('origen', 'destino')
+        self._por_descripcion = {}
+        for mov in registro_transacciones.objects.filter(propietario=user).select_related('origen', 'destino').order_by('-fecha', '-id'):
+            clave = (mov.descripcion or '').strip().lower()
+            if clave and clave not in self._por_descripcion:
+                self._por_descripcion[clave] = mov
 
     def cuenta(self, nombre):
         nombre = (nombre or '').strip()
@@ -161,7 +164,7 @@ class Sugeridor:
     def historial(self, descripcion):
         if not descripcion:
             return None
-        return self._tx.filter(descripcion__iexact=descripcion).order_by('-fecha', '-id').first()
+        return self._por_descripcion.get(descripcion.strip().lower())
 
     def sugerir(self, datos):
         descripcion = descripcion_de_ticket(datos)
